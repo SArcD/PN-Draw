@@ -1,51 +1,54 @@
 import streamlit as st
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 import numpy as np
 
-def generate_star_field(num_stars, bounds):
-    """Genera un campo de estrellas con posiciones, tamaños y colores aleatorios."""
-    x_stars = np.random.uniform(bounds[0], bounds[1], num_stars)
-    y_stars = np.random.uniform(bounds[0], bounds[1], num_stars)
-    star_sizes = np.random.uniform(2, 10, num_stars)
-    star_colors = np.random.choice(["white", "lightblue", "yellow"], num_stars, p=[0.6, 0.3, 0.1])
-    return x_stars, y_stars, star_sizes, star_colors
+def draw_star(ax, center, size, num_points=5, color="white", alpha=1.0):
+    """Dibuja una estrella con un patrón de picos."""
+    angles = np.linspace(0, 2 * np.pi, num_points * 2, endpoint=False)
+    radii = np.empty_like(angles)
+    radii[::2] = size  # Picos largos
+    radii[1::2] = size * 0.5  # Picos cortos
+    
+    x = center[0] + radii * np.cos(angles)
+    y = center[1] + radii * np.sin(angles)
+    ax.fill(x, y, color=color, alpha=alpha)
+
+def draw_star_field(ax, num_stars, bounds):
+    """Dibuja un campo de estrellas en el fondo negro con forma de estrella."""
+    for _ in range(num_stars):
+        # Posición aleatoria de la estrella
+        x = np.random.uniform(bounds[0], bounds[1])
+        y = np.random.uniform(bounds[0], bounds[1])
+        
+        # Tamaño aleatorio de la estrella
+        size = np.random.uniform(0.05, 0.2)
+        
+        # Número de picos aleatorio
+        num_points = np.random.choice([5, 6, 7])
+        
+        # Color aleatorio
+        color = np.random.choice(["white", "lightblue", "yellow"], p=[0.6, 0.3, 0.1])
+        
+        # Dibujar la estrella
+        draw_star(ax, center=(x, y), size=size, num_points=num_points, color=color, alpha=0.8)
 
 # Configuración de la aplicación de Streamlit
-st.title("Simulador de Campo de Estrellas (Plotly)")
+st.title("Simulador de Campo de Estrellas")
 
 # Deslizador para el número de estrellas
 num_stars = st.sidebar.slider(
     "Número de estrellas", min_value=100, max_value=2000, value=500, step=100
 )
 
-# Generar los datos del campo de estrellas
+# Configuración de Matplotlib
+fig, ax = plt.subplots(figsize=(10, 10), facecolor="black")  # Fondo negro global
+ax.set_aspect("equal")
+ax.set_facecolor("black")  # Fondo negro para los ejes
+ax.axis("off")  # Ocultar los ejes
+
+# Dibujar el campo de estrellas
 bounds = (-2.5, 2.5)
-x_stars, y_stars, star_sizes, star_colors = generate_star_field(num_stars, bounds)
-
-# Crear la figura de Plotly
-fig = go.Figure()
-
-# Añadir las estrellas
-for x, y, size, color in zip(x_stars, y_stars, star_sizes, star_colors):
-    fig.add_trace(go.Scatter(
-        x=[x],
-        y=[y],
-        mode="markers",
-        marker=dict(size=size, color=color, opacity=0.8),
-        showlegend=False
-    ))
-
-# Configurar el fondo negro y los ejes
-fig.update_layout(
-    xaxis=dict(visible=False),
-    yaxis=dict(visible=False),
-    plot_bgcolor="black",
-    paper_bgcolor="black",
-)
-
-# Ajustar los límites del gráfico
-fig.update_xaxes(range=[bounds[0], bounds[1]])
-fig.update_yaxes(range=[bounds[0], bounds[1]])
+draw_star_field(ax, num_stars=num_stars, bounds=bounds)
 
 # Mostrar el gráfico en Streamlit
-st.plotly_chart(fig, use_container_width=True)
+st.pyplot(fig)
