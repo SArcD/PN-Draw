@@ -726,7 +726,6 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
-perlin_texture = generate_perlin_texture(image_size=(800, 800), scale=100)
 
 def apply_perlin_to_shells(shell_image, perlin_texture, alpha=0.3):
     """
