@@ -707,6 +707,33 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
+from PIL import Image, ImageDraw
+from noise import pnoise2
+
+def generate_perlin_texture(image_size, scale=50):
+    """
+    Generate a Perlin noise texture as a PIL image.
+    
+    Parameters:
+        image_size: Tuple[int, int] - Size of the image (width, height).
+        scale: int - Scale of the Perlin noise.
+
+    Returns:
+        PIL.Image - Perlin noise texture.
+    """
+    texture = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    pixels = texture.load()
+
+    for x in range(image_size[0]):
+        for y in range(image_size[1]):
+            # Generate Perlin noise value
+            value = int((pnoise2(x / scale, y / scale, octaves=6, persistence=0.5, lacunarity=2.0, repeatx=image_size[0], repeaty=image_size[1], base=42) + 1) * 128)
+            pixels[x, y] = (value, value, value, int(value * 0.5))  # Grayscale + alpha
+
+    return texture
+
+
+
 # Function to create advanced gaseous shell textures
 def generate_advanced_gaseous_shells(image_size, shells, fractal_scale=100, blur_radius=10):
     """
