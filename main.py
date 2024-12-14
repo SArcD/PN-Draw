@@ -723,6 +723,66 @@ final_image_with_darkened_sections = darken_shell_sections_with_thickness(
 # Display the updated image with darkened sections
 st.image(final_image_with_darkened_sections, use_column_width=True)
 
+
+#################################################################3
+
+def displace_shell_sections(image, shells, displaced_sections, displacement_distance):
+    """
+    Displaces specified sections of the shells radially outward to simulate filaments.
+    
+    Parameters:
+        image: PIL.Image - The existing image with shells.
+        shells: List[Dict] - List of dictionaries defining shell properties:
+            - "center": Tuple[int, int] - Center of the shell.
+            - "semimajor_axis": int - Semimajor axis.
+            - "semiminor_axis": int - Semiminor axis.
+            - "angle": float - Rotation angle in degrees.
+            - "color": str - Shell color.
+            - "thickness": int - Shell thickness.
+        displaced_sections: Dict[int, List[Tuple[int, int]]] - Mapping of shell index to intervals of angles (in degrees) to be displaced.
+        displacement_distance: int - Distance to displace the sections radially.
+
+    Returns:
+        PIL.Image - Modified image with displaced sections.
+    """
+    img = image.copy()
+    draw = ImageDraw.Draw(img)
+
+    for shell_index, shell in enumerate(shells):
+        if shell_index in displaced_sections:
+            center = shell["center"]
+            a = shell["semimajor_axis"]
+            b = shell["semiminor_axis"]
+            thickness = shell["thickness"]
+            color = ImageColor.getrgb(shell["color"])
+
+            # Extract the displaced sections for this shell
+            intervals = displaced_sections[shell_index]
+
+            # Draw displaced sections for each layer of thickness
+            for t in range(thickness):
+                for interval in intervals:
+                    start_angle, end_angle = interval
+                    # Compute the new bounding box with displacement
+                    bbox = (
+                        center[0] - a - t - displacement_distance,
+                        center[1] - b - t - displacement_distance,
+                        center[0] + a + t + displacement_distance,
+                        center[1] + b + t + displacement_distance,
+                    )
+                    draw.arc(
+                        bbox,
+                        start=start_angle,
+                        end=end_angle,
+                        fill=color + (int(255 / (t + 1)),),  # Adjust transparency for thickness
+                        width=1,
+                    )
+
+    # Apply Gaussian blur to simulate a smooth filament appearance
+    img = img.filter(ImageFilter.GaussianBlur(radius=5))
+    return img
+
+
 # Sidebar section for displacing shell sections
 st.sidebar.markdown("### Displace Shell Sections")
 displaced_sections = {}
