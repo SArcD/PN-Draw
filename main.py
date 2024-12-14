@@ -92,30 +92,6 @@ def draw_central_star_with_filaments(image_size, position, star_size, halo_size,
 
 #########################################################
 
-# Sidebar inputs for the central star with radial filaments
-st.sidebar.markdown("### Central Star with Radial Filaments")
-num_filaments = st.sidebar.slider("Number of Filaments", min_value=10, max_value=100, value=30, step=5)
-filament_dispersion = st.sidebar.slider("Filament Dispersion", min_value=1, max_value=50, value=10, step=1)
-filament_blur_radius = st.sidebar.slider("Filament Blur Radius", min_value=1, max_value=20, value=5, step=1)
-
-# Generate the central star with radial filaments
-central_star_with_filaments = draw_central_star_with_filaments(
-    image_size=image_size,
-    position=(star_x, star_y),
-    star_size=star_size,
-    halo_size=halo_size,
-    color=ImageColor.getrgb(star_color),
-    num_filaments=num_filaments,
-    dispersion=filament_dispersion,
-    blur_radius=filament_blur_radius,
-)
-
-# Combine the central star with the existing image
-final_image_with_star_and_filaments = Image.alpha_composite(star_field, central_star_with_filaments)
-
-# Display the final image
-st.image(final_image_with_star_and_filaments, use_column_width=True)
-
 
 
 # Función para dibujar una estrella central con un halo difuso
@@ -172,7 +148,31 @@ glow_color = st.sidebar.color_picker("Color del Brillo", "#FFFF00")
 # Generar imágenes
 image_size = (1200, 1200)
 star_field = generate_star_field(num_stars, image_size)
-central_star = draw_central_star(image_size, (star_x, star_y), star_size, halo_size, ImageColor.getrgb(star_color))
+#central_star = draw_central_star(image_size, (star_x, star_y), star_size, halo_size, ImageColor.getrgb(star_color))
+# Sidebar inputs for the central star with radial filaments
+st.sidebar.markdown("### Central Star with Radial Filaments")
+num_filaments = st.sidebar.slider("Number of Filaments", min_value=10, max_value=100, value=30, step=5)
+filament_dispersion = st.sidebar.slider("Filament Dispersion", min_value=1, max_value=50, value=10, step=1)
+filament_blur_radius = st.sidebar.slider("Filament Blur Radius", min_value=1, max_value=20, value=5, step=1)
+
+# Generate the central star with radial filaments
+central_star = draw_central_star_with_filaments(
+    image_size=image_size,
+    position=(star_x, star_y),
+    star_size=star_size,
+    halo_size=halo_size,
+    color=ImageColor.getrgb(star_color),
+    num_filaments=num_filaments,
+    dispersion=filament_dispersion,
+    blur_radius=filament_blur_radius,
+)
+
+# Combine the central star with the existing image
+final_image_with_star_and_filaments = Image.alpha_composite(star_field, central_star_with_filaments)
+
+# Display the final image
+st.image(final_image_with_star_and_filaments, use_column_width=True)
+
 
 # Combinar imágenes
 combined_image = Image.alpha_composite(star_field, central_star)
