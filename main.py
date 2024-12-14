@@ -471,14 +471,14 @@ else:
     st.image(final_image_with_shells, use_column_width=True)
 
 
-def draw_filaments_between_shells(image_size, inner_shell, outer_shell, num_filaments, filament_color, noise_intensity, blur_radius):
+def draw_filaments_between_selected_shells(image_size, origin_shell, target_shell, num_filaments, filament_color, noise_intensity, blur_radius):
     """
-    Draws radiating filaments between the innermost and outermost shells with noise and Gaussian diffusion.
+    Draws radiating filaments between the specified origin and target shells with noise and Gaussian diffusion.
     
     Parameters:
         image_size: Tuple[int, int] - Dimensions of the image.
-        inner_shell: Dict - Properties of the innermost shell.
-        outer_shell: Dict - Properties of the outermost shell.
+        origin_shell: Dict - Properties of the origin shell.
+        target_shell: Dict - Properties of the target shell.
         num_filaments: int - Total number of filaments to draw.
         filament_color: Tuple[int, int, int] - Color of the filaments.
         noise_intensity: int - Intensity of random noise added to the filaments.
@@ -487,20 +487,20 @@ def draw_filaments_between_shells(image_size, inner_shell, outer_shell, num_fila
     filaments_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(filaments_layer)
 
-    center1 = inner_shell["center"]
-    center2 = outer_shell["center"]
-    a1, b1 = inner_shell["semimajor_axis"], inner_shell["semiminor_axis"]
-    a2, b2 = outer_shell["semimajor_axis"], outer_shell["semiminor_axis"]
-    angle1 = np.radians(inner_shell["angle"])
-    angle2 = np.radians(outer_shell["angle"])
+    center1 = origin_shell["center"]
+    center2 = target_shell["center"]
+    a1, b1 = origin_shell["semimajor_axis"], origin_shell["semiminor_axis"]
+    a2, b2 = target_shell["semimajor_axis"], target_shell["semiminor_axis"]
+    angle1 = np.radians(origin_shell["angle"])
+    angle2 = np.radians(target_shell["angle"])
 
     for _ in range(num_filaments):
-        # Randomly sample points on the boundary of the inner shell
+        # Randomly sample points on the boundary of the origin shell
         theta1 = np.random.uniform(0, 2 * np.pi)
         x1 = center1[0] + a1 * np.cos(theta1) * np.cos(angle1) - b1 * np.sin(theta1) * np.sin(angle1)
         y1 = center1[1] + a1 * np.cos(theta1) * np.sin(angle1) + b1 * np.sin(theta1) * np.cos(angle1)
 
-        # Randomly sample points on the boundary of the outer shell
+        # Randomly sample points on the boundary of the target shell
         theta2 = np.random.uniform(0, 2 * np.pi)
         x2 = center2[0] + a2 * np.cos(theta2) * np.cos(angle2) - b2 * np.sin(theta2) * np.sin(angle2)
         y2 = center2[1] + a2 * np.cos(theta2) * np.sin(angle2) + b2 * np.sin(theta2) * np.cos(angle2)
@@ -522,26 +522,30 @@ def draw_filaments_between_shells(image_size, inner_shell, outer_shell, num_fila
     filaments_layer = filaments_layer.filter(ImageFilter.GaussianBlur(blur_radius))
     return filaments_layer
 
-
 # Sidebar inputs for inter-shell filaments
-st.sidebar.markdown("### Filaments Between Innermost and Outermost Shells")
+st.sidebar.markdown("### Filaments Between Selected Shells")
 activate_filaments = st.sidebar.checkbox("Activate Filaments", value=True)
 if activate_filaments:
+    # Input box to specify the origin and target shell indices
+    origin_shell_index = st.sidebar.number_input("Origin Shell Index", min_value=0, max_value=len(shells)-1, value=0)
+    target_shell_index = st.sidebar.number_input("Target Shell Index", min_value=0, max_value=len(shells)-1, value=len(shells)-1)
+
+    # Other filament controls
     num_filaments = st.sidebar.slider("Number of Filaments", min_value=10, max_value=200, value=50)
     filament_color = st.sidebar.color_picker("Filament Color", "#00FFFF")
     filament_noise_intensity = st.sidebar.slider("Filament Noise Intensity", min_value=1, max_value=20, value=5)
     filament_blur_radius = st.sidebar.slider("Filament Blur Radius", min_value=1, max_value=20, value=5)
 
-    # Ensure there are at least two shells
-    if len(shells) >= 2:
-        inner_shell = shells[0]  # Innermost shell
-        outer_shell = shells[-1]  # Outermost shell
+    # Validate shell indices
+    if origin_shell_index < len(shells) and target_shell_index < len(shells):
+        origin_shell = shells[origin_shell_index]
+        target_shell = shells[target_shell_index]
 
-        # Draw filaments between the innermost and outermost shells
-        filaments_layer = draw_filaments_between_shells(
+        # Draw filaments between the selected shells
+        filaments_layer = draw_filaments_between_selected_shells(
             image_size=image_size,
-            inner_shell=inner_shell,
-            outer_shell=outer_shell,
+            origin_shell=origin_shell,
+            target_shell=target_shell,
             num_filaments=num_filaments,
             filament_color=ImageColor.getrgb(filament_color),
             noise_intensity=filament_noise_intensity,
@@ -554,8 +558,7 @@ if activate_filaments:
         # Display the updated image
         st.image(final_image_with_filaments, use_column_width=True)
     else:
-        st.warning("Please add at least two shells to generate filaments.")
+        st.warning("Please ensure the origin and target shell indices are valid.")
 else:
     st.image(final_image_with_shells, use_column_width=True)
-
 
