@@ -648,11 +648,11 @@ else:
 
 ########################################################
 
-
-def darken_shell_sections(image, shells, darkened_sections):
+def darken_shell_sections_with_thickness(image, shells, darkened_sections):
     """
-    Darkens specified sections of the shells based on the user-defined intervals.
-
+    Darkens specified sections of the shells based on the user-defined intervals,
+    considering the thickness of the shell.
+    
     Parameters:
         image: PIL.Image - The existing image with shells.
         shells: List[Dict] - List of dictionaries defining shell properties:
@@ -680,8 +680,8 @@ def darken_shell_sections(image, shells, darkened_sections):
             # Extract the darkened sections for this shell
             intervals = darkened_sections[shell_index]
 
-            # Draw darkened sections
-            for t in range(thickness, 0, -1):
+            # Draw darkened sections for each layer of thickness
+            for t in range(thickness):
                 for interval in intervals:
                     start_angle, end_angle = interval
                     bbox = (
@@ -694,12 +694,11 @@ def darken_shell_sections(image, shells, darkened_sections):
                         bbox,
                         start=start_angle,
                         end=end_angle,
-                        fill=(0, 0, 0, 255),  # Completely black
-                        width=2,
+                        fill=(0, 0, 0, int(255 / (t + 1))),  # Adjust transparency based on thickness layer
+                        width=1,
                     )
 
     return img
-
 
 # Sidebar section for darkening shell sections
 st.sidebar.markdown("### Darken Shell Sections")
@@ -715,7 +714,11 @@ for i in range(num_shells):
     darkened_sections[i] = intervals
 
 # Apply the darkening effect to the shells
-final_image_with_darkened_sections = darken_shell_sections(final_image_with_shells, shells, darkened_sections)
+final_image_with_darkened_sections = darken_shell_sections_with_thickness(
+    final_image_with_shells, 
+    shells, 
+    darkened_sections
+)
 
 # Display the updated image with darkened sections
 st.image(final_image_with_darkened_sections, use_column_width=True)
