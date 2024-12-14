@@ -170,7 +170,7 @@ for i in range(num_shells):
     semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 200)
     angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)  # Angle in degrees
     shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF")
-    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", 1, 50, 20)
+    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", 1, 150, 20)
     
     shells.append({
         "center": (center_x, center_y),
