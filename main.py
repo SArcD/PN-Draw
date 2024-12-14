@@ -196,76 +196,71 @@ import numpy as np
 from PIL import ImageDraw, ImageFilter
 import streamlit as st
 
-# Function to add noise and diffuse edges to shells
-def add_noise_to_shell(image, center, semi_major, semi_minor, angle, shell_color, thickness):
+def generate_noise_layer(image_size, semi_major, semi_minor, center, angle, shell_color, thickness):
     """
-    Add noise and irregular edges to a shell to create a diffuse, gaseous look.
+    Generate a noise layer for a gaseous shell with irregular edges.
     """
-    noise_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    noise_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(noise_layer)
-    
-    # Define the ellipse bounds and apply rotation
-    left = center[0] - semi_major
-    top = center[1] - semi_minor
-    right = center[0] + semi_major
-    bottom = center[1] + semi_minor
-    
-    # Draw the main ellipse with added noise
-    for t in range(-thickness, thickness):
-        offset = np.random.uniform(-5, 5)  # Random noise for irregularities
-        noisy_left = left + offset + t
-        noisy_top = top + offset + t
-        noisy_right = right + offset - t
-        noisy_bottom = bottom + offset - t
-        
+
+    for t in range(thickness):
+        # Add random perturbation for irregular edges
+        offset_x = np.random.uniform(-5, 5)
+        offset_y = np.random.uniform(-5, 5)
+
+        left = center[0] - semi_major + offset_x - t
+        top = center[1] - semi_minor + offset_y - t
+        right = center[0] + semi_major + offset_x + t
+        bottom = center[1] + semi_minor + offset_y + t
+
         draw.ellipse(
-            (noisy_left, noisy_top, noisy_right, noisy_bottom),
-            outline=shell_color + (50,),
+            (left, top, right, bottom),
+            outline=shell_color + (int(150 / (t + 1)),),  # Decreasing transparency for layers
             width=1
         )
-    
-    # Apply a Gaussian blur to smooth out the noise
-    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=3))
-    
-    # Composite the noise layer onto the main image
-    image.paste(noise_layer, (0, 0), mask=noise_layer)
-    return image
 
-# New section to add noisy, diffuse shells
-st.sidebar.markdown("### Shell Parameters")
-num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2, step=1)
-shells = []
+    # Apply Gaussian blur to simulate diffusion
+    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=thickness // 2))
+    return noise_layer
 
-for i in range(num_shells):
-    st.sidebar.markdown(f"#### Shell {i+1}")
-    semi_major = st.sidebar.slider(f"Shell {i+1} Semi-Major Axis", min_value=50, max_value=400, value=200, step=10, key=f"semi_major_{i}")
-    semi_minor = st.sidebar.slider(f"Shell {i+1} Semi-Minor Axis", min_value=50, max_value=400, value=150, step=10, key=f"semi_minor_{i}")
-    angle = st.sidebar.slider(f"Shell {i+1} Angle (degrees)", min_value=0, max_value=360, value=0, step=1, key=f"angle_{i}")
-    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF", key=f"color_{i}")
-    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", min_value=1, max_value=50, value=10, step=1, key=f"thickness_{i}")
-    shells.append((semi_major, semi_minor, angle, shell_color, thickness))
+# Function to composite all shells
+def draw_gaseous_shells(image, shells):
+    """
+    Draw multiple gaseous shells as independent noise layers and composite them onto the image.
+    """
+    composite_image = image.copy()  # Start with the existing image
 
-# Generate the noisy shells
-image_size = (800, 800)
-composite_image = Image.new("RGBA", image_size, (0, 0, 0, 255))
+    for i, shell in enumerate(shells):
+        semi_major, semi_minor, angle, shell_color, thickness = shell
 
-for i, shell in enumerate(shells):
-    semi_major, semi_minor, angle, shell_color, thickness = shell
-    composite_image = add_noise_to_shell(
-        composite_image,
-        center=(400, 400),
-        semi_major=semi_major,
-        semi_minor=semi_minor,
-        angle=angle,
-        shell_color=ImageColor.getrgb(shell_color),
-        thickness=thickness
-    )
+        # Generate the noise layer for this shell
+        noise_layer = generate_noise_layer(
+            image_size=image.size,
+            semi_major=semi_major,
+            semi_minor=semi_minor,
+            center=(400, 400),  # Center of the shell
+            angle=angle,
+            shell_color=ImageColor.getrgb(shell_color),
+            thickness=thickness
+        )
 
-# Overlay the shells on the previously created star field
-final_image = Image.alpha_composite(star_field.convert("RGBA"), composite_image)
+        # Composite the noise layer onto the current image
+        composite_image = Image.alpha_composite(composite_image, noise_layer)
 
-# Display the updated image with the noisy shells
-st.image(final_image, use_column_width=True)
+    return composite_image
+
+# Define shells with random parameters for demonstration
+shells = [
+    (150, 120, 0, "#00FFFF", 20),  # Semi-major, semi-minor, angle, color, thickness
+    (200, 170, 30, "#00FF00", 25),
+]
+
+# Draw shells on top of the existing star field
+final_image_with_shells = draw_gaseous_shells(final_image, shells)
+
+# Display the updated composite image with shells
+st.image(final_image_with_shells, use_column_width=True)
+
 
 
 
