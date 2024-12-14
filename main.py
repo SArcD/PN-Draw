@@ -1,3 +1,4 @@
+import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -27,18 +28,21 @@ def draw_star_field(ax, num_stars, bounds):
         num_points = np.random.choice([5, 6, 7])  # Número de picos aleatorio
         draw_star(ax, center=(x, y), size=size, num_points=num_points, color=color, alpha=0.8)
 
+# Configuración de Streamlit
+st.title("Simulador de Campo de Estrellas")
+
+# Parámetros interactivos
+num_stars = st.sidebar.slider("Número de estrellas", min_value=100, max_value=2000, value=500, step=100)
+
 # Configuración del gráfico
 fig, ax = plt.subplots(figsize=(10, 10), facecolor="black")  # Fondo negro global
 ax.set_aspect("equal")
 ax.set_facecolor("black")  # Fondo negro para los ejes
 ax.axis("off")  # Ocultar los ejes
 
-# Parámetros para el campo de estrellas
-num_stars = 500  # Número de estrellas
-bounds = (-2.5, 2.5)  # Límites del área donde se generarán las estrellas
-
 # Dibujar el campo de estrellas
+bounds = (-2.5, 2.5)  # Límites del área donde se generarán las estrellas
 draw_star_field(ax, num_stars=num_stars, bounds=bounds)
 
-# Mostrar el gráfico
-plt.show()
+# Mostrar el gráfico en Streamlit
+st.pyplot(fig)
