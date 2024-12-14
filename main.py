@@ -726,6 +726,20 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
+from noise import pnoise2
+
+def generate_perlin_texture(image_size, scale=50):
+    texture = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    pixels = texture.load()
+
+    for x in range(image_size[0]):
+        for y in range(image_size[1]):
+            value = int((pnoise2(x / scale, y / scale, octaves=6) + 1) * 128)
+            pixels[x, y] = (value, value, value, int(value * 0.5))
+    
+    return texture
+
+
 
 def apply_perlin_to_shells(shell_image, perlin_texture, alpha=0.3):
     """
@@ -751,6 +765,8 @@ def apply_perlin_to_shells(shell_image, perlin_texture, alpha=0.3):
 
     # Combinar con las shells
     return Image.alpha_composite(shell_image, perlin_overlay)
+
+
 
 
 # Generar textura Perlin
