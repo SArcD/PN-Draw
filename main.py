@@ -557,6 +557,8 @@ if activate_filaments:
 
         # Display the updated image
         st.image(final_image_with_filaments, use_column_width=True)
+        #st.image(final_image_with_filaments_gas, use_column_width=True)
+
     else:
         st.warning("Please ensure the origin and target shell indices are valid.")
 else:
