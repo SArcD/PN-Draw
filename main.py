@@ -727,157 +727,130 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
-# Function to add fractal noise to shells
-def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5):
+
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+from noise import pnoise2
+
+
+def generate_advanced_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5):
     """
-    Adds fractal noise to the shells on the provided image.
-    
-    Parameters:
-        image: PIL.Image - Base image where the noise will be applied.
-        shells: List[Dict] - Definitions of the shells to apply noise to.
-        noise_intensity: int - Intensity of the fractal noise (number of noise points).
-        blur_radius: int - Radius for Gaussian blur to soften the noise.
-    
-    Returns:
-        PIL.Image - Image with fractal noise applied to the shells.
-    """
-    noise_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(noise_layer)
+    Generate a shell texture with fractal noise, Gaussian blur, and opacity variations.
 
-    # Iterate through each shell to apply noise
-    for shell in shells:
-        center = shell["center"]
-        a = shell["semimajor_axis"]
-        b = shell["semiminor_axis"]
-        thickness = shell["thickness"]
-
-        # Apply noise within the boundaries of each shell
-        for _ in range(noise_intensity):
-            # Randomly generate noise within the shell's thickness and area
-            offset_x = np.random.uniform(-a, a)
-            offset_y = np.random.uniform(-b, b)
-            noise_x = center[0] + offset_x
-            noise_y = center[1] + offset_y
-
-            # Randomly scale the size of the noise points
-            noise_size = np.random.randint(2, thickness // 2)
-            alpha = np.random.randint(50, 150)  # Semi-transparent noise
-
-            bbox = (
-                noise_x - noise_size,
-                noise_y - noise_size,
-                noise_x + noise_size,
-                noise_y + noise_size,
-            )
-
-            # Add noise to the layer (using the shell's color with alpha blending)
-            noise_color = ImageColor.getrgb(shell["color"]) + (alpha,)
-            draw.ellipse(bbox, fill=noise_color)
-
-    # Apply Gaussian blur to soften the noise
-    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-    # Composite the noise layer onto the original image
-    final_image = Image.alpha_composite(image, noise_layer)
-    return final_image
-
-
-# Integrate into the existing logic
-if use_noise_and_blur:
-    # Apply fractal noise to the shells
-    final_image_with_noise = add_fractal_noise_to_shells(
-        final_image_with_shells, shells, noise_intensity=noise_intensity, blur_radius=blur_radius
-    )
-    st.image(final_image_with_noise, use_column_width=True)
-else:
-    st.image(final_image_with_shells, use_column_width=True)
-
-
-###############################
-
-########################################
-# Function to generate textured gaseous shells
-def generate_complex_shell_texture(image_size, shells, scale=100, color_variation=True):
-    """
-    Generates a textured layer for gaseous shells using fractal noise.
-    
     Parameters:
         image_size: Tuple[int, int] - Size of the image.
-        shells: List[Dict] - List of shell properties.
-        scale: int - Scale factor for fractal noise.
-        color_variation: bool - If True, adds slight variation in shell color.
-    
+        shells: List[Dict] - Definitions of the shells (center, axes, angle, etc.).
+        noise_intensity: int - Intensity of the fractal noise.
+        blur_radius: int - Radius of Gaussian blur.
+
     Returns:
-        PIL.Image - A layer with textured gaseous shells.
+        PIL.Image - An image containing textured shells.
     """
-    texture_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
-    pixels = texture_layer.load()
+    texture_image = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(texture_image)
 
     for shell in shells:
         center = shell["center"]
-        a = shell["semimajor_axis"]
-        b = shell["semiminor_axis"]
+        semimajor_axis = shell["semimajor_axis"]
+        semiminor_axis = shell["semiminor_axis"]
+        angle = shell["angle"]
+        shell_color = shell["color"]
         thickness = shell["thickness"]
-        base_color = ImageColor.getrgb(shell["color"])
 
-        for x in range(image_size[0]):
-            for y in range(image_size[1]):
-                norm_x = (x - center[0]) / a
-                norm_y = (y - center[1]) / b
-                distance = np.sqrt(norm_x ** 2 + norm_y ** 2)
+        # Create a mask for this shell
+        shell_mask = Image.new("L", image_size, 0)
+        mask_draw = ImageDraw.Draw(shell_mask)
 
-                if 1.0 <= distance <= 1.0 + (thickness / a):
-                    noise_value = (pnoise2(x / scale, y / scale, octaves=4) + 1) / 2
-                    alpha = int(255 * noise_value)
-                    if color_variation:
-                        color = (
-                            base_color[0] + np.random.randint(-10, 10),
-                            base_color[1] + np.random.randint(-10, 10),
-                            base_color[2] + np.random.randint(-10, 10),
-                            alpha,
-                        )
-                    else:
-                        color = (*base_color, alpha)
-                    
-                    pixels[x, y] = color
+        for t in range(thickness):
+            # Perturb ellipse for diffuse edges
+            left = center[0] - semimajor_axis - t
+            top = center[1] - semiminor_axis - t
+            right = center[0] + semimajor_axis + t
+            bottom = center[1] + semiminor_axis + t
 
-    return texture_layer
+            mask_draw.ellipse(
+                [left, top, right, bottom],
+                outline=int(255 / (t + 1)),  # Gradual transparency for the edge
+            )
 
-########################################
-# Sidebar inputs for gaseous shells
-st.sidebar.markdown("### Gaseous Shells")
-#num_shells = st.sidebar.slider("Number of Shells", 1, 5, 2)
-texture_scale = st.sidebar.slider("Texture Scale", 50, 200, 100)
-color_variation = st.sidebar.checkbox("Enable Color Variation", value=True)
+        # Convert shell mask into fractal noise using Perlin noise
+        noise_layer = generate_perlin_texture(image_size, noise_intensity)
+        noise_layer = Image.composite(noise_layer, Image.new("RGBA", image_size, (0, 0, 0, 0)), shell_mask)
 
-# Gather shell parameters
-shells = []
-for i in range(num_shells):
-    st.sidebar.markdown(f"#### Shell {i+1}")
-    center_x = st.sidebar.slider(f"Shll {i+1} Center X", 0, image_size[0], 400)
-    center_y = st.sidebar.slider(f"Shll {i+1} Center Y", 0, image_size[1], 400)
-    semimajor_axis = st.sidebar.slider(f"Shll {i+1} Semimajor Axis", 50, 400, 200)
-    semiminor_axis = st.sidebar.slider(f"Shll {i+1} Semiminor Axis", 50, 400, 200)
-    thickness = st.sidebar.slider(f"Shll {i+1} Thickness", 1, 50, 10)
-    shell_color = st.sidebar.color_picker(f"Shell {i+1} Colore", "#00FFFF")
-    shells.append({
-        "center": (center_x, center_y),
-        "semimajor_axis": semimajor_axis,
-        "semiminor_axis": semiminor_axis,
-        "thickness": thickness,
-        "color": shell_color,
-    })
+        # Apply Gaussian blur for diffusion
+        blurred_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
-########################################
+        # Blend the shell color with the noise texture
+        shell_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+        shell_draw = ImageDraw.Draw(shell_layer)
+        shell_draw.ellipse(
+            [
+                center[0] - semimajor_axis,
+                center[1] - semiminor_axis,
+                center[0] + semimajor_axis,
+                center[1] + semiminor_axis,
+            ],
+            outline=ImageColor.getrgb(shell_color),
+            width=thickness,
+        )
+        shell_layer = Image.alpha_composite(shell_layer, blurred_layer)
+
+        # Composite this shell layer onto the texture image
+        texture_image = Image.alpha_composite(texture_image, shell_layer)
+
+    return texture_image
+
+
+def generate_perlin_texture(image_size, scale=50):
+    """
+    Generates a Perlin noise texture.
+
+    Parameters:
+        image_size: Tuple[int, int] - Size of the texture image.
+        scale: int - Scale factor for the noise.
+
+    Returns:
+        PIL.Image - An image containing Perlin noise.
+    """
+    texture = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    pixels = texture.load()
+
+    for x in range(image_size[0]):
+        for y in range(image_size[1]):
+            value = int((pnoise2(x / scale, y / scale, octaves=6) + 1) * 128)
+            pixels[x, y] = (value, value, value, int(value * 0.5))
+
+    return texture
+
+
+# Shell Definitions
+shells = [
+    {
+        "center": (400, 400),
+        "semimajor_axis": 200,
+        "semiminor_axis": 150,
+        "angle": 0,
+        "color": "#00FFFF",
+        "thickness": 10,
+    },
+    {
+        "center": (400, 400),
+        "semimajor_axis": 300,
+        "semiminor_axis": 250,
+        "angle": 30,
+        "color": "#FF00FF",
+        "thickness": 15,
+    },
+]
+
 # Generate textured shells
-textured_shells = generate_complex_shell_texture(
-    image_size, shells, scale=texture_scale, color_variation=color_variation
+image_size = (800, 800)
+advanced_shell_texture = generate_advanced_shell_texture(
+    image_size, shells, noise_intensity=8, blur_radius=10
 )
 
-# Combine textured shells with the existing image
-final_image_with_shells = Image.alpha_composite(final_image, textured_shells)
-
-# Display the updated image
-st.image(final_image_with_shells, use_column_width=True)
+# Display the textured shells
+advanced_shell_texture.show()
 
 
