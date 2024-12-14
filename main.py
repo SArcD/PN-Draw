@@ -726,62 +726,71 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
-from noise import pnoise2
-
-def generate_perlin_texture(image_size, scale=50):
-    texture = Image.new("RGBA", image_size, (0, 0, 0, 0))
-    pixels = texture.load()
-
-    for x in range(image_size[0]):
-        for y in range(image_size[1]):
-            value = int((pnoise2(x / scale, y / scale, octaves=6) + 1) * 128)
-            pixels[x, y] = (value, value, value, int(value * 0.5))
-    
-    return texture
-
-
-
-def apply_perlin_to_shells(shell_image, perlin_texture, alpha=0.3):
+# Function to add fractal noise to shells
+def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5):
     """
-    Combina las shells existentes con una textura de ruido Perlin.
+    Adds fractal noise to the shells on the provided image.
     
-    Parámetros:
-        shell_image: PIL.Image - Imagen de las shells existentes.
-        perlin_texture: PIL.Image - Textura generada con ruido Perlin.
-        alpha: float - Nivel de opacidad para la textura (0 a 1).
-        
-    Retorna:
-        PIL.Image - Imagen combinada.
+    Parameters:
+        image: PIL.Image - Base image where the noise will be applied.
+        shells: List[Dict] - Definitions of the shells to apply noise to.
+        noise_intensity: int - Intensity of the fractal noise (number of noise points).
+        blur_radius: int - Radius for Gaussian blur to soften the noise.
+    
+    Returns:
+        PIL.Image - Image with fractal noise applied to the shells.
     """
-    perlin_overlay = perlin_texture.copy()
-    perlin_overlay = perlin_overlay.convert("RGBA")
+    noise_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(noise_layer)
 
-    # Ajustar opacidad de la textura
-    pixels = perlin_overlay.load()
-    for x in range(perlin_overlay.size[0]):
-        for y in range(perlin_overlay.size[1]):
-            r, g, b, a = pixels[x, y]
-            pixels[x, y] = (r, g, b, int(a * alpha))
+    # Iterate through each shell to apply noise
+    for shell in shells:
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        thickness = shell["thickness"]
 
-    # Combinar con las shells
-    return Image.alpha_composite(shell_image, perlin_overlay)
+        # Apply noise within the boundaries of each shell
+        for _ in range(noise_intensity):
+            # Randomly generate noise within the shell's thickness and area
+            offset_x = np.random.uniform(-a, a)
+            offset_y = np.random.uniform(-b, b)
+            noise_x = center[0] + offset_x
+            noise_y = center[1] + offset_y
+
+            # Randomly scale the size of the noise points
+            noise_size = np.random.randint(2, thickness // 2)
+            alpha = np.random.randint(50, 150)  # Semi-transparent noise
+
+            bbox = (
+                noise_x - noise_size,
+                noise_y - noise_size,
+                noise_x + noise_size,
+                noise_y + noise_size,
+            )
+
+            # Add noise to the layer (using the shell's color with alpha blending)
+            noise_color = ImageColor.getrgb(shell["color"]) + (alpha,)
+            draw.ellipse(bbox, fill=noise_color)
+
+    # Apply Gaussian blur to soften the noise
+    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    # Composite the noise layer onto the original image
+    final_image = Image.alpha_composite(image, noise_layer)
+    return final_image
 
 
+# Integrate into the existing logic
+if use_noise_and_blur:
+    # Apply fractal noise to the shells
+    final_image_with_noise = add_fractal_noise_to_shells(
+        final_image_with_shells, shells, noise_intensity=noise_intensity, blur_radius=blur_radius
+    )
+    st.image(final_image_with_noise, use_column_width=True)
+else:
+    st.image(final_image_with_shells, use_column_width=True)
 
 
-# Generar textura Perlin
-perlin_texture = generate_perlin_texture(image_size, scale=100)
-
-# Combinar shells con textura Perlin
-final_shell_image = apply_perlin_to_shells(shell_image=gaseous_shells, perlin_texture=perlin_texture, alpha=0.5)
-
-st.image(final_shell_image, use_column_width=True)
-
-masked_perlin_texture = Image.composite(perlin_texture, Image.new("RGBA", image_size, (0, 0, 0, 0)), mask)
-
-perlin_scale = st.sidebar.slider("Escala de Ruido Perlin", 10, 200, 100)
-perlin_alpha = st.sidebar.slider("Opacidad del Ruido", 0.1, 1.0, 0.5)
-
-final_shell_image = final_shell_image.filter(ImageFilter.GaussianBlur(radius=3))
 
 
