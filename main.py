@@ -644,3 +644,78 @@ if activate_filaments:
 else:
     st.image(final_image_with_shells, use_column_width=True)
 
+
+
+########################################################
+
+
+def darken_shell_sections(image, shells, darkened_sections):
+    """
+    Darkens specified sections of the shells based on the user-defined intervals.
+
+    Parameters:
+        image: PIL.Image - The existing image with shells.
+        shells: List[Dict] - List of dictionaries defining shell properties:
+            - "center": Tuple[int, int] - Center of the shell.
+            - "semimajor_axis": int - Semimajor axis.
+            - "semiminor_axis": int - Semiminor axis.
+            - "angle": float - Rotation angle in degrees.
+            - "color": str - Shell color.
+            - "thickness": int - Shell thickness.
+        darkened_sections: Dict[int, List[Tuple[int, int]]] - Mapping of shell index to intervals of angles (in degrees) to be darkened.
+
+    Returns:
+        PIL.Image - Modified image with darkened sections.
+    """
+    img = image.copy()
+    draw = ImageDraw.Draw(img)
+
+    for shell_index, shell in enumerate(shells):
+        if shell_index in darkened_sections:
+            center = shell["center"]
+            a = shell["semimajor_axis"]
+            b = shell["semiminor_axis"]
+            thickness = shell["thickness"]
+
+            # Extract the darkened sections for this shell
+            intervals = darkened_sections[shell_index]
+
+            # Draw darkened sections
+            for t in range(thickness, 0, -1):
+                for interval in intervals:
+                    start_angle, end_angle = interval
+                    bbox = (
+                        center[0] - a - t,
+                        center[1] - b - t,
+                        center[0] + a + t,
+                        center[1] + b + t,
+                    )
+                    draw.arc(
+                        bbox,
+                        start=start_angle,
+                        end=end_angle,
+                        fill=(0, 0, 0, 255),  # Completely black
+                        width=2,
+                    )
+
+    return img
+
+
+# Sidebar section for darkening shell sections
+st.sidebar.markdown("### Darken Shell Sections")
+darkened_sections = {}
+for i in range(num_shells):
+    st.sidebar.markdown(f"#### Shell {i+1}")
+    num_intervals = st.sidebar.slider(f"Number of Darkened Sections (Shell {i+1})", 0, 10, 0)
+    intervals = []
+    for j in range(num_intervals):
+        start_angle = st.sidebar.slider(f"Shell {i+1} Section {j+1} Start Angle", 0, 360, j * 30)
+        end_angle = st.sidebar.slider(f"Shell {i+1} Section {j+1} End Angle", 0, 360, j * 30 + 15)
+        intervals.append((start_angle, end_angle))
+    darkened_sections[i] = intervals
+
+# Apply the darkening effect to the shells
+final_image_with_darkened_sections = darken_shell_sections(final_image_with_shells, shells, darkened_sections)
+
+# Display the updated image with darkened sections
+st.image(final_image_with_darkened_sections, use_column_width=True)
