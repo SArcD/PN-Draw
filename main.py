@@ -35,7 +35,7 @@ st.title("Simulador de Campo de Estrellas")
 num_stars = st.sidebar.slider("Número de estrellas", min_value=100, max_value=2000, value=500, step=100)
 
 # Configuración del gráfico
-fig, ax = plt.subplots(figsize=(10, 10), facecolor="black")  # Fondo negro global
+fig, ax = plt.subplots(figsize=(30, 30), facecolor="black")  # Fondo negro global
 ax.set_aspect("equal")
 ax.set_facecolor("black")  # Fondo negro para los ejes
 ax.axis("off")  # Ocultar los ejes
