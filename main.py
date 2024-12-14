@@ -169,48 +169,20 @@ def draw_gaseous_shells(image_size, shells, noise_intensity=3, blur_radius=5):
     
     return img
 
-#########################################################
-# New section for gaseous shells in Streamlit
 
-# Sidebar inputs for gaseous shells
-#st.sidebar.markdown("### Gaseous Shells")
-#num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2)
-#shells = []
-#for i in range(num_shells):
-#    st.sidebar.markdown(f"#### Shell {i+1}")
-#    center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], 400)
-#    center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], 400)
-#    semimajor_axis = st.sidebar.slider(f"Shell {i+1} Semimajor Axis", 50, 400, 200)
-#    semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 200)
-#    angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)  # Angle in degrees
-#    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF")
-#    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", 1, 150, 20)
-    
-#    shells.append({
-#        "center": (center_x, center_y),
-#        "semimajor_axis": semimajor_axis,
-#        "semiminor_axis": semiminor_axis,
-#        "angle": angle,
-#        "color": shell_color,
-#        "thickness": thickness,
-#    })
-
-# Generate gaseous shells
-#gaseous_shells = draw_gaseous_shells(image_size, shells)
-
-# Combine gaseous shells with the existing image
-#final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
-
-# Display the updated image
-#st.image(final_image_with_shells, use_column_width=True)
+#######################################
 
 # Sidebar inputs for gaseous shells
 st.sidebar.markdown("### Gaseous Shells")
 num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2)
 
-# Sliders for noise intensity and Gaussian blur
-noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=10, value=3)
-blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5)
+# Checkbox for enabling noise and blur
+use_noise_and_blur = st.sidebar.checkbox("Enable Noise and Gaussian Blur", value=True)
+
+# If noise and blur are enabled, add sliders for their intensities
+if use_noise_and_blur:
+    noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=10, value=3)
+    blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5)
 
 # Gather shell parameters
 shells = []
@@ -233,94 +205,23 @@ for i in range(num_shells):
         "thickness": thickness,
     })
 
-# Generate gaseous shells with noise and blur
-gaseous_shells = draw_gaseous_shells(image_size, shells, noise_intensity=noise_intensity, blur_radius=blur_radius)
+# Decide which function to use for drawing shells
+if use_noise_and_blur:
+    # Generate gaseous shells with noise and blur
+    gaseous_shells = draw_gaseous_shells_with_noise_and_blur(
+        image_size,
+        shells,
+        noise_intensity=noise_intensity,
+        blur_radius=blur_radius,
+    )
+else:
+    # Generate standard gaseous shells without noise and blur
+    gaseous_shells = draw_standard_gaseous_shells(image_size, shells)
 
 # Combine gaseous shells with the existing image
 final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
 
 # Display the updated image
 st.image(final_image_with_shells, use_column_width=True)
-
-
-
-#######################################
-
-import numpy as np
-from PIL import ImageDraw, ImageFilter
-import streamlit as st
-
-# Sidebar controls for noise and blur
-noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=10, value=3, step=1)
-blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5, step=1)
-
-# Updated function to generate a noise layer with adjustable noise intensity and blur
-def generate_noise_layer(image_size, semi_major, semi_minor, center, angle, shell_color, thickness, noise_level, blur_level):
-    """
-    Generate a noise layer for a gaseous shell with adjustable noise intensity and Gaussian blur.
-    """
-    noise_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(noise_layer)
-
-    for t in range(thickness):
-        # Add random perturbation for irregular edges based on noise intensity
-        offset_x = np.random.uniform(-noise_level, noise_level)
-        offset_y = np.random.uniform(-noise_level, noise_level)
-
-        left = center[0] - semi_major + offset_x - t
-        top = center[1] - semi_minor + offset_y - t
-        right = center[0] + semi_major + offset_x + t
-        bottom = center[1] + semi_minor + offset_y + t
-
-        draw.ellipse(
-            (left, top, right, bottom),
-            outline=shell_color + (int(200 / (t + 1)),),  # Enhanced opacity gradient for visibility
-            width=1
-        )
-
-    # Apply Gaussian blur to simulate diffusion with adjustable blur radius
-    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_level))
-    return noise_layer
-
-# Updated function to composite all shells with noise and blur sliders
-def draw_gaseous_shells(image, shells, noise_level, blur_level):
-    """
-    Draw multiple gaseous shells as independent noise layers and composite them onto the image.
-    """
-    composite_image = image.copy()  # Start with the existing image
-
-    for i, shell in enumerate(shells):
-        semi_major, semi_minor, angle, shell_color, thickness = shell
-
-        # Generate the noise layer for this shell with noise and blur settings
-        noise_layer = generate_noise_layer(
-            image_size=image.size,
-            semi_major=semi_major,
-            semi_minor=semi_minor,
-            center=(400, 400),  # Center of the shell
-            angle=angle,
-            shell_color=ImageColor.getrgb(shell_color),
-            thickness=thickness,
-            noise_level=noise_level,
-            blur_level=blur_level
-        )
-
-        # Composite the noise layer onto the current image
-        composite_image = Image.alpha_composite(composite_image, noise_layer)
-
-    return composite_image
-
-# Define shells with adjustable parameters
-shells = [
-    (150, 120, 0, "#00FFFF", 30),  # Enhanced thickness for better visibility
-    (200, 170, 30, "#00FF00", 35),
-]
-
-# Draw shells on top of the existing star field
-final_image_with_shells = draw_gaseous_shells(final_image, shells, noise_level=noise_intensity, blur_level=blur_radius)
-
-# Display the updated composite image with shells
-st.image(final_image_with_shells, use_column_width=True)
-
 
 
