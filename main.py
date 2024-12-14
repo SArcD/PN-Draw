@@ -368,5 +368,106 @@ else:
     # Display the image without additional noise
     st.image(final_image_with_shells, use_column_width=True)
 
+from PIL import Image, ImageFilter, ImageDraw, ImageColor
+import numpy as np
+
+
+# Function to add radiating filaments with noise and Gaussian diffusion
+def add_radiating_filaments_with_noise(
+    image, center, filament_length, num_filaments, filament_width, filament_color, noise_intensity, blur_radius
+):
+    """
+    Adds radiating filaments with noise and Gaussian diffusion.
+    
+    Parameters:
+        image: PIL.Image - The base image to add filaments to.
+        center: Tuple[int, int] - The center point from which filaments radiate.
+        filament_length: int - Maximum length of the filaments.
+        num_filaments: int - Number of filaments to draw.
+        filament_width: int - Width of each filament.
+        filament_color: str - Color of the filaments (e.g., "#00FF00").
+        noise_intensity: int - Intensity of random noise for the filaments.
+        blur_radius: int - Radius for Gaussian blur to diffuse the filaments.
+    
+    Returns:
+        PIL.Image - Image with added filaments.
+    """
+    # Create a blank layer for the filaments
+    filament_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(filament_layer)
+
+    for _ in range(num_filaments):
+        # Random angle for the filament
+        angle = np.random.uniform(0, 2 * np.pi)
+        # Random length within the defined range
+        length = np.random.uniform(filament_length * 0.5, filament_length)
+
+        # Calculate end point using trigonometry
+        end_x = center[0] + int(length * np.cos(angle))
+        end_y = center[1] + int(length * np.sin(angle))
+
+        # Add noise to the end point
+        noise_x = np.random.uniform(-noise_intensity, noise_intensity)
+        noise_y = np.random.uniform(-noise_intensity, noise_intensity)
+
+        # Apply the noise to the end point
+        end_x += int(noise_x)
+        end_y += int(noise_y)
+
+        # Random opacity for the filament
+        opacity = np.random.randint(100, 200)
+        color_with_opacity = ImageColor.getrgb(filament_color) + (opacity,)
+
+        # Draw the filament as a line
+        draw.line(
+            [center, (end_x, end_y)],
+            fill=color_with_opacity,
+            width=filament_width,
+        )
+
+    # Apply Gaussian blur to the filament layer
+    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    # Composite the filament layer onto the base image
+    image_with_filaments = Image.alpha_composite(image, filament_layer)
+
+    return image_with_filaments
+
+
+######################################################
+# New section for radiating filaments with Streamlit
+
+# Sidebar controls for radiating filaments
+st.sidebar.markdown("### Radiating Filaments with Gas Effect")
+enable_filaments_with_gas = st.sidebar.checkbox("Enable Radiating Filaments with Gas Effect", value=False)
+
+if enable_filaments_with_gas:
+    st.sidebar.markdown("#### Filament Settings")
+    filament_length = st.sidebar.slider("Filament Length", min_value=10, max_value=300, value=150)
+    num_filaments = st.sidebar.slider("Number of Filaments", min_value=5, max_value=500, value=100)
+    filament_width = st.sidebar.slider("Filament Width", min_value=1, max_value=10, value=2)
+    filament_color = st.sidebar.color_picker("Filament Color", "#00FF00")
+    
+    st.sidebar.markdown("#### Gas Effect Settings")
+    noise_intensity = st.sidebar.slider("Ne Intensity", min_value=1, max_value=50, value=10)
+    blur_radius = st.sidebar.slider("Gauss Blur Radius", min_value=1, max_value=20, value=5)
+
+    # Add radiating filaments with noise and gas effect
+    final_image_with_filaments_gas = add_radiating_filaments_with_noise(
+        final_image_with_shells.copy(),  # Start with the existing image
+        center=(400, 400),  # Central position (e.g., same as the star or user-defined)
+        filament_length=filament_length,
+        num_filaments=num_filaments,
+        filament_width=filament_width,
+        filament_color=filament_color,
+        noise_intensity=noise_intensity,
+        blur_radius=blur_radius,
+    )
+    
+    # Display the updated image
+    st.image(final_image_with_filaments_gas, use_column_width=True)
+else:
+    # Display the image without filaments
+    st.image(final_image_with_shells, use_column_width=True)
 
 
