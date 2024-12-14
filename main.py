@@ -5,7 +5,7 @@ import numpy as np
 def draw_star_with_halo(ax, center, size, halo_size, num_points=5, color="white", halo_color="white", alpha=1.0):
     """Dibuja una estrella con un patrón de picos y un halo difuso."""
     # Dibujar el halo
-    halo_alpha = alpha * 0.3  # Halo más transparente
+    halo_alpha = alpha * 0.5  # Halo más transparente
     ax.scatter(center[0], center[1], s=halo_size, color=halo_color, alpha=halo_alpha, zorder=1)
     
     # Dibujar la estrella central
@@ -22,12 +22,12 @@ def draw_star_field_with_halos(ax, num_stars, bounds):
     """Dibuja un campo de estrellas con halos difusos."""
     x_stars = np.random.uniform(bounds[0], bounds[1], num_stars)
     y_stars = np.random.uniform(bounds[0], bounds[1], num_stars)
-    star_sizes = np.random.uniform(0.001, 0.05, num_stars)
+    star_sizes = np.random.uniform(0.001, 0.005, num_stars)
     halo_sizes = star_sizes * 100  # Escalar el halo según el tamaño de la estrella
     star_colors = np.random.choice(
         ["white", "lightblue", "yellow", "red"], 
         num_stars, 
-        p=[0.5, 0.25, 0.15, 0.1]  # Probabilidades ajustadas
+        p=[0.7, 0.15, 0.05, 0.1]  # Probabilidades ajustadas
     )
     
     for x, y, size, halo_size, color in zip(x_stars, y_stars, star_sizes, halo_sizes, star_colors):
