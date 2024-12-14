@@ -107,10 +107,12 @@ final_image = add_glow_effect(combined_image, (star_x, star_y), glow_radius, Ima
 
 ############################################################
 
-# Function to draw gaseous shells with angle control
-def draw_gaseous_shells(image_size, shells):
+from PIL import Image, ImageDraw, ImageFilter
+import numpy as np
+
+def draw_gaseous_shells(image_size, shells, noise_intensity=3, blur_radius=5):
     """
-    Draws diffuse gaseous shells on an image.
+    Draws diffuse gaseous shells on an image with irregular edges and blur effects.
     
     Parameters:
         image_size: Tuple[int, int] - Dimensions of the image.
@@ -121,6 +123,8 @@ def draw_gaseous_shells(image_size, shells):
             - "angle": float - Rotation angle of the shell in degrees.
             - "color": str - Shell color (e.g., "#FF0000").
             - "thickness": int - Edge thickness.
+        noise_intensity: int - Level of edge irregularity.
+        blur_radius: int - Radius for Gaussian blur.
     """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -133,25 +137,35 @@ def draw_gaseous_shells(image_size, shells):
         color = ImageColor.getrgb(shell["color"])
         thickness = shell["thickness"]
 
-        # Draw concentric transparent ellipses for a diffuse effect
+        # Create a separate layer for the shell
+        shell_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+        shell_draw = ImageDraw.Draw(shell_layer)
+
+        # Draw concentric noisy ellipses for a diffuse effect
         for t in range(thickness, 0, -1):
-            alpha = int(255 * (t / thickness) ** 2)  # Decreasing alpha
+            alpha = int(255 * (t / thickness) ** 2)  # Decreasing alpha for diffuse edges
             
-            # Create bounding box with rotation
+            # Generate random perturbation for irregular edges
+            offset_x = np.random.uniform(-noise_intensity, noise_intensity)
+            offset_y = np.random.uniform(-noise_intensity, noise_intensity)
+            
             ellipse_bbox = (
-                center[0] - a - t,
-                center[1] - b - t,
-                center[0] + a + t,
-                center[1] + b + t,
+                center[0] - a - t + offset_x,
+                center[1] - b - t + offset_y,
+                center[0] + a + t + offset_x,
+                center[1] + b + t + offset_y,
             )
             
-            # Rotate the ellipse
-            rotated_ellipse = Image.new("RGBA", image_size, (0, 0, 0, 0))
-            rotated_draw = ImageDraw.Draw(rotated_ellipse)
-            rotated_draw.ellipse(ellipse_bbox, outline=color + (alpha,), width=1)
-            rotated_ellipse = rotated_ellipse.rotate(angle, center=center)
-            
-            img = Image.alpha_composite(img, rotated_ellipse)
+            shell_draw.ellipse(ellipse_bbox, outline=color + (alpha,), width=1)
+
+        # Rotate the shell layer
+        rotated_shell = shell_layer.rotate(angle, center=center)
+
+        # Apply Gaussian blur to the shell
+        blurred_shell = rotated_shell.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        
+        # Composite the blurred shell onto the main image
+        img = Image.alpha_composite(img, blurred_shell)
     
     return img
 
