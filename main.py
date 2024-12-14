@@ -471,14 +471,15 @@ else:
     st.image(final_image_with_shells, use_column_width=True)
 
 
-def draw_inter_shell_filaments(image_size, shells, num_filaments, filament_color, noise_intensity, blur_radius):
+def draw_filaments_between_shells(image_size, inner_shell, outer_shell, num_filaments, filament_color, noise_intensity, blur_radius):
     """
-    Draws radiating filaments between consecutive shells with noise and Gaussian diffusion.
+    Draws radiating filaments between the innermost and outermost shells with noise and Gaussian diffusion.
     
     Parameters:
         image_size: Tuple[int, int] - Dimensions of the image.
-        shells: List[Dict] - List of dictionaries defining shell properties.
-        num_filaments: int - Total number of filaments to draw between each shell pair.
+        inner_shell: Dict - Properties of the innermost shell.
+        outer_shell: Dict - Properties of the outermost shell.
+        num_filaments: int - Total number of filaments to draw.
         filament_color: Tuple[int, int, int] - Color of the filaments.
         noise_intensity: int - Intensity of random noise added to the filaments.
         blur_radius: int - Radius of the Gaussian blur applied to the filaments.
@@ -486,69 +487,74 @@ def draw_inter_shell_filaments(image_size, shells, num_filaments, filament_color
     filaments_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(filaments_layer)
 
-    for i in range(len(shells) - 1):  # Iterate over consecutive shell pairs
-        shell1 = shells[i]
-        shell2 = shells[i + 1]
+    center1 = inner_shell["center"]
+    center2 = outer_shell["center"]
+    a1, b1 = inner_shell["semimajor_axis"], inner_shell["semiminor_axis"]
+    a2, b2 = outer_shell["semimajor_axis"], outer_shell["semiminor_axis"]
+    angle1 = np.radians(inner_shell["angle"])
+    angle2 = np.radians(outer_shell["angle"])
 
-        center1 = shell1["center"]
-        center2 = shell2["center"]
-        a1, b1 = shell1["semimajor_axis"], shell1["semiminor_axis"]
-        a2, b2 = shell2["semimajor_axis"], shell2["semiminor_axis"]
-        angle1 = np.radians(shell1["angle"])
-        angle2 = np.radians(shell2["angle"])
+    for _ in range(num_filaments):
+        # Randomly sample points on the boundary of the inner shell
+        theta1 = np.random.uniform(0, 2 * np.pi)
+        x1 = center1[0] + a1 * np.cos(theta1) * np.cos(angle1) - b1 * np.sin(theta1) * np.sin(angle1)
+        y1 = center1[1] + a1 * np.cos(theta1) * np.sin(angle1) + b1 * np.sin(theta1) * np.cos(angle1)
 
-        for _ in range(num_filaments):
-            # Randomly sample points on the boundary of the first shell
-            theta1 = np.random.uniform(0, 2 * np.pi)
-            x1 = center1[0] + a1 * np.cos(theta1) * np.cos(angle1) - b1 * np.sin(theta1) * np.sin(angle1)
-            y1 = center1[1] + a1 * np.cos(theta1) * np.sin(angle1) + b1 * np.sin(theta1) * np.cos(angle1)
+        # Randomly sample points on the boundary of the outer shell
+        theta2 = np.random.uniform(0, 2 * np.pi)
+        x2 = center2[0] + a2 * np.cos(theta2) * np.cos(angle2) - b2 * np.sin(theta2) * np.sin(angle2)
+        y2 = center2[1] + a2 * np.cos(theta2) * np.sin(angle2) + b2 * np.sin(theta2) * np.cos(angle2)
 
-            # Randomly sample points on the boundary of the second shell
-            theta2 = np.random.uniform(0, 2 * np.pi)
-            x2 = center2[0] + a2 * np.cos(theta2) * np.cos(angle2) - b2 * np.sin(theta2) * np.sin(angle2)
-            y2 = center2[1] + a2 * np.cos(theta2) * np.sin(angle2) + b2 * np.sin(theta2) * np.cos(angle2)
+        # Add random noise to create irregular filaments
+        num_points = 10  # Number of intermediate points along the filament
+        points = [
+            (
+                x1 + i * (x2 - x1) / num_points + np.random.uniform(-noise_intensity, noise_intensity),
+                y1 + i * (y2 - y1) / num_points + np.random.uniform(-noise_intensity, noise_intensity),
+            )
+            for i in range(num_points)
+        ]
 
-            # Add random noise to create irregular filaments
-            num_points = 10  # Number of intermediate points along the filament
-            points = [
-                (
-                    x1 + i * (x2 - x1) / num_points + np.random.uniform(-noise_intensity, noise_intensity),
-                    y1 + i * (y2 - y1) / num_points + np.random.uniform(-noise_intensity, noise_intensity),
-                )
-                for i in range(num_points)
-            ]
-
-            # Draw the filament as a line connecting the points
-            draw.line(points, fill=filament_color, width=2)
+        # Draw the filament as a line connecting the points
+        draw.line(points, fill=filament_color, width=2)
 
     # Apply Gaussian blur for a diffuse appearance
     filaments_layer = filaments_layer.filter(ImageFilter.GaussianBlur(blur_radius))
     return filaments_layer
 
+
 # Sidebar inputs for inter-shell filaments
-st.sidebar.markdown("### Inter-Shell Filaments")
-activate_filaments = st.sidebar.checkbox("Activate Inter-Shell Filaments", value=True)
+st.sidebar.markdown("### Filaments Between Innermost and Outermost Shells")
+activate_filaments = st.sidebar.checkbox("Activate Filaments", value=True)
 if activate_filaments:
-    num_filaments = st.sidebar.slider("Number of Filaments per Shell Pair", min_value=10, max_value=200, value=50)
-    filament_color = st.sidebar.color_picker("Filamente Color", "#00FFFF")
-    filament_noise_intensity = st.sidebar.slider("Filamente Noise Intensity", min_value=1, max_value=20, value=5)
-    filament_blur_radius = st.sidebar.slider("Filamente Blur Radius", min_value=1, max_value=20, value=5)
+    num_filaments = st.sidebar.slider("Number of Filaments", min_value=10, max_value=200, value=50)
+    filament_color = st.sidebar.color_picker("Filament Color", "#00FFFF")
+    filament_noise_intensity = st.sidebar.slider("Filament Noise Intensity", min_value=1, max_value=20, value=5)
+    filament_blur_radius = st.sidebar.slider("Filament Blur Radius", min_value=1, max_value=20, value=5)
 
-    # Draw inter-shell filaments
-    inter_shell_filaments = draw_inter_shell_filaments(
-        image_size=image_size,
-        shells=shells,  # Use previously defined shells
-        num_filaments=num_filaments,
-        filament_color=ImageColor.getrgb(filament_color),
-        noise_intensity=filament_noise_intensity,
-        blur_radius=filament_blur_radius,
-    )
+    # Ensure there are at least two shells
+    if len(shells) >= 2:
+        inner_shell = shells[0]  # Innermost shell
+        outer_shell = shells[-1]  # Outermost shell
 
-    # Composite the filaments with the existing image
-    final_image_with_filaments = Image.alpha_composite(final_image_with_shells, inter_shell_filaments)
+        # Draw filaments between the innermost and outermost shells
+        filaments_layer = draw_filaments_between_shells(
+            image_size=image_size,
+            inner_shell=inner_shell,
+            outer_shell=outer_shell,
+            num_filaments=num_filaments,
+            filament_color=ImageColor.getrgb(filament_color),
+            noise_intensity=filament_noise_intensity,
+            blur_radius=filament_blur_radius,
+        )
 
-    # Display the updated image
-    st.image(final_image_with_filaments, use_column_width=True)
+        # Composite the filaments with the existing image
+        final_image_with_filaments = Image.alpha_composite(final_image_with_shells, filaments_layer)
+
+        # Display the updated image
+        st.image(final_image_with_filaments, use_column_width=True)
+    else:
+        st.warning("Please add at least two shells to generate filaments.")
 else:
     st.image(final_image_with_shells, use_column_width=True)
 
