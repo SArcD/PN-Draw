@@ -770,7 +770,7 @@ def apply_perlin_to_shells(shell_image, perlin_texture, alpha=0.3):
 
 
 # Generar textura Perlin
-perlin_texture = generate_perlin_texture(image_size=(800, 800), scale=100)
+perlin_texture = generate_perlin_texture(image_size, scale=100)
 
 # Combinar shells con textura Perlin
 final_shell_image = apply_perlin_to_shells(shell_image=gaseous_shells, perlin_texture=perlin_texture, alpha=0.5)
