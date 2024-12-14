@@ -722,3 +722,31 @@ final_image_with_darkened_sections = darken_shell_sections_with_thickness(
 
 # Display the updated image with darkened sections
 st.image(final_image_with_darkened_sections, use_column_width=True)
+
+# Sidebar section for displacing shell sections
+st.sidebar.markdown("### Displace Shell Sections")
+displaced_sections = {}
+displacement_distance = st.sidebar.slider("Displacement Distance", 1, 100, 20)
+
+for i in range(num_shells):
+    st.sidebar.markdown(f"#### Shell {i+1}")
+    num_displaced_intervals = st.sidebar.slider(f"Number of Displaced Sections (Shell {i+1})", 0, 10, 0)
+    intervals = []
+    for j in range(num_displaced_intervals):
+        start_angle = st.sidebar.slider(f"Shell {i+1} Section {j+1} Start Angle", 0, 360, j * 30)
+        end_angle = st.sidebar.slider(f"Shell {i+1} Section {j+1} End Angle", 0, 360, j * 30 + 15)
+        intervals.append((start_angle, end_angle))
+    displaced_sections[i] = intervals
+
+# Apply the displacement effect to the shells
+final_image_with_displaced_sections = displace_shell_sections(
+    final_image_with_shells, 
+    shells, 
+    displaced_sections, 
+    displacement_distance
+)
+
+# Display the updated image with displaced sections
+st.image(final_image_with_displaced_sections, use_column_width=True)
+
+
