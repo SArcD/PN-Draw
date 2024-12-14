@@ -346,7 +346,7 @@ def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5,
 
 # Sidebar controls for fractal noise
 st.sidebar.markdown("### Fractal Noise")
-apply_noise = st.sidebar.checkbox("Enable Fractal Noise", value=False)
+apply_noise = st.sidebar.checkbox("Enabler Fractal Noise", value=False)
 
 if apply_noise:
     noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=20, value=5)
