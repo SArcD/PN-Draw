@@ -1,6 +1,8 @@
 import streamlit as st
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from PIL import ImageColor
+
 
 # Function to generate a star field as a PIL image
 def generate_star_field(num_stars, image_size):
