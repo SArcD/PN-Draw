@@ -792,5 +792,91 @@ else:
     st.image(final_image_with_shells, use_column_width=True)
 
 
+###############################
+
+########################################
+# Function to generate textured gaseous shells
+def generate_complex_shell_texture(image_size, shells, scale=100, color_variation=True):
+    """
+    Generates a textured layer for gaseous shells using fractal noise.
+    
+    Parameters:
+        image_size: Tuple[int, int] - Size of the image.
+        shells: List[Dict] - List of shell properties.
+        scale: int - Scale factor for fractal noise.
+        color_variation: bool - If True, adds slight variation in shell color.
+    
+    Returns:
+        PIL.Image - A layer with textured gaseous shells.
+    """
+    texture_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    pixels = texture_layer.load()
+
+    for shell in shells:
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        thickness = shell["thickness"]
+        base_color = ImageColor.getrgb(shell["color"])
+
+        for x in range(image_size[0]):
+            for y in range(image_size[1]):
+                norm_x = (x - center[0]) / a
+                norm_y = (y - center[1]) / b
+                distance = np.sqrt(norm_x ** 2 + norm_y ** 2)
+
+                if 1.0 <= distance <= 1.0 + (thickness / a):
+                    noise_value = (pnoise2(x / scale, y / scale, octaves=4) + 1) / 2
+                    alpha = int(255 * noise_value)
+                    if color_variation:
+                        color = (
+                            base_color[0] + np.random.randint(-10, 10),
+                            base_color[1] + np.random.randint(-10, 10),
+                            base_color[2] + np.random.randint(-10, 10),
+                            alpha,
+                        )
+                    else:
+                        color = (*base_color, alpha)
+                    
+                    pixels[x, y] = color
+
+    return texture_layer
+
+########################################
+# Sidebar inputs for gaseous shells
+st.sidebar.markdown("### Gaseous Shells")
+#num_shells = st.sidebar.slider("Number of Shells", 1, 5, 2)
+texture_scale = st.sidebar.slider("Texture Scale", 50, 200, 100)
+color_variation = st.sidebar.checkbox("Enable Color Variation", value=True)
+
+# Gather shell parameters
+shells = []
+for i in range(num_shells):
+    st.sidebar.markdown(f"#### Shell {i+1}")
+    center_x = st.sidebar.slider(f"Shll {i+1} Center X", 0, image_size[0], 400)
+    center_y = st.sidebar.slider(f"Shll {i+1} Center Y", 0, image_size[1], 400)
+    semimajor_axis = st.sidebar.slider(f"Shll {i+1} Semimajor Axis", 50, 400, 200)
+    semiminor_axis = st.sidebar.slider(f"Shll {i+1} Semiminor Axis", 50, 400, 200)
+    thickness = st.sidebar.slider(f"Shll {i+1} Thickness", 1, 50, 10)
+    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF")
+    shells.append({
+        "center": (center_x, center_y),
+        "semimajor_axis": semimajor_axis,
+        "semiminor_axis": semiminor_axis,
+        "thickness": thickness,
+        "color": shell_color,
+    })
+
+########################################
+# Generate textured shells
+textured_shells = generate_complex_shell_texture(
+    image_size, shells, scale=texture_scale, color_variation=color_variation
+)
+
+# Combine textured shells with the existing image
+final_image_with_shells = Image.alpha_composite(final_image, textured_shells)
+
+# Display the updated image
+st.image(final_image_with_shells, use_column_width=True)
 
 
