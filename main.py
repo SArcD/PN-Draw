@@ -729,7 +729,7 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 def displace_shell_sections(image, shells, displaced_sections, displacement_distance):
     """
     Displaces specified sections of the shells radially outward to simulate filaments.
-    
+
     Parameters:
         image: PIL.Image - The existing image with shells.
         shells: List[Dict] - List of dictionaries defining shell properties:
@@ -778,8 +778,6 @@ def displace_shell_sections(image, shells, displaced_sections, displacement_dist
                         width=1,
                     )
 
-    # Apply Gaussian blur to simulate a smooth filament appearance
-    img = img.filter(ImageFilter.GaussianBlur(radius=5))
     return img
 
 
