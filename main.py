@@ -173,8 +173,46 @@ def draw_gaseous_shells(image_size, shells, noise_intensity=3, blur_radius=5):
 # New section for gaseous shells in Streamlit
 
 # Sidebar inputs for gaseous shells
+#st.sidebar.markdown("### Gaseous Shells")
+#num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2)
+#shells = []
+#for i in range(num_shells):
+#    st.sidebar.markdown(f"#### Shell {i+1}")
+#    center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], 400)
+#    center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], 400)
+#    semimajor_axis = st.sidebar.slider(f"Shell {i+1} Semimajor Axis", 50, 400, 200)
+#    semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 200)
+#    angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)  # Angle in degrees
+#    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF")
+#    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", 1, 150, 20)
+    
+#    shells.append({
+#        "center": (center_x, center_y),
+#        "semimajor_axis": semimajor_axis,
+#        "semiminor_axis": semiminor_axis,
+#        "angle": angle,
+#        "color": shell_color,
+#        "thickness": thickness,
+#    })
+
+# Generate gaseous shells
+#gaseous_shells = draw_gaseous_shells(image_size, shells)
+
+# Combine gaseous shells with the existing image
+#final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
+
+# Display the updated image
+#st.image(final_image_with_shells, use_column_width=True)
+
+# Sidebar inputs for gaseous shells
 st.sidebar.markdown("### Gaseous Shells")
 num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2)
+
+# Sliders for noise intensity and Gaussian blur
+noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=10, value=3)
+blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5)
+
+# Gather shell parameters
 shells = []
 for i in range(num_shells):
     st.sidebar.markdown(f"#### Shell {i+1}")
@@ -195,14 +233,16 @@ for i in range(num_shells):
         "thickness": thickness,
     })
 
-# Generate gaseous shells
-gaseous_shells = draw_gaseous_shells(image_size, shells)
+# Generate gaseous shells with noise and blur
+gaseous_shells = draw_gaseous_shells(image_size, shells, noise_intensity=noise_intensity, blur_radius=blur_radius)
 
 # Combine gaseous shells with the existing image
 final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
 
 # Display the updated image
 st.image(final_image_with_shells, use_column_width=True)
+
+
 
 #######################################
 
