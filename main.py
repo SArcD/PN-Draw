@@ -726,5 +726,47 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
+perlin_texture = generate_perlin_texture(image_size=(800, 800), scale=100)
+
+def apply_perlin_to_shells(shell_image, perlin_texture, alpha=0.3):
+    """
+    Combina las shells existentes con una textura de ruido Perlin.
+    
+    Parámetros:
+        shell_image: PIL.Image - Imagen de las shells existentes.
+        perlin_texture: PIL.Image - Textura generada con ruido Perlin.
+        alpha: float - Nivel de opacidad para la textura (0 a 1).
+        
+    Retorna:
+        PIL.Image - Imagen combinada.
+    """
+    perlin_overlay = perlin_texture.copy()
+    perlin_overlay = perlin_overlay.convert("RGBA")
+
+    # Ajustar opacidad de la textura
+    pixels = perlin_overlay.load()
+    for x in range(perlin_overlay.size[0]):
+        for y in range(perlin_overlay.size[1]):
+            r, g, b, a = pixels[x, y]
+            pixels[x, y] = (r, g, b, int(a * alpha))
+
+    # Combinar con las shells
+    return Image.alpha_composite(shell_image, perlin_overlay)
+
+
+# Generar textura Perlin
+perlin_texture = generate_perlin_texture(image_size=(800, 800), scale=100)
+
+# Combinar shells con textura Perlin
+final_shell_image = apply_perlin_to_shells(shell_image=gaseous_shells, perlin_texture=perlin_texture, alpha=0.5)
+
+st.image(final_shell_image, use_column_width=True)
+
+masked_perlin_texture = Image.composite(perlin_texture, Image.new("RGBA", image_size, (0, 0, 0, 0)), mask)
+
+perlin_scale = st.sidebar.slider("Escala de Ruido Perlin", 10, 200, 100)
+perlin_alpha = st.sidebar.slider("Opacidad del Ruido", 0.1, 1.0, 0.5)
+
+final_shell_image = final_shell_image.filter(ImageFilter.GaussianBlur(radius=3))
 
 
