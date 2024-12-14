@@ -725,86 +725,80 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 
 #################################################################3
+# Cambios para mejorar la simulación según las observaciones
 
-def displace_shell_sections(image, shells, displaced_sections, displacement_distance):
+def enhanced_shell_simulation(image_size, shells, glow_color, glow_intensity):
     """
-    Displaces specified sections of the shells radially outward to simulate filaments.
-
+    Aplica cambios adicionales para que las shells y la simulación en general sean más similares a la imagen deseada.
+    
     Parameters:
-        image: PIL.Image - The existing image with shells.
-        shells: List[Dict] - List of dictionaries defining shell properties:
-            - "center": Tuple[int, int] - Center of the shell.
-            - "semimajor_axis": int - Semimajor axis.
-            - "semiminor_axis": int - Semiminor axis.
-            - "angle": float - Rotation angle in degrees.
-            - "color": str - Shell color.
-            - "thickness": int - Shell thickness.
-        displaced_sections: Dict[int, List[Tuple[int, int]]] - Mapping of shell index to intervals of angles (in degrees) to be displaced.
-        displacement_distance: int - Distance to displace the sections radially.
-
+        image_size: Tuple[int, int] - Tamaño de la imagen.
+        shells: List[Dict] - Propiedades de las shells.
+        glow_color: str - Color del resplandor central.
+        glow_intensity: int - Intensidad del resplandor.
+    
     Returns:
-        PIL.Image - Modified image with displaced sections.
+        PIL.Image - Imagen final mejorada.
     """
-    img = image.copy()
+    img = Image.new("RGBA", image_size, (0, 0, 0, 255))
     draw = ImageDraw.Draw(img)
 
-    for shell_index, shell in enumerate(shells):
-        if shell_index in displaced_sections:
-            center = shell["center"]
-            a = shell["semimajor_axis"]
-            b = shell["semiminor_axis"]
-            thickness = shell["thickness"]
-            color = ImageColor.getrgb(shell["color"])
+    # Ajustar shells con gradientes de colores más dinámicos
+    for shell in shells:
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        thickness = shell["thickness"]
+        color = ImageColor.getrgb(shell["color"])
 
-            # Extract the displaced sections for this shell
-            intervals = displaced_sections[shell_index]
+        for t in range(thickness, 0, -1):
+            alpha = int(255 * (t / thickness) ** 1.5)  # Suavizar el gradiente
+            offset = t * 2  # Crear un borde más grueso para el efecto de dispersión
+            
+            bbox = (
+                center[0] - a - offset,
+                center[1] - b - offset,
+                center[0] + a + offset,
+                center[1] + b + offset,
+            )
+            draw.ellipse(bbox, outline=color + (alpha,), width=1)
 
-            # Draw displaced sections for each layer of thickness
-            for t in range(thickness):
-                for interval in intervals:
-                    start_angle, end_angle = interval
-                    # Compute the new bounding box with displacement
-                    bbox = (
-                        center[0] - a - t - displacement_distance,
-                        center[1] - b - t - displacement_distance,
-                        center[0] + a + t + displacement_distance,
-                        center[1] + b + t + displacement_distance,
-                    )
-                    draw.arc(
-                        bbox,
-                        start=start_angle,
-                        end=end_angle,
-                        fill=color + (int(255 / (t + 1)),),  # Adjust transparency for thickness
-                        width=1,
-                    )
+    # Añadir un resplandor central difuso
+    glow_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow_layer)
+    glow_radius = min(image_size) // 4  # Ajustar el tamaño del resplandor
+    for i in range(glow_intensity, 0, -1):
+        alpha = int(255 * (i / glow_intensity) ** 2)
+        glow_draw.ellipse(
+            (
+                center[0] - glow_radius * i,
+                center[1] - glow_radius * i,
+                center[0] + glow_radius * i,
+                center[1] + glow_radius * i,
+            ),
+            fill=ImageColor.getrgb(glow_color) + (alpha,),
+        )
+    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=glow_intensity / 2))
+    img = Image.alpha_composite(img, glow_layer)
 
     return img
 
 
-# Sidebar section for displacing shell sections
-st.sidebar.markdown("### Displace Shell Sections")
-displaced_sections = {}
-displacement_distance = st.sidebar.slider("Displacement Distance", 1, 100, 20)
+# Parámetros adicionales para el ajuste
+st.sidebar.markdown("### Enhancements for Shells and Glow")
+enhanced_glow_color = st.sidebar.color_picker("Enhanced Glow Color", "#00FFAA")
+enhanced_glow_intensity = st.sidebar.slider("Enhanced Glow Intensity", 1, 100, 50)
 
-for i in range(num_shells):
-    st.sidebar.markdown(f"#### Shell {i+1}")
-    num_displaced_intervals = st.sidebar.slider(f"Number of Displaced Sections (Shell {i+1})", 0, 10, 0)
-    intervals = []
-    for j in range(num_displaced_intervals):
-        start_angle = st.sidebar.slider(f"Shell {i+1} Section {j+1} Start Angle", 0, 360, j * 30)
-        end_angle = st.sidebar.slider(f"Shell {i+1} Section {j+1} End Angle", 0, 360, j * 30 + 15)
-        intervals.append((start_angle, end_angle))
-    displaced_sections[i] = intervals
-
-# Apply the displacement effect to the shells
-final_image_with_displaced_sections = displace_shell_sections(
-    final_image_with_shells, 
-    shells, 
-    displaced_sections, 
-    displacement_distance
+# Aplicar simulación mejorada
+final_image_enhanced = enhanced_shell_simulation(
+    image_size=image_size,
+    shells=shells,
+    glow_color=enhanced_glow_color,
+    glow_intensity=enhanced_glow_intensity,
 )
 
-# Display the updated image with displaced sections
-st.image(final_image_with_displaced_sections, use_column_width=True)
+# Mostrar la imagen mejorada
+st.image(final_image_enhanced, use_column_width=True)
+
 
 
