@@ -110,7 +110,57 @@ final_image = add_glow_effect(combined_image, (star_x, star_y), glow_radius, Ima
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 
-def draw_gaseous_shells(image_size, shells, noise_intensity=3, blur_radius=5):
+# Function to draw gaseous shells with angle control
+def draw_gaseous_shells(image_size, shells):
+    """
+    Draws diffuse gaseous shells on an image.
+    
+    Parameters:
+        image_size: Tuple[int, int] - Dimensions of the image.
+        shells: List[Dict] - List of dictionaries defining shell properties:
+            - "center": Tuple[int, int] - Center of the shell.
+            - "semimajor_axis": int - Semimajor axis (or radius for circular shells).
+            - "semiminor_axis": int - Semiminor axis.
+            - "angle": float - Rotation angle of the shell in degrees.
+            - "color": str - Shell color (e.g., "#FF0000").
+            - "thickness": int - Edge thickness.
+    """
+    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    for shell in shells:
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        angle = shell["angle"]
+        color = ImageColor.getrgb(shell["color"])
+        thickness = shell["thickness"]
+
+        # Draw concentric transparent ellipses for a diffuse effect
+        for t in range(thickness, 0, -1):
+            alpha = int(255 * (t / thickness) ** 2)  # Decreasing alpha
+            
+            # Create bounding box with rotation
+            ellipse_bbox = (
+                center[0] - a - t,
+                center[1] - b - t,
+                center[0] + a + t,
+                center[1] + b + t,
+            )
+            
+            # Rotate the ellipse
+            rotated_ellipse = Image.new("RGBA", image_size, (0, 0, 0, 0))
+            rotated_draw = ImageDraw.Draw(rotated_ellipse)
+            rotated_draw.ellipse(ellipse_bbox, outline=color + (alpha,), width=1)
+            rotated_ellipse = rotated_ellipse.rotate(angle, center=center)
+            
+            img = Image.alpha_composite(img, rotated_ellipse)
+    
+    return img
+
+
+
+def draw_gaseous_shells_with_noise_and_blur(image_size, shells, noise_intensity=3, blur_radius=5):
     """
     Draws diffuse gaseous shells on an image with irregular edges and blur effects.
     
