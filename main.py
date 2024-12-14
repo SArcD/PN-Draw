@@ -350,7 +350,7 @@ apply_noise = st.sidebar.checkbox("Enabler Fractal Noise", value=False)
 
 if apply_noise:
     noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=20, value=5)
-    blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5)
+    blur_radius = st.sidebar.slider("Blur Radius", min_value=1, max_value=20, value=5)
     noise_area = st.sidebar.radio("Noise Area", ["All Shells", "Specific Shell"], index=0)
     
     # Apply fractal noise to the shells
