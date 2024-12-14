@@ -707,4 +707,60 @@ st.image(final_image_with_darkened_sections, use_column_width=True)
 
 #################################################################3
 
+# Function to create advanced gaseous shell textures
+def generate_advanced_gaseous_shells(image_size, shells, fractal_scale=100, blur_radius=10):
+    """
+    Creates advanced gaseous shells with fractal noise, diffuse textures, and filaments.
+    
+    Parameters:
+        image_size: Tuple[int, int] - Dimensions of the image.
+        shells: List[Dict] - List of shell properties.
+        fractal_scale: int - Scale of fractal noise.
+        blur_radius: int - Gaussian blur radius.
+
+    Returns:
+        PIL.Image - Image with textured shells.
+    """
+    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    for shell in shells:
+        # Shell parameters
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        angle = shell["angle"]
+        color = ImageColor.getrgb(shell["color"])
+        thickness = shell["thickness"]
+
+        # Create a mask for the shell
+        mask = Image.new("L", image_size, 0)
+        mask_draw = ImageDraw.Draw(mask)
+        for t in range(thickness):
+            mask_draw.ellipse(
+                (center[0] - a - t, center[1] - b - t, center[0] + a + t, center[1] + b + t),
+                fill=int(255 * (1 - t / thickness))  # Gradient opacity
+            )
+        
+        # Generate fractal noise for the shell
+        noise_layer = generate_perlin_texture(image_size, scale=fractal_scale)
+        noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+        # Apply the mask to the noise
+        textured_shell = Image.composite(Image.new("RGBA", image_size, color + (255,)), noise_layer, mask)
+        img = Image.alpha_composite(img, textured_shell)
+    
+    return img
+
+# Updated shells with advanced textures
+gaseous_shells = generate_advanced_gaseous_shells(
+    image_size,
+    shells,
+    fractal_scale=50,  # Scale for the fractal noise
+    blur_radius=15     # Blur radius for diffusion
+)
+
+# Combine the shells with the existing image
+final_image_with_textures = Image.alpha_composite(final_image, gaseous_shells)
+
+# Display the image
+st.image(final_image_with_textures, use_column_width=True)
 
