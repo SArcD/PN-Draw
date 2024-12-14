@@ -105,7 +105,81 @@ st.image(final_image, use_column_width=True)
 
 
 
-############################################################33
+############################################################
+
+# Function to draw gaseous shells
+def draw_gaseous_shells(image_size, shells):
+    """
+    Draws diffuse gaseous shells on an image.
+    
+    Parameters:
+        image_size: Tuple[int, int] - Dimensions of the image.
+        shells: List[Dict] - List of dictionaries defining shell properties:
+            - "center": Tuple[int, int] - Center of the shell.
+            - "semimajor_axis": int - Semimajor axis (or radius for circular shells).
+            - "semiminor_axis": int - Semiminor axis.
+            - "color": str - Shell color (e.g., "#FF0000").
+            - "thickness": int - Edge thickness.
+    """
+    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    for shell in shells:
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        color = ImageColor.getrgb(shell["color"])
+        thickness = shell["thickness"]
+
+        # Draw concentric transparent ellipses for a diffuse effect
+        for t in range(thickness, 0, -1):
+            alpha = int(255 * (t / thickness) ** 2)  # Decreasing alpha
+            draw.ellipse(
+                (
+                    center[0] - a - t,
+                    center[1] - b - t,
+                    center[0] + a + t,
+                    center[1] + b + t,
+                ),
+                outline=color + (alpha,),
+                width=1,
+            )
+    
+    return img
+
+#########################################################
+# New section for gaseous shells in Streamlit
+
+# Sidebar inputs for gaseous shells
+st.sidebar.markdown("### Gaseous Shells")
+num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2)
+shells = []
+for i in range(num_shells):
+    st.sidebar.markdown(f"#### Shell {i+1}")
+    center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], 400)
+    center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], 400)
+    semimajor_axis = st.sidebar.slider(f"Shell {i+1} Semimajor Axis", 50, 400, 200)
+    semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 200)
+    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF")
+    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", 1, 50, 20)
+    
+    shells.append({
+        "center": (center_x, center_y),
+        "semimajor_axis": semimajor_axis,
+        "semiminor_axis": semiminor_axis,
+        "color": shell_color,
+        "thickness": thickness,
+    })
+
+# Generate gaseous shells
+gaseous_shells = draw_gaseous_shells(image_size, shells)
+
+# Combine gaseous shells with the existing image
+final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
+
+# Display the updated image
+st.image(final_image_with_shells, use_column_width=True)
+
 
 
 
