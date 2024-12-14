@@ -168,7 +168,7 @@ central_star = draw_central_star_with_filaments(
 )
 
 # Combine the central star with the existing image
-final_image_with_star_and_filaments = Image.alpha_composite(star_field, central_star_with_filaments)
+final_image_with_star_and_filaments = Image.alpha_composite(star_field, central_star)
 
 # Display the final image
 st.image(final_image_with_star_and_filaments, use_column_width=True)
