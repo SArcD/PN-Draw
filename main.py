@@ -17,7 +17,7 @@ def draw_star_field(ax, num_stars, bounds):
     """Dibuja un campo de estrellas en el fondo negro con forma de estrella."""
     x_stars = np.random.uniform(bounds[0], bounds[1], num_stars)
     y_stars = np.random.uniform(bounds[0], bounds[1], num_stars)
-    star_sizes = np.random.uniform(0.05, 0.2, num_stars)
+    star_sizes = np.random.uniform(0.005, 0.01, num_stars)
     star_colors = np.random.choice(
         ["white", "lightblue", "yellow", "red"], 
         num_stars, 
