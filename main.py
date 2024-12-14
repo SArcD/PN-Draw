@@ -734,7 +734,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from noise import pnoise2
 
 
-def generate_advanced_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5):
+def generate_complex_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5):
     """
     Generate a shell texture with fractal noise, Gaussian blur, and opacity variations.
 
@@ -881,9 +881,12 @@ for i in range(num_shells):
 
 ########################################
 # Generate textured shells
-textured_shells = generate_complex_shell_texture(
-    image_size, shells, scale=texture_scale, color_variation=color_variation
-)
+textured_shells = generate_complex_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5):
+
+
+#generate_complex_shell_texture(
+#    image_size, shells, scale=texture_scale, color_variation=color_variation
+#)
 
 # Combine textured shells with the existing image
 final_image_with_shells = Image.alpha_composite(final_image, textured_shells)
