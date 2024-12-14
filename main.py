@@ -196,17 +196,22 @@ import numpy as np
 from PIL import ImageDraw, ImageFilter
 import streamlit as st
 
-def generate_noise_layer(image_size, semi_major, semi_minor, center, angle, shell_color, thickness):
+# Sidebar controls for noise and blur
+noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=10, value=3, step=1)
+blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5, step=1)
+
+# Updated function to generate a noise layer with adjustable noise intensity and blur
+def generate_noise_layer(image_size, semi_major, semi_minor, center, angle, shell_color, thickness, noise_level, blur_level):
     """
-    Generate a noise layer for a gaseous shell with irregular edges.
+    Generate a noise layer for a gaseous shell with adjustable noise intensity and Gaussian blur.
     """
     noise_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(noise_layer)
 
     for t in range(thickness):
-        # Add random perturbation for irregular edges
-        offset_x = np.random.uniform(-5, 5)
-        offset_y = np.random.uniform(-5, 5)
+        # Add random perturbation for irregular edges based on noise intensity
+        offset_x = np.random.uniform(-noise_level, noise_level)
+        offset_y = np.random.uniform(-noise_level, noise_level)
 
         left = center[0] - semi_major + offset_x - t
         top = center[1] - semi_minor + offset_y - t
@@ -215,16 +220,16 @@ def generate_noise_layer(image_size, semi_major, semi_minor, center, angle, shel
 
         draw.ellipse(
             (left, top, right, bottom),
-            outline=shell_color + (int(150 / (t + 1)),),  # Decreasing transparency for layers
+            outline=shell_color + (int(200 / (t + 1)),),  # Enhanced opacity gradient for visibility
             width=1
         )
 
-    # Apply Gaussian blur to simulate diffusion
-    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=thickness // 2))
+    # Apply Gaussian blur to simulate diffusion with adjustable blur radius
+    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_level))
     return noise_layer
 
-# Function to composite all shells
-def draw_gaseous_shells(image, shells):
+# Updated function to composite all shells with noise and blur sliders
+def draw_gaseous_shells(image, shells, noise_level, blur_level):
     """
     Draw multiple gaseous shells as independent noise layers and composite them onto the image.
     """
@@ -233,7 +238,7 @@ def draw_gaseous_shells(image, shells):
     for i, shell in enumerate(shells):
         semi_major, semi_minor, angle, shell_color, thickness = shell
 
-        # Generate the noise layer for this shell
+        # Generate the noise layer for this shell with noise and blur settings
         noise_layer = generate_noise_layer(
             image_size=image.size,
             semi_major=semi_major,
@@ -241,7 +246,9 @@ def draw_gaseous_shells(image, shells):
             center=(400, 400),  # Center of the shell
             angle=angle,
             shell_color=ImageColor.getrgb(shell_color),
-            thickness=thickness
+            thickness=thickness,
+            noise_level=noise_level,
+            blur_level=blur_level
         )
 
         # Composite the noise layer onto the current image
@@ -249,18 +256,17 @@ def draw_gaseous_shells(image, shells):
 
     return composite_image
 
-# Define shells with random parameters for demonstration
+# Define shells with adjustable parameters
 shells = [
-    (150, 120, 0, "#00FFFF", 20),  # Semi-major, semi-minor, angle, color, thickness
-    (200, 170, 30, "#00FF00", 25),
+    (150, 120, 0, "#00FFFF", 30),  # Enhanced thickness for better visibility
+    (200, 170, 30, "#00FF00", 35),
 ]
 
 # Draw shells on top of the existing star field
-final_image_with_shells = draw_gaseous_shells(final_image, shells)
+final_image_with_shells = draw_gaseous_shells(final_image, shells, noise_level=noise_intensity, blur_level=blur_radius)
 
 # Display the updated composite image with shells
 st.image(final_image_with_shells, use_column_width=True)
-
 
 
 
