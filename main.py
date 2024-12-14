@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from PIL import ImageColor
+from noise import pnoise2
 
 
 # Function to generate a star field as a PIL image
