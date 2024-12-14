@@ -190,6 +190,82 @@ final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
 # Display the updated image
 st.image(final_image_with_shells, use_column_width=True)
 
+#######################################
+
+import numpy as np
+from PIL import ImageDraw, ImageFilter
+import streamlit as st
+
+# Function to add noise and diffuse edges to shells
+def add_noise_to_shell(image, center, semi_major, semi_minor, angle, shell_color, thickness):
+    """
+    Add noise and irregular edges to a shell to create a diffuse, gaseous look.
+    """
+    noise_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(noise_layer)
+    
+    # Define the ellipse bounds and apply rotation
+    left = center[0] - semi_major
+    top = center[1] - semi_minor
+    right = center[0] + semi_major
+    bottom = center[1] + semi_minor
+    
+    # Draw the main ellipse with added noise
+    for t in range(-thickness, thickness):
+        offset = np.random.uniform(-5, 5)  # Random noise for irregularities
+        noisy_left = left + offset + t
+        noisy_top = top + offset + t
+        noisy_right = right + offset - t
+        noisy_bottom = bottom + offset - t
+        
+        draw.ellipse(
+            (noisy_left, noisy_top, noisy_right, noisy_bottom),
+            outline=shell_color + (50,),
+            width=1
+        )
+    
+    # Apply a Gaussian blur to smooth out the noise
+    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=3))
+    
+    # Composite the noise layer onto the main image
+    image.paste(noise_layer, (0, 0), mask=noise_layer)
+    return image
+
+# New section to add noisy, diffuse shells
+st.sidebar.markdown("### Shell Parameters")
+num_shells = st.sidebar.slider("Number of Shells", min_value=1, max_value=5, value=2, step=1)
+shells = []
+
+for i in range(num_shells):
+    st.sidebar.markdown(f"#### Shell {i+1}")
+    semi_major = st.sidebar.slider(f"Shell {i+1} Semi-Major Axis", min_value=50, max_value=400, value=200, step=10, key=f"semi_major_{i}")
+    semi_minor = st.sidebar.slider(f"Shell {i+1} Semi-Minor Axis", min_value=50, max_value=400, value=150, step=10, key=f"semi_minor_{i}")
+    angle = st.sidebar.slider(f"Shell {i+1} Angle (degrees)", min_value=0, max_value=360, value=0, step=1, key=f"angle_{i}")
+    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF", key=f"color_{i}")
+    thickness = st.sidebar.slider(f"Shell {i+1} Thickness", min_value=1, max_value=50, value=10, step=1, key=f"thickness_{i}")
+    shells.append((semi_major, semi_minor, angle, shell_color, thickness))
+
+# Generate the noisy shells
+image_size = (800, 800)
+composite_image = Image.new("RGBA", image_size, (0, 0, 0, 255))
+
+for i, shell in enumerate(shells):
+    semi_major, semi_minor, angle, shell_color, thickness = shell
+    composite_image = add_noise_to_shell(
+        composite_image,
+        center=(400, 400),
+        semi_major=semi_major,
+        semi_minor=semi_minor,
+        angle=angle,
+        shell_color=ImageColor.getrgb(shell_color),
+        thickness=thickness
+    )
+
+# Overlay the shells on the previously created star field
+final_image = Image.alpha_composite(star_field.convert("RGBA"), composite_image)
+
+# Display the updated image with the noisy shells
+st.image(final_image, use_column_width=True)
 
 
 
