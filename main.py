@@ -277,7 +277,8 @@ st.image(final_image_with_shells, use_column_width=True)
 #################################
 
 
-def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5):
+# Function to add fractal noise to specific shells
+def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5, noise_area="All Shells"):
     """
     Adds fractal noise to enhance the diffuse and irregular nature of shells.
     
@@ -286,6 +287,7 @@ def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5)
         shells: List[Dict] - Shell definitions to restrict noise application.
         noise_intensity: int - Intensity of fractal noise.
         blur_radius: int - Radius for Gaussian blur.
+        noise_area: str - Area where noise will be applied: "All Shells" or "Specific Shell".
     
     Returns:
         PIL.Image - Image with enhanced noise details.
@@ -293,25 +295,44 @@ def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5)
     noise_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(noise_layer)
 
-    for shell in shells:
-        center = shell["center"]
-        a = shell["semimajor_axis"]
-        b = shell["semiminor_axis"]
-        angle = shell["angle"]
-        
-        for _ in range(noise_intensity):
-            # Random ellipses around the shell
-            offset_x = np.random.randint(-a // 5, a // 5)
-            offset_y = np.random.randint(-b // 5, b // 5)
-            noise_x = center[0] + offset_x
-            noise_y = center[1] + offset_y
-            width = np.random.randint(10, a // 5)
-            height = np.random.randint(10, b // 5)
-            alpha = np.random.randint(20, 80)  # Semi-transparent noise
+    if noise_area == "All Shells":
+        # Apply noise across all shells
+        for shell in shells:
+            center = shell["center"]
+            a = shell["semimajor_axis"]
+            b = shell["semiminor_axis"]
+            
+            for _ in range(noise_intensity):
+                # Random perturbations within shell bounds
+                offset_x = np.random.randint(-a // 2, a // 2)
+                offset_y = np.random.randint(-b // 2, b // 2)
+                noise_x = center[0] + offset_x
+                noise_y = center[1] + offset_y
+                width = np.random.randint(10, a // 5)
+                height = np.random.randint(10, b // 5)
+                alpha = np.random.randint(20, 80)  # Semi-transparent noise
 
-            # Apply rotation and randomness
-            bbox = (noise_x - width, noise_y - height, noise_x + width, noise_y + height)
-            draw.ellipse(bbox, fill=(255, 255, 255, alpha))  # Noise is white initially
+                bbox = (noise_x - width, noise_y - height, noise_x + width, noise_y + height)
+                draw.ellipse(bbox, fill=(255, 255, 255, alpha))  # Noise is white initially
+    elif noise_area == "Specific Shell":
+        # Apply noise only to the first shell for demonstration
+        if len(shells) > 0:
+            shell = shells[0]  # Take the first shell
+            center = shell["center"]
+            a = shell["semimajor_axis"]
+            b = shell["semiminor_axis"]
+            
+            for _ in range(noise_intensity):
+                offset_x = np.random.randint(-a // 2, a // 2)
+                offset_y = np.random.randint(-b // 2, b // 2)
+                noise_x = center[0] + offset_x
+                noise_y = center[1] + offset_y
+                width = np.random.randint(10, a // 5)
+                height = np.random.randint(10, b // 5)
+                alpha = np.random.randint(20, 80)
+
+                bbox = (noise_x - width, noise_y - height, noise_x + width, noise_y + height)
+                draw.ellipse(bbox, fill=(255, 255, 255, alpha))
 
     # Apply Gaussian blur
     noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
@@ -320,16 +341,32 @@ def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5)
 
     return blended_image
 
-# Example usage
-final_image_with_noise = add_fractal_noise_to_shells(
-    final_image_with_shells, 
-    shells, 
-    noise_intensity=5, 
-    blur_radius=3
-)
+##########################################################
+# New section for controlling fractal noise in Streamlit
 
-# Display the updated image
-st.image(final_image_with_noise, use_column_width=True)
+# Sidebar controls for fractal noise
+st.sidebar.markdown("### Fractal Noise")
+apply_noise = st.sidebar.checkbox("Enable Fractal Noise", value=False)
+
+if apply_noise:
+    noise_intensity = st.sidebar.slider("Noise Intensity", min_value=1, max_value=20, value=5)
+    blur_radius = st.sidebar.slider("Gaussian Blur Radius", min_value=1, max_value=20, value=5)
+    noise_area = st.sidebar.radio("Noise Area", ["All Shells", "Specific Shell"], index=0)
+    
+    # Apply fractal noise to the shells
+    final_image_with_noise = add_fractal_noise_to_shells(
+        final_image_with_shells, 
+        shells, 
+        noise_intensity=noise_intensity, 
+        blur_radius=blur_radius, 
+        noise_area=noise_area
+    )
+    
+    # Display the updated image
+    st.image(final_image_with_noise, use_column_width=True)
+else:
+    # Display the image without additional noise
+    st.image(final_image_with_shells, use_column_width=True)
 
 
 
