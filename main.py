@@ -274,64 +274,62 @@ final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
 # Display the updated image
 st.image(final_image_with_shells, use_column_width=True)
 
-from PIL import Image, ImageDraw, ImageFilter
-import numpy as np
-import random
+#################################
 
-def draw_radial_filaments(image, center, num_filaments, inner_radius, outer_radius, color):
-    """
-    Adds radial filaments to simulate the irregular structure of a nebula.
-    """
-    draw = ImageDraw.Draw(image)
-    for _ in range(num_filaments):
-        angle = np.random.uniform(0, 360)  # Random angle
-        length = np.random.uniform(inner_radius, outer_radius)  # Varying filament length
-        perturbation = np.random.uniform(-5, 5)  # Add randomness for irregularity
 
-        x_start = center[0]
-        y_start = center[1]
-        x_end = center[0] + (length + perturbation) * np.cos(np.radians(angle))
-        y_end = center[1] + (length + perturbation) * np.sin(np.radians(angle))
-
-        # Fractalize the line for more complexity
-        for i in range(3):  # Add 3 levels of perturbations
-            mid_x = (x_start + x_end) / 2 + random.uniform(-2, 2)
-            mid_y = (y_start + y_end) / 2 + random.uniform(-2, 2)
-            draw.line([(x_start, y_start), (mid_x, mid_y), (x_end, y_end)], fill=color, width=1)
-
-def add_fractal_noise(image, scale, intensity):
+def add_fractal_noise_to_shells(image, shells, noise_intensity=5, blur_radius=5):
     """
-    Adds fractal noise to the image for more natural, cloudy details.
+    Adds fractal noise to enhance the diffuse and irregular nature of shells.
+    
+    Parameters:
+        image: PIL.Image - Base image to add noise to.
+        shells: List[Dict] - Shell definitions to restrict noise application.
+        noise_intensity: int - Intensity of fractal noise.
+        blur_radius: int - Radius for Gaussian blur.
+    
+    Returns:
+        PIL.Image - Image with enhanced noise details.
     """
-    noise_layer = Image.new("L", image.size, 0)
+    noise_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(noise_layer)
 
-    for _ in range(intensity):
-        # Draw random elliptical noise patterns
-        x = np.random.randint(0, image.size[0])
-        y = np.random.randint(0, image.size[1])
-        width = np.random.randint(20, 100)
-        height = np.random.randint(20, 100)
-        alpha = np.random.randint(20, 100)
-        draw.ellipse((x, y, x + width, y + height), fill=alpha)
+    for shell in shells:
+        center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
+        angle = shell["angle"]
+        
+        for _ in range(noise_intensity):
+            # Random ellipses around the shell
+            offset_x = np.random.randint(-a // 5, a // 5)
+            offset_y = np.random.randint(-b // 5, b // 5)
+            noise_x = center[0] + offset_x
+            noise_y = center[1] + offset_y
+            width = np.random.randint(10, a // 5)
+            height = np.random.randint(10, b // 5)
+            alpha = np.random.randint(20, 80)  # Semi-transparent noise
 
-    # Apply Gaussian blur for diffusion
-    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=scale))
-    noise_layer = noise_layer.convert("RGBA")
-    image = Image.alpha_composite(image, noise_layer)
-    return image
+            # Apply rotation and randomness
+            bbox = (noise_x - width, noise_y - height, noise_x + width, noise_y + height)
+            draw.ellipse(bbox, fill=(255, 255, 255, alpha))  # Noise is white initially
 
-# Example usage with your current shells
-final_image_with_details = final_image_with_shells.copy()
+    # Apply Gaussian blur
+    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    # Composite the noise layer with the base image
+    blended_image = Image.alpha_composite(image, noise_layer)
 
-# Adding radial filaments
-draw_radial_filaments(final_image_with_details, center=(400, 400), num_filaments=100, inner_radius=50, outer_radius=400, color=(0, 255, 255, 80))
+    return blended_image
 
-# Adding fractal noise for cloudy effects
-final_image_with_details = add_fractal_noise(final_image_with_details, scale=10, intensity=300)
+# Example usage
+final_image_with_noise = add_fractal_noise_to_shells(
+    final_image_with_shells, 
+    shells, 
+    noise_intensity=5, 
+    blur_radius=3
+)
 
 # Display the updated image
-st.image(final_image_with_details, use_column_width=True)
+st.image(final_image_with_noise, use_column_width=True)
 
 
 
