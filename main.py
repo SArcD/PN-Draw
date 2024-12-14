@@ -898,26 +898,6 @@ def generate_perlin_texture(image_size, scale=50):
     return texture
 
 
-# Shell Definitions
-shells = [
-    {
-        "center": (400, 400),
-        "semimajor_axis": 200,
-        "semiminor_axis": 150,
-        "angle": 0,
-        "color": "#00FFFF",
-        "thickness": 10,
-    },
-    {
-        "center": (400, 400),
-        "semimajor_axis": 300,
-        "semiminor_axis": 250,
-        "angle": 30,
-        "color": "#FF00FF",
-        "thickness": 15,
-    },
-]
-
 # Generate textured shells
 image_size = (800, 800)
 advanced_shell_texture = generate_advanced_shell_texture(
