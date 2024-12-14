@@ -881,7 +881,7 @@ for i in range(num_shells):
 
 ########################################
 # Generate textured shells
-textured_shells = generate_complex_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5):
+textured_shells = generate_complex_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5)
 
 
 #generate_complex_shell_texture(
