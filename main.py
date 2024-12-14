@@ -801,6 +801,80 @@ def generate_complex_shell_texture(image_size, shells, noise_intensity=5, blur_r
 
     return texture_image
 
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+from noise import pnoise2
+
+
+def generate_advanced_shell_texture(image_size, shells, noise_intensity=5, blur_radius=5):
+    """
+    Generate a shell texture with fractal noise, Gaussian blur, and opacity variations.
+
+    Parameters:
+        image_size: Tuple[int, int] - Size of the image.
+        shells: List[Dict] - Definitions of the shells (center, axes, angle, etc.).
+        noise_intensity: int - Intensity of the fractal noise.
+        blur_radius: int - Radius of Gaussian blur.
+
+    Returns:
+        PIL.Image - An image containing textured shells.
+    """
+    texture_image = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(texture_image)
+
+    for shell in shells:
+        center = shell["center"]
+        semimajor_axis = shell["semimajor_axis"]
+        semiminor_axis = shell["semiminor_axis"]
+        angle = shell["angle"]
+        shell_color = shell["color"]
+        thickness = shell["thickness"]
+
+        # Create a mask for this shell
+        shell_mask = Image.new("L", image_size, 0)
+        mask_draw = ImageDraw.Draw(shell_mask)
+
+        for t in range(thickness):
+            # Perturb ellipse for diffuse edges
+            left = center[0] - semimajor_axis - t
+            top = center[1] - semiminor_axis - t
+            right = center[0] + semimajor_axis + t
+            bottom = center[1] + semiminor_axis + t
+
+            mask_draw.ellipse(
+                [left, top, right, bottom],
+                outline=int(255 / (t + 1)),  # Gradual transparency for the edge
+            )
+
+        # Convert shell mask into fractal noise using Perlin noise
+        noise_layer = generate_perlin_texture(image_size, noise_intensity)
+        noise_layer = Image.composite(noise_layer, Image.new("RGBA", image_size, (0, 0, 0, 0)), shell_mask)
+
+        # Apply Gaussian blur for diffusion
+        blurred_layer = noise_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+        # Blend the shell color with the noise texture
+        shell_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+        shell_draw = ImageDraw.Draw(shell_layer)
+        shell_draw.ellipse(
+            [
+                center[0] - semimajor_axis,
+                center[1] - semiminor_axis,
+                center[0] + semimajor_axis,
+                center[1] + semiminor_axis,
+            ],
+            outline=ImageColor.getrgb(shell_color),
+            width=thickness,
+        )
+        shell_layer = Image.alpha_composite(shell_layer, blurred_layer)
+
+        # Composite this shell layer onto the texture image
+        texture_image = Image.alpha_composite(texture_image, shell_layer)
+
+    return texture_image
+
+
+
 
 def generate_perlin_texture(image_size, scale=50):
     """
