@@ -17,25 +17,105 @@ def generate_star_field(num_stars, image_size):
     return img
 
 # Function to draw a central star with a diffuse halo
-def draw_central_star(image_size, position, star_size, halo_size, color):
+#def draw_central_star(image_size, position, star_size, halo_size, color):
+#    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+#    draw = ImageDraw.Draw(img)
+    
+#    # Draw halo
+#    halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
+#    halo_draw = ImageDraw.Draw(halo)
+#    halo_draw.ellipse((0, 0, halo_size * 2, halo_size * 2), fill=color + (50,))
+#    halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
+#    img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
+    
+#    # Draw star
+#    draw.ellipse(
+#        (position[0] - star_size, position[1] - star_size, position[0] + star_size, position[1] + star_size),
+#        fill=color + (255,),
+#    )
+    
+#    return img
+
+
+# Function to draw a central star with a diffuse halo and radial filaments
+def draw_central_star_with_filaments(image_size, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
+    """
+    Draws a central star with a diffuse halo and radial filaments to simulate light dispersion.
+
+    Parameters:
+        image_size: Tuple[int, int] - Dimensions of the image.
+        position: Tuple[int, int] - Position of the central star.
+        star_size: int - Size of the star.
+        halo_size: int - Size of the halo.
+        color: Tuple[int, int, int] - Color of the star.
+        num_filaments: int - Number of radial filaments.
+        dispersion: int - Degree of dispersion for the radial filaments.
+        blur_radius: int - Gaussian blur radius for light diffusion.
+    """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     # Draw halo
     halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
     halo_draw = ImageDraw.Draw(halo)
     halo_draw.ellipse((0, 0, halo_size * 2, halo_size * 2), fill=color + (50,))
     halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
     img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
-    
+
     # Draw star
     draw.ellipse(
         (position[0] - star_size, position[1] - star_size, position[0] + star_size, position[1] + star_size),
         fill=color + (255,),
     )
-    
+
+    # Draw radial filaments
+    filament_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    filament_draw = ImageDraw.Draw(filament_layer)
+    for i in range(num_filaments):
+        angle = 2 * np.pi * i / num_filaments
+        end_x = position[0] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.cos(angle)
+        end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
+
+        filament_draw.line(
+            [(position[0], position[1]), (end_x, end_y)],
+            fill=color + (100,),  # Semi-transparent
+            width=2,
+        )
+
+    # Apply Gaussian blur to the filaments for a diffuse effect
+    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    # Combine the filaments with the star image
+    img = Image.alpha_composite(img, filament_layer)
+
     return img
+
 #########################################################
+
+# Sidebar inputs for the central star with radial filaments
+st.sidebar.markdown("### Central Star with Radial Filaments")
+num_filaments = st.sidebar.slider("Number of Filaments", min_value=10, max_value=100, value=30, step=5)
+filament_dispersion = st.sidebar.slider("Filament Dispersion", min_value=1, max_value=50, value=10, step=1)
+filament_blur_radius = st.sidebar.slider("Filament Blur Radius", min_value=1, max_value=20, value=5, step=1)
+
+# Generate the central star with radial filaments
+central_star_with_filaments = draw_central_star_with_filaments(
+    image_size=image_size,
+    position=(star_x, star_y),
+    star_size=star_size,
+    halo_size=halo_size,
+    color=ImageColor.getrgb(star_color),
+    num_filaments=num_filaments,
+    dispersion=filament_dispersion,
+    blur_radius=filament_blur_radius,
+)
+
+# Combine the central star with the existing image
+final_image_with_star_and_filaments = Image.alpha_composite(star_field, central_star_with_filaments)
+
+# Display the final image
+st.image(final_image_with_star_and_filaments, use_column_width=True)
+
 
 
 # Función para dibujar una estrella central con un halo difuso
