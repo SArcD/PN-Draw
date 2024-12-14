@@ -90,7 +90,7 @@ glow_radius = st.sidebar.slider("Radio del Brillo", min_value=10, max_value=200,
 glow_color = st.sidebar.color_picker("Color del Brillo", "#FFFF00")
 
 # Generar imágenes
-image_size = (800, 800)
+image_size = (1200, 1200)
 star_field = generate_star_field(num_stars, image_size)
 central_star = draw_central_star(image_size, (star_x, star_y), star_size, halo_size, ImageColor.getrgb(star_color))
 
