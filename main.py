@@ -266,7 +266,7 @@ if use_noise_and_blur:
     )
 else:
     # Generate standard gaseous shells without noise and blur
-    gaseous_shells = draw_standard_gaseous_shells(image_size, shells)
+    gaseous_shells = draw_gaseous_shells(image_size, shells)
 
 # Combine gaseous shells with the existing image
 final_image_with_shells = Image.alpha_composite(final_image, gaseous_shells)
