@@ -858,7 +858,7 @@ for i in range(num_shells):
     semimajor_axis = st.sidebar.slider(f"Shll {i+1} Semimajor Axis", 50, 400, 200)
     semiminor_axis = st.sidebar.slider(f"Shll {i+1} Semiminor Axis", 50, 400, 200)
     thickness = st.sidebar.slider(f"Shll {i+1} Thickness", 1, 50, 10)
-    shell_color = st.sidebar.color_picker(f"Shell {i+1} Color", "#00FFFF")
+    shell_color = st.sidebar.color_picker(f"Shell {i+1} Colore", "#00FFFF")
     shells.append({
         "center": (center_x, center_y),
         "semimajor_axis": semimajor_axis,
