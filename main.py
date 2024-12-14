@@ -51,5 +51,52 @@ ax.axis("off")  # Ocultar los ejes
 bounds = (-2.5, 2.5)  # Límites del área donde se generarán las estrellas
 draw_star_field_with_halos(ax, num_stars=num_stars, bounds=bounds)
 
+
+import streamlit as st
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Función para dibujar una estrella con núcleo brillante y bordes difusos
+def draw_central_star(ax, position, size, color):
+    # Dibujar el núcleo brillante
+    star_core = plt.Circle(position, size, color=color, alpha=1.0, zorder=5)
+    ax.add_artist(star_core)
+    
+    # Dibujar el halo difuso
+    halo_sizes = np.linspace(size * 1.2, size * 3, 5)
+    alpha_values = np.linspace(0.4, 0.1, len(halo_sizes))
+    for halo_size, alpha in zip(halo_sizes, alpha_values):
+        halo = plt.Circle(position, halo_size, color=color, alpha=alpha, zorder=4)
+        ax.add_artist(halo)
+    
+    # Dibujar los rayos de brillo en forma de "X"
+    for angle in [0, 45]:
+        x_vals = [position[0] - halo_sizes[-1] * np.cos(np.radians(angle)),
+                  position[0] + halo_sizes[-1] * np.cos(np.radians(angle))]
+        y_vals = [position[1] - halo_sizes[-1] * np.sin(np.radians(angle)),
+                  position[1] + halo_sizes[-1] * np.sin(np.radians(angle))]
+        ax.plot(x_vals, y_vals, color=color, alpha=0.2, lw=2, zorder=3)
+
+# Configuración inicial del gráfico
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.set_aspect('equal')
+ax.set_facecolor("black")
+ax.axis("off")
+
+# Dibujar el campo de estrellas una vez
+# (Aquí deberías incluir tu función para dibujar el campo de estrellas)
+# draw_star_field(ax, num_stars=500, bounds=(-2.5, 2.5))
+
+# Controles en la barra lateral
+st.sidebar.header("Controles de la Estrella Central")
+x_pos = st.sidebar.slider("Posición X", -2.5, 2.5, 0.0, step=0.1)
+y_pos = st.sidebar.slider("Posición Y", -2.5, 2.5, 0.0, step=0.1)
+size = st.sidebar.slider("Tamaño", 0.1, 1.0, 0.2, step=0.1)
+color = st.sidebar.selectbox("Color", ["white", "yellow", "red", "blue"])
+
+# Dibujar la estrella central según los controles del usuario
+draw_central_star(ax, (x_pos, y_pos), size, color)
+
 # Mostrar el gráfico en Streamlit
 st.pyplot(fig)
+
