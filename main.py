@@ -794,42 +794,57 @@ st.image(final_image_with_textures, use_column_width=True)
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
+from scipy.ndimage import gaussian_filter
 
-# Función para generar una elipse
-def generate_ellipse(center_x, center_y, a, b, num_points=200):
-    theta = np.linspace(0, 2 * np.pi, num_points)
-    x = center_x + a * np.cos(theta)
-    y = center_y + b * np.sin(theta)
-    return x, y
+# Función para generar ruido de Perlin
+def generate_perlin_noise(shape, scale):
+    np.random.seed(42)
+    noise = np.random.rand(*shape)
+    for _ in range(scale):
+        noise = gaussian_filter(noise, sigma=1, mode='reflect')
+    noise = (noise - noise.min()) / (noise.max() - noise.min())  # Normalizar
+    return noise
 
-# Función para teselar con hexágonos y ajustar tamaño dinámico
-def generate_hexagonal_grid_dynamic(center_x, center_y, a, b, num_hex):
+# Función para generar una cuadrícula hexagonal con ruido fractal en los bordes
+def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_hex, noise_scale):
     hexagons = []
     rows = cols = int(np.sqrt(num_hex))  # Ajusta filas y columnas basado en num_hex
+    dx = 3/2 * hex_size  # Distancia horizontal entre hexágonos
+    dy = np.sqrt(3) * hex_size  # Distancia vertical entre hexágonos
     
-    # Tamaño base de los hexágonos calculado automáticamente
-    base_size = min(a, b) / (np.sqrt(num_hex) * 1.5)  # Factor para evitar espacios vacíos
+    noise = generate_perlin_noise((2 * rows + 1, 2 * cols + 1), scale=noise_scale)
     
     for row in range(-rows, rows + 1):
         for col in range(-cols, cols + 1):
+            x_offset = col * dx
+            y_offset = row * dy + (hex_size * np.sqrt(3) / 2 if col % 2 != 0 else 0)
+
             # Coordenadas del centro del hexágono
-            x_offset = col * 1.5 * base_size
-            y_offset = row * np.sqrt(3) * base_size + (base_size * np.sqrt(3) / 2 if col % 2 != 0 else 0)
             hex_x = center_x + x_offset
             hex_y = center_y + y_offset
-            
-            # Calcular la distancia al centro para ajustar el tamaño
-            distance = np.sqrt((hex_x - center_x)**2 / a**2 + (hex_y - center_y)**2 / b**2)
-            size = base_size * (1 - distance)  # Hexágonos más pequeños a mayor distancia
-            
-            if size > 0 and distance <= 1:  # Verificar si está dentro de la elipse
-                vertices_x = [hex_x + size * np.cos(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
-                vertices_y = [hex_y + size * np.sin(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
-                hexagons.append((vertices_x, vertices_y, size))
+
+            # Verificar si el centro del hexágono está dentro de la elipse
+            if ((hex_x - center_x)**2 / a**2) + ((hex_y - center_y)**2 / b**2) <= 1:
+                # Agregar ruido fractal al tamaño
+                noise_factor = noise[row + rows, col + cols] * 0.5 + 0.75
+                noisy_size = hex_size * noise_factor
+
+                # Generar vértices del hexágono
+                vertices_x = [hex_x + noisy_size * np.cos(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                vertices_y = [hex_y + noisy_size * np.sin(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                hexagons.append((vertices_x, vertices_y, noisy_size, noise_factor))
     return hexagons
 
+# Función para crear un mapa de colores en base a la intensidad
+def get_color_from_intensity(intensity):
+    r = int(255 * intensity)
+    g = int(200 * (1 - intensity))
+    b = 255
+    alpha = 0.7 + 0.3 * intensity  # Ajustar opacidad
+    return f'rgba({r}, {g}, {b}, {alpha})'
+
 # Streamlit UI
-st.title("Teselación Dinámica con Hexágonos dentro de una Elipse")
+st.title("Hexágonos con Ruido Fractal y Apariencia Irregular")
 
 # Parámetros de la elipse
 st.sidebar.header("Parámetros de la Elipse")
@@ -838,40 +853,44 @@ center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
 a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 150)
 b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
 
-# Parámetros de hexágonos
+# Parámetros de hexágonos y ruido
 st.sidebar.header("Parámetros de Hexágonos")
-num_hex = st.sidebar.slider("Número de Hexágonos", 50, 500, 200)
+num_hex = st.sidebar.slider("Número de Hexágonos", 10, 500, 100)
+hex_size = st.sidebar.slider("Tamaño de Hexágonos", 5, 30, 10)
+noise_scale = st.sidebar.slider("Nivel de Ruido Fractal", 1, 10, 3)
 
-# Generar la elipse
-ellipse_x, ellipse_y = generate_ellipse(center_x, center_y, a, b)
-
-# Generar hexágonos con tamaño dinámico
-hexagons = generate_hexagonal_grid_dynamic(center_x, center_y, a, b, num_hex)
+# Generar hexágonos con ruido fractal
+hexagons = generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_hex, noise_scale)
 
 # Crear la figura con Plotly
 fig = go.Figure()
 
-# Dibujar la elipse
-fig.add_trace(go.Scatter(
-    x=ellipse_x,
-    y=ellipse_y,
-    mode='lines',
-    line=dict(color='white', width=2),
-    name='Elipse'
-))
-
-# Dibujar hexágonos
-for hex_x, hex_y, size in hexagons:
-    color_opacity = 1 - (size / max(a, b))  # Opacidad basada en el tamaño
+# Dibujar hexágonos con ruido y colores
+for hex_x, hex_y, size, noise_intensity in hexagons:
+    color = get_color_from_intensity(noise_intensity)
     fig.add_trace(go.Scatter(
         x=hex_x,
         y=hex_y,
         fill='toself',
         mode='lines',
-        line=dict(color='rgba(0, 150, 255, 0.8)', width=0.5),
-        fillcolor=f'rgba(0, 150, 255, {color_opacity})',
+        line=dict(color='rgba(255, 255, 255, 0.6)', width=1.5),
+        fillcolor=color,
         showlegend=False
     ))
+
+# Generar contorno alrededor de los hexágonos
+contour_x, contour_y = [], []
+for hex_x, hex_y, _, _ in hexagons:
+    contour_x += hex_x + [None]  # Añadir separador para contorno
+    contour_y += hex_y + [None]
+
+fig.add_trace(go.Scatter(
+    x=contour_x,
+    y=contour_y,
+    mode='lines',
+    line=dict(color='white', width=2),
+    name='Contorno'
+))
 
 # Configuración del layout
 fig.update_layout(
@@ -879,9 +898,8 @@ fig.update_layout(
     plot_bgcolor="black",
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
-    title="Teselación Dinámica de Hexágonos en una Elipse",
+    title="Hexágonos con Ruido Fractal, Difusión y Contornos",
 )
 
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
-
