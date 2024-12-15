@@ -897,3 +897,92 @@ fig.update_layout(
 st.plotly_chart(fig)
 
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+
+# Función para generar puntos de la espiral
+def generate_spiral_points(center, a, b, num_points=500):
+    points = []
+    for t in np.linspace(0, 6 * np.pi, num_points):  # Ángulo creciente
+        x = center[0] + (a + b * t) * np.cos(t)
+        y = center[1] + (a + b * t) * np.sin(t)
+        points.append((x, y))
+    return points
+
+# Función para generar fractales desde puntos de la espiral
+def generate_fractal_branches(start_x, start_y, length, angle, depth, randomness=0.1):
+    if depth == 0:
+        return []
+    
+    branches = []
+    # Variación aleatoria en ángulo y longitud
+    rand_length = length * (1 - np.random.uniform(0, randomness))
+    angle1 = angle + np.random.uniform(-randomness, randomness)
+    angle2 = angle - np.random.uniform(-randomness, randomness)
+    
+    # Calcular los puntos finales de las dos ramas
+    end_x1 = start_x + rand_length * np.cos(angle1)
+    end_y1 = start_y + rand_length * np.sin(angle1)
+    end_x2 = start_x + rand_length * np.cos(angle2)
+    end_y2 = start_y + rand_length * np.sin(angle2)
+    
+    branches.append(((start_x, start_y), (end_x1, end_y1)))
+    branches.append(((start_x, start_y), (end_x2, end_y2)))
+    
+    # Recursividad para bifurcación
+    branches += generate_fractal_branches(end_x1, end_y1, rand_length * 0.7, angle1, depth - 1, randomness)
+    branches += generate_fractal_branches(end_x2, end_y2, rand_length * 0.7, angle2, depth - 1, randomness)
+    
+    return branches
+
+# Streamlit UI
+st.title("Fractales de Bifurcación desde una Espiral")
+st.sidebar.header("Parámetros")
+
+# Parámetros de la espiral
+center_x = st.sidebar.slider("Centro X", 0, 500, 250)
+center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
+a = st.sidebar.slider("Parámetro A (Radio Inicial)", 1, 20, 5)
+b = st.sidebar.slider("Parámetro B (Espaciado Espiral)", 0.1, 5.0, 0.5, step=0.1)
+
+# Parámetros de bifurcación
+num_branches = st.sidebar.slider("Número de Puntos de la Espiral", 5, 50, 20)
+branch_length = st.sidebar.slider("Longitud Inicial de Ramas", 10, 100, 50)
+branch_depth = st.sidebar.slider("Profundidad de Bifurcación", 1, 5, 3)
+randomness = st.sidebar.slider("Aleatoriedad en Ángulo y Longitud", 0.0, 0.5, 0.1)
+
+# Generar puntos de la espiral
+spiral_points = generate_spiral_points((center_x, center_y), a, b, num_branches)
+
+# Crear la figura en Plotly
+fig = go.Figure()
+
+# Dibujar la espiral
+spiral_x, spiral_y = zip(*spiral_points)
+fig.add_trace(go.Scatter(x=spiral_x, y=spiral_y, mode="lines", line=dict(color="white", width=2), name="Espiral"))
+
+# Dibujar fractales en cada punto de la espiral
+for x, y in spiral_points:
+    fractal_branches = generate_fractal_branches(x, y, branch_length, np.pi / 2, branch_depth, randomness)
+    for branch in fractal_branches:
+        (start_x, start_y), (end_x, end_y) = branch
+        fig.add_trace(go.Scatter(
+            x=[start_x, end_x],
+            y=[start_y, end_y],
+            mode="lines",
+            line=dict(color="blue", width=1.5),
+            showlegend=False
+        ))
+
+# Configuración del layout
+fig.update_layout(
+    paper_bgcolor="black",
+    plot_bgcolor="black",
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False),
+    title="Fractales de Bifurcación desde la Espiral",
+)
+
+# Mostrar la gráfica en Streamlit
+st.plotly_chart(fig, use_container_width=True)
