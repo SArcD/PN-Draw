@@ -795,98 +795,82 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 
-# Función para generar puntos de la espiral
-def generate_spiral_points(center, a, b, num_points=500):
-    points = []
-    for t in np.linspace(0, 6 * np.pi, num_points):  # Ángulo creciente
-        x = center[0] + (a + b * t) * np.cos(t)
-        y = center[1] + (a + b * t) * np.sin(t)
-        points.append((x, y, t))  # Incluye el ángulo t
-    return points
+# Función para generar una elipse
+def generate_ellipse(center_x, center_y, a, b, num_points=200):
+    theta = np.linspace(0, 2 * np.pi, num_points)
+    x = center_x + a * np.cos(theta)
+    y = center_y + b * np.sin(theta)
+    return x, y
 
-# Función para verificar si un punto está dentro de la elipse
-def is_inside_ellipse(x, y, center, a, b):
-    return ((x - center[0])**2 / a**2) + ((y - center[1])**2 / b**2) <= 1
+# Función para teselar con hexágonos
+def generate_hexagonal_grid(center_x, center_y, a, b, hex_size, num_hex):
+    hexagons = []
+    rows = cols = int(np.sqrt(num_hex))  # Ajusta filas y columnas basado en num_hex
+    dx = 3/2 * hex_size  # Distancia horizontal entre hexágonos
+    dy = np.sqrt(3) * hex_size  # Distancia vertical entre hexágonos
 
-# Función para generar ramas que crecen alejándose de la espiral
-def generate_fractal_branches_from_spiral(start_x, start_y, t, center, a, b, branch_length, depth, randomness=0.1):
-    branches = []
-    if depth == 0:
-        return branches
+    for row in range(-rows, rows + 1):
+        for col in range(-cols, cols + 1):
+            x_offset = col * dx
+            y_offset = row * dy + (hex_size * np.sqrt(3) / 2 if col % 2 != 0 else 0)
 
-    # Dirección perpendicular a la tangente de la espiral
-    angle = t + np.pi / 2  # Perpendicular a la espiral
-    angle += np.random.uniform(-randomness, randomness)  # Variación aleatoria
+            # Coordenadas del centro del hexágono
+            hex_x = center_x + x_offset
+            hex_y = center_y + y_offset
 
-    # Calcular el siguiente punto
-    end_x = start_x + branch_length * np.cos(angle)
-    end_y = start_y + branch_length * np.sin(angle)
+            # Verificar si el centro del hexágono está dentro de la elipse
+            if ((hex_x - center_x)**2 / a**2) + ((hex_y - center_y)**2 / b**2) <= 1:
+                # Generar vértices del hexágono
+                vertices_x = [hex_x + hex_size * np.cos(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                vertices_y = [hex_y + hex_size * np.sin(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                hexagons.append((vertices_x, vertices_y))
 
-    # Verificar si el punto final está dentro de la elipse
-    if not is_inside_ellipse(end_x, end_y, center, a, b):
-        return branches  # Detener crecimiento si se sale de la elipse
-
-    # Agregar la rama
-    branches.append(((start_x, start_y), (end_x, end_y)))
-
-    # Recursividad para bifurcaciones
-    branches += generate_fractal_branches_from_spiral(
-        end_x, end_y, t, center, a, b, branch_length * 0.7, depth - 1, randomness
-    )
-    branches += generate_fractal_branches_from_spiral(
-        end_x, end_y, t, center, a, b, branch_length * 0.7, depth - 1, randomness
-    )
-
-    return branches
+    return hexagons
 
 # Streamlit UI
-st.title("Fractales de Bifurcación Creciendo desde una Espiral")
-st.sidebar.header("Parámetros")
+st.title("Teselación con Hexágonos dentro de una Elipse")
 
-# Parámetros de la espiral
+# Parámetros de la elipse
+st.sidebar.header("Parámetros de la Elipse")
 center_x = st.sidebar.slider("Centro X", 0, 500, 250)
 center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
 a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 150)
 b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
-spiral_spacing = st.sidebar.slider("Espaciado de Espiral (b)", 0.1, 5.0, 0.5, step=0.1)
 
-# Parámetros de bifurcación
-num_points = st.sidebar.slider("Puntos de la Espiral", 5, 50, 20)
-branch_length = st.sidebar.slider("Longitud Inicial de Ramas", 10, 50, 20)
-branch_depth = st.sidebar.slider("Profundidad de Bifurcación", 1, 5, 3)
-randomness = st.sidebar.slider("Aleatoriedad en Crecimiento", 0.0, 0.5, 0.1)
+# Parámetros de hexágonos
+st.sidebar.header("Parámetros de Hexágonos")
+num_hex = st.sidebar.slider("Número de Hexágonos", 10, 500, 100)
+hex_size = st.sidebar.slider("Tamaño de Hexágonos", 5, 30, 10)
 
-# Generar puntos de la espiral
-center = (center_x, center_y)
-spiral_points = generate_spiral_points(center, a, spiral_spacing, num_points)
+# Generar la elipse
+ellipse_x, ellipse_y = generate_ellipse(center_x, center_y, a, b)
 
-# Crear la figura en Plotly
+# Generar hexágonos
+hexagons = generate_hexagonal_grid(center_x, center_y, a, b, hex_size, num_hex)
+
+# Crear la figura con Plotly
 fig = go.Figure()
 
-# Dibujar la elipse exterior
-theta = np.linspace(0, 2 * np.pi, 100)
-ellipse_x = center_x + a * np.cos(theta)
-ellipse_y = center_y + b * np.sin(theta)
-fig.add_trace(go.Scatter(x=ellipse_x, y=ellipse_y, mode="lines", line=dict(color="blue", width=2), name="Elipse Exterior"))
+# Dibujar la elipse
+fig.add_trace(go.Scatter(
+    x=ellipse_x,
+    y=ellipse_y,
+    mode='lines',
+    line=dict(color='white', width=2),
+    name='Elipse'
+))
 
-# Dibujar la espiral
-spiral_x, spiral_y, angles = zip(*spiral_points)
-fig.add_trace(go.Scatter(x=spiral_x, y=spiral_y, mode="lines", line=dict(color="white", width=1), name="Espiral"))
-
-# Dibujar fractales que parten desde la espiral y se dirigen hacia la elipse
-for i, (x, y, t) in enumerate(spiral_points):
-    fractal_branches = generate_fractal_branches_from_spiral(
-        x, y, t, center, a, b, branch_length, branch_depth, randomness
-    )
-    for branch in fractal_branches:
-        (start_x, start_y), (end_x, end_y) = branch
-        fig.add_trace(go.Scatter(
-            x=[start_x, end_x],
-            y=[start_y, end_y],
-            mode="lines",
-            line=dict(color="deepskyblue", width=1.5),
-            showlegend=False
-        ))
+# Dibujar hexágonos
+for hex_x, hex_y in hexagons:
+    fig.add_trace(go.Scatter(
+        x=hex_x,
+        y=hex_y,
+        fill='toself',
+        mode='lines',
+        line=dict(color='deepskyblue', width=1),
+        fillcolor='rgba(0, 100, 255, 0.3)',
+        showlegend=False
+    ))
 
 # Configuración del layout
 fig.update_layout(
@@ -894,8 +878,9 @@ fig.update_layout(
     plot_bgcolor="black",
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
-    title="Fractales de Bifurcación Creciendo desde la Espiral",
+    title="Teselación de Hexágonos dentro de una Elipse",
 )
 
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
+
