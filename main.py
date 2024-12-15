@@ -873,7 +873,7 @@ for hex_x, hex_y, size, noise_intensity in hexagons:
         y=hex_y,
         fill='toself',
         mode='lines',
-        line=dict(color='rgba(255, 255, 255, 0.6)', width=1.5),
+        line=dict(color="rgba(0, 0.4, 1, 0.3)", width=1.5),
         fillcolor=color,
         showlegend=False
     ))
