@@ -986,3 +986,113 @@ fig.update_layout(
 
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
+
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+
+# Función para generar puntos de la espiral
+def generate_spiral_points(center, a, b, num_points=500):
+    points = []
+    for t in np.linspace(0, 6 * np.pi, num_points):  # Ángulo creciente
+        x = center[0] + (a + b * t) * np.cos(t)
+        y = center[1] + (a + b * t) * np.sin(t)
+        points.append((x, y, t))  # Incluye el ángulo t
+    return points
+
+# Función para verificar si un punto está dentro de la elipse
+def is_inside_ellipse(x, y, center, a, b):
+    return ((x - center[0])**2 / a**2) + ((y - center[1])**2 / b**2) <= 1
+
+# Función para generar ramas que crecen alejándose de la espiral
+def generate_fractal_branches_from_spiral(start_x, start_y, t, center, a, b, branch_length, depth, randomness=0.1):
+    branches = []
+    if depth == 0:
+        return branches
+
+    # Dirección perpendicular a la tangente de la espiral
+    angle = t + np.pi / 2  # Perpendicular a la espiral
+    angle += np.random.uniform(-randomness, randomness)  # Variación aleatoria
+
+    # Calcular el siguiente punto
+    end_x = start_x + branch_length * np.cos(angle)
+    end_y = start_y + branch_length * np.sin(angle)
+
+    # Verificar si el punto final está dentro de la elipse
+    if not is_inside_ellipse(end_x, end_y, center, a, b):
+        return branches  # Detener crecimiento si se sale de la elipse
+
+    # Agregar la rama
+    branches.append(((start_x, start_y), (end_x, end_y)))
+
+    # Recursividad para bifurcaciones
+    branches += generate_fractal_branches_from_spiral(
+        end_x, end_y, t, center, a, b, branch_length * 0.7, depth - 1, randomness
+    )
+    branches += generate_fractal_branches_from_spiral(
+        end_x, end_y, t, center, a, b, branch_length * 0.7, depth - 1, randomness
+    )
+
+    return branches
+
+# Streamlit UI
+st.title("Fractales de Bifurcación Creciendo desde una Espiral")
+st.sidebar.header("Parámetros")
+
+# Parámetros de la espiral
+center_x = st.sidebar.slider("Centro X", 0, 500, 250)
+center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
+a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 150)
+b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
+spiral_spacing = st.sidebar.slider("Espaciado de Espiral (b)", 0.1, 5.0, 0.5, step=0.1)
+
+# Parámetros de bifurcación
+num_points = st.sidebar.slider("Puntos de la Espiral", 5, 50, 20)
+branch_length = st.sidebar.slider("Longitud Inicial de Ramas", 10, 50, 20)
+branch_depth = st.sidebar.slider("Profundidad de Bifurcación", 1, 5, 3)
+randomness = st.sidebar.slider("Aleatoriedad en Crecimiento", 0.0, 0.5, 0.1)
+
+# Generar puntos de la espiral
+center = (center_x, center_y)
+spiral_points = generate_spiral_points(center, a, spiral_spacing, num_points)
+
+# Crear la figura en Plotly
+fig = go.Figure()
+
+# Dibujar la elipse exterior
+theta = np.linspace(0, 2 * np.pi, 100)
+ellipse_x = center_x + a * np.cos(theta)
+ellipse_y = center_y + b * np.sin(theta)
+fig.add_trace(go.Scatter(x=ellipse_x, y=ellipse_y, mode="lines", line=dict(color="blue", width=2), name="Elipse Exterior"))
+
+# Dibujar la espiral
+spiral_x, spiral_y, angles = zip(*spiral_points)
+fig.add_trace(go.Scatter(x=spiral_x, y=spiral_y, mode="lines", line=dict(color="white", width=1), name="Espiral"))
+
+# Dibujar fractales que parten desde la espiral y se dirigen hacia la elipse
+for i, (x, y, t) in enumerate(spiral_points):
+    fractal_branches = generate_fractal_branches_from_spiral(
+        x, y, t, center, a, b, branch_length, branch_depth, randomness
+    )
+    for branch in fractal_branches:
+        (start_x, start_y), (end_x, end_y) = branch
+        fig.add_trace(go.Scatter(
+            x=[start_x, end_x],
+            y=[start_y, end_y],
+            mode="lines",
+            line=dict(color="deepskyblue", width=1.5),
+            showlegend=False
+        ))
+
+# Configuración del layout
+fig.update_layout(
+    paper_bgcolor="black",
+    plot_bgcolor="black",
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False),
+    title="Fractales de Bifurcación Creciendo desde la Espiral",
+)
+
+# Mostrar la gráfica en Streamlit
+st.plotly_chart(fig, use_container_width=True)
+
