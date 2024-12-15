@@ -791,5 +791,109 @@ final_image_with_textures = Image.alpha_composite(final_image, gaseous_shells)
 # Display the image
 st.image(final_image_with_textures, use_column_width=True)
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from noise import pnoise2
+
+# Función para generar ruido Perlin
+def perlin_noise(x, y, scale=10):
+    return (np.sin(x / scale) + np.cos(y / scale)) * 0.5 + 0.5
+
+# Función para generar fractales de bifurcación desde un punto
+def generate_fractal_branches(x, y, length, angle, depth, scale=10, opacity=0.7):
+    branches = []
+    if depth == 0:
+        return branches
+
+    # Calcular el punto final de la rama
+    x_end = x + length * np.cos(np.radians(angle))
+    y_end = y - length * np.sin(np.radians(angle))
+
+    # Opacidad basada en ruido Perlin
+    noise_value = perlin_noise(x, y, scale)
+    alpha = max(0.1, min(opacity * noise_value, 1.0))  # Limitar opacidad entre 0.1 y 1.0
+    branches.append(((x, y, x_end, y_end), alpha))
+
+    # Generar bifurcaciones
+    new_length = length * 0.7
+    branches += generate_fractal_branches(x_end, y_end, new_length, angle - 25, depth - 1, scale, opacity)
+    branches += generate_fractal_branches(x_end, y_end, new_length, angle + 25, depth - 1, scale, opacity)
+
+    return branches
+
+# Función principal para fractales partiendo de la espiral
+def draw_fractals_from_spiral(center, a, b, num_turns, num_fractals, depth, scale):
+    theta = 0
+    branches = []
+    step_size = (2 * np.pi * num_turns) / num_fractals
+
+    for i in range(num_fractals):
+        # Calcular punto en la espiral
+        r = (i / num_fractals) * a
+        x_spiral = center[0] + r * np.cos(theta)
+        y_spiral = center[1] + r * np.sin(theta)
+
+        # Generar fractales de bifurcación desde el punto de la espiral
+        branches += generate_fractal_branches(x_spiral, y_spiral, length=50, angle=np.degrees(theta), depth=depth, scale=scale)
+
+        theta += step_size  # Avanzar en la espiral
+
+    return branches
+
+# Configuración de Streamlit
+st.title("Fractales de Bifurcación en Espiral con Fondo Negro")
+st.sidebar.markdown("### Parámetros de la Espiral y Fractales")
+
+# Parámetros ajustables
+a = st.sidebar.slider("Semi-eje Mayor (a)", 50, 300, 150)
+b = st.sidebar.slider("Semi-eje Menor (b)", 50, 300, 100)
+num_turns = st.sidebar.slider("Número de Vueltas de la Espiral", 1, 10, 3)
+num_fractals = st.sidebar.slider("Número de Fractales en la Espiral", 10, 100, 30)
+depth = st.sidebar.slider("Profundidad de Bifurcación", 1, 6, 4)
+scale = st.sidebar.slider("Escala del Ruido Perlin", 5, 50, 20)
+opacity = st.sidebar.slider("Opacidad Máxima", 0.1, 1.0, 0.7)
+
+# Generar fractales partiendo de la espiral
+center = (0, 0)
+branches = draw_fractals_from_spiral(center, a, b, num_turns, num_fractals, depth, scale)
+
+# Visualización con Plotly
+fig = go.Figure()
+
+# Dibujar la espiral base
+t = np.linspace(0, 2 * np.pi * num_turns, num_fractals)
+x_spiral = center[0] + a * (t / (2 * np.pi * num_turns)) * np.cos(t)
+y_spiral = center[1] + b * (t / (2 * np.pi * num_turns)) * np.sin(t)
+fig.add_trace(go.Scatter(
+    x=x_spiral,
+    y=y_spiral,
+    mode='lines',
+    line=dict(color='white', width=2),
+    name='Espiral'
+))
+
+# Dibujar las ramas fractales
+for branch, alpha in branches:
+    x0, y0, x1, y1 = branch
+    fig.add_trace(go.Scatter(
+        x=[x0, x1],
+        y=[y0, y1],
+        mode='lines',
+        line=dict(color=f'rgba(100, 150, 255, {alpha})', width=2),
+        showlegend=False
+    ))
+
+# Configurar fondo negro
+fig.update_layout(
+    paper_bgcolor='black',
+    plot_bgcolor='black',
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False),
+    title="Fractales de Bifurcación desde la Espiral",
+)
+
+# Mostrar gráfico en Streamlit
+st.plotly_chart(fig)
 
 
