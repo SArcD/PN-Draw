@@ -884,3 +884,98 @@ fig.update_layout(
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
+
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+
+# Función para generar una elipse
+def generate_ellipse(center_x, center_y, a, b, num_points=200):
+    theta = np.linspace(0, 2 * np.pi, num_points)
+    x = center_x + a * np.cos(theta)
+    y = center_y + b * np.sin(theta)
+    return x, y
+
+# Función para teselar con hexágonos y ajustar tamaño dinámico
+def generate_hexagonal_grid_dynamic(center_x, center_y, a, b, num_hex):
+    hexagons = []
+    rows = cols = int(np.sqrt(num_hex))  # Ajusta filas y columnas basado en num_hex
+    
+    # Tamaño base de los hexágonos calculado automáticamente
+    base_size = min(a, b) / (np.sqrt(num_hex) * 1.5)  # Factor para evitar espacios vacíos
+    
+    for row in range(-rows, rows + 1):
+        for col in range(-cols, cols + 1):
+            # Coordenadas del centro del hexágono
+            x_offset = col * 1.5 * base_size
+            y_offset = row * np.sqrt(3) * base_size + (base_size * np.sqrt(3) / 2 if col % 2 != 0 else 0)
+            hex_x = center_x + x_offset
+            hex_y = center_y + y_offset
+            
+            # Calcular la distancia al centro para ajustar el tamaño
+            distance = np.sqrt((hex_x - center_x)**2 / a**2 + (hex_y - center_y)**2 / b**2)
+            size = base_size * (1 - distance)  # Hexágonos más pequeños a mayor distancia
+            
+            if size > 0 and distance <= 1:  # Verificar si está dentro de la elipse
+                vertices_x = [hex_x + size * np.cos(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                vertices_y = [hex_y + size * np.sin(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                hexagons.append((vertices_x, vertices_y, size))
+    return hexagons
+
+# Streamlit UI
+st.title("Teselación Dinámica con Hexágonos dentro de una Elipse")
+
+# Parámetros de la elipse
+st.sidebar.header("Parámetros de la Elipse")
+center_x = st.sidebar.slider("Centro X", 0, 500, 250)
+center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
+a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 150)
+b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
+
+# Parámetros de hexágonos
+st.sidebar.header("Parámetros de Hexágonos")
+num_hex = st.sidebar.slider("Número de Hexágonos", 50, 500, 200)
+
+# Generar la elipse
+ellipse_x, ellipse_y = generate_ellipse(center_x, center_y, a, b)
+
+# Generar hexágonos con tamaño dinámico
+hexagons = generate_hexagonal_grid_dynamic(center_x, center_y, a, b, num_hex)
+
+# Crear la figura con Plotly
+fig = go.Figure()
+
+# Dibujar la elipse
+fig.add_trace(go.Scatter(
+    x=ellipse_x,
+    y=ellipse_y,
+    mode='lines',
+    line=dict(color='white', width=2),
+    name='Elipse'
+))
+
+# Dibujar hexágonos
+for hex_x, hex_y, size in hexagons:
+    color_opacity = 1 - (size / max(a, b))  # Opacidad basada en el tamaño
+    fig.add_trace(go.Scatter(
+        x=hex_x,
+        y=hex_y,
+        fill='toself',
+        mode='lines',
+        line=dict(color='rgba(0, 150, 255, 0.8)', width=0.5),
+        fillcolor=f'rgba(0, 150, 255, {color_opacity})',
+        showlegend=False
+    ))
+
+# Configuración del layout
+fig.update_layout(
+    paper_bgcolor="black",
+    plot_bgcolor="black",
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False),
+    title="Teselación Dinámica de Hexágonos en una Elipse",
+)
+
+# Mostrar la gráfica en Streamlit
+st.plotly_chart(fig, use_container_width=True)
+
