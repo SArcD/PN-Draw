@@ -829,18 +829,18 @@ def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_h
                 noise_factor = noise[row + rows, col + cols] * 0.5 + 0.75
                 noisy_size = hex_size * noise_factor
 
-                # Generar vértices del hexágono
-                vertices_x = [hex_x + noisy_size * np.cos(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
-                vertices_y = [hex_y + noisy_size * np.sin(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
+                # Generar vértices del hexágono con ruido adicional
+                vertices_x = [hex_x + noisy_size * np.cos(angle) + np.random.uniform(-1, 1) for angle in np.linspace(0, 2 * np.pi, 7)]
+                vertices_y = [hex_y + noisy_size * np.sin(angle) + np.random.uniform(-1, 1) for angle in np.linspace(0, 2 * np.pi, 7)]
                 hexagons.append((vertices_x, vertices_y, noisy_size, noise_factor))
     return hexagons
 
 # Función para crear un mapa de colores en base a la intensidad
 def get_color_from_intensity(intensity):
-    r = int(255 * intensity)
-    g = int(200 * (1 - intensity))
-    b = 255
-    alpha = 0.7 + 0.3 * intensity  # Ajustar opacidad
+    r = int(50 + 200 * (1 - intensity))  # Tonos más oscuros de azul
+    g = int(100 * (1 - intensity))
+    b = int(255 * intensity)
+    alpha = 0.5 + 0.5 * intensity  # Opacidad suave
     return f'rgba({r}, {g}, {b}, {alpha})'
 
 # Función para generar contorno elíptico
@@ -866,39 +866,38 @@ num_hex = st.sidebar.slider("Número de Hexágonos", 10, 500, 100)
 hex_size = st.sidebar.slider("Tamaño de Hexágonos", 5, 30, 10)
 noise_scale = st.sidebar.slider("Nivel de Ruido Fractal", 1, 10, 3)
 
+# Nuevo parámetro para el desenfoque
+desemfoque = st.sidebar.slider("Nivel de Desenfoque", 0, 10, 2)
+
 # Generar hexágonos con ruido fractal
 hexagons = generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_hex, noise_scale)
 
 # Crear la figura con Plotly
 fig = go.Figure()
 
-# Dibujar hexágonos con ruido y colores
+# Dibujar hexágonos con ruido y colores difusos
 for hex_x, hex_y, size, noise_intensity in hexagons:
     color = get_color_from_intensity(noise_intensity)
+#    fig.add_trace(go.Scatter(
+#        x=hex_x,
+#        y=hex_y,
+#        fill='toself',
+#        mode='lines',
+#        line=dict(color='rgba(255, 255, 255, 0.1)', width=0.5),
+#        fillcolor=color,
+#        showlegend=False
+#    ))
+
     fig.add_trace(go.Scatter(
-        x=hex_x,
-        y=hex_y,
-        fill='toself',
-        mode='lines',
-        line=dict(color='deepskyblue', width=1),
-        fillcolor='rgba(0, 0.4, 1, 0.3)',  # Valor corregido
-        showlegend=False
-        ))
-
-
-# Generar contorno alrededor de los hexágonos
-contour_x, contour_y = [], []
-for hex_x, hex_y, _, _ in hexagons:
-    contour_x += hex_x + [None]  # Añadir separador para contorno
-    contour_y += hex_y + [None]
-
-fig.add_trace(go.Scatter(
-    x=contour_x,
-    y=contour_y,
+    x=hex_x,
+    y=hex_y,
+    fill='toself',
     mode='lines',
-    line=dict(color='white', width=2),
-    name='Contorno'
-))
+    line=dict(color='deepskyblue', width=1),
+    fillcolor='rgba(0, 0.4, 1, 0.3)',  # Valor corregido
+    showlegend=False
+    ))
+
 
 # Dibujar el contorno elíptico
 ellipse_x, ellipse_y = generate_ellipse_contour(center_x, center_y, a, b)
@@ -906,9 +905,12 @@ fig.add_trace(go.Scatter(
     x=ellipse_x,
     y=ellipse_y,
     mode='lines',
-    line=dict(color='red', width=3, dash='dot'),
+    line=dict(color='white', width=2),
     name='Contorno Elíptico'
 ))
+
+# Aplicar desenfoque ajustable en el layout
+fig.update_traces(marker=dict(opacity=max(0.1, 1 - desemfoque / 10)))
 
 # Configuración del layout
 fig.update_layout(
@@ -916,7 +918,7 @@ fig.update_layout(
     plot_bgcolor="black",
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
-    title="Hexágonos con Ruido Fractal, Difusión y Contornos",
+    title="Hexágonos con Apariencia Difusa y Contornos",
 )
 
 # Mostrar la gráfica en Streamlit
