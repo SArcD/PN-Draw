@@ -792,116 +792,84 @@ final_image_with_textures = Image.alpha_composite(final_image, gaseous_shells)
 st.image(final_image_with_textures, use_column_width=True)
 
 import streamlit as st
-import plotly.graph_objects as go
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
 import numpy as np
-from scipy.ndimage import gaussian_filter
 
-# Función para generar ruido de Perlin
-def generate_perlin_noise(shape, scale):
-    np.random.seed(42)
-    noise = np.random.rand(*shape)
-    for _ in range(scale):
-        noise = gaussian_filter(noise, sigma=1, mode='reflect')
-    noise = (noise - noise.min()) / (noise.max() - noise.min())  # Normalizar
-    return noise
-
-# Función para generar una cuadrícula hexagonal con ruido fractal en los bordes
-def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_hex, noise_scale):
-    hexagons = []
-    rows = cols = int(np.sqrt(num_hex))  # Ajusta filas y columnas basado en num_hex
-    dx = 3/2 * hex_size  # Distancia horizontal entre hexágonos
-    dy = np.sqrt(3) * hex_size  # Distancia vertical entre hexágonos
+# Función para generar un patrón hexagonal con ruido fractal
+def generate_fractal_hexagons(image_size, rows, cols, noise_intensity=5, blur_radius=5, color_gradient=("#002266", "#00AADD")):
+    """
+    Genera un patrón hexagonal fractal con gradiente y desenfoque.
     
-    noise = generate_perlin_noise((2 * rows + 1, 2 * cols + 1), scale=noise_scale)
+    Parameters:
+        image_size: Tuple[int, int] - Tamaño de la imagen.
+        rows: int - Número de filas de hexágonos.
+        cols: int - Número de columnas de hexágonos.
+        noise_intensity: int - Nivel de irregularidad en los bordes.
+        blur_radius: int - Radio del desenfoque.
+        color_gradient: Tuple[str, str] - Colores para el gradiente de centro a bordes.
+    """
+    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
     
-    for row in range(-rows, rows + 1):
-        for col in range(-cols, cols + 1):
-            x_offset = col * dx
-            y_offset = row * dy + (hex_size * np.sqrt(3) / 2 if col % 2 != 0 else 0)
-
+    hex_size = min(image_size[0] // cols, image_size[1] // rows) // 2
+    offset_x, offset_y = hex_size, hex_size
+    
+    for row in range(rows):
+        for col in range(cols):
             # Coordenadas del centro del hexágono
-            hex_x = center_x + x_offset
-            hex_y = center_y + y_offset
-
-            # Verificar si el centro del hexágono está dentro de la elipse
-            if ((hex_x - center_x)**2 / a**2) + ((hex_y - center_y)**2 / b**2) <= 1:
-                # Agregar ruido fractal al tamaño
-                noise_factor = noise[row + rows, col + cols] * 0.5 + 0.75
-                noisy_size = hex_size * noise_factor
-
-                # Generar vértices del hexágono
-                vertices_x = [hex_x + noisy_size * np.cos(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
-                vertices_y = [hex_y + noisy_size * np.sin(angle) for angle in np.linspace(0, 2 * np.pi, 7)]
-                hexagons.append((vertices_x, vertices_y, noisy_size, noise_factor))
-    return hexagons
-
-# Función para crear un mapa de colores en base a la intensidad
-def get_color_from_intensity(intensity):
-    r = int(255 * intensity)
-    g = int(200 * (1 - intensity))
-    b = 255
-    alpha = 0.7 + 0.3 * intensity  # Ajustar opacidad
-    return f'rgba({r}, {g}, {b}, {alpha})'
-
-# Streamlit UI
-st.title("Hexágonos con Ruido Fractal y Apariencia Irregular")
-
-# Parámetros de la elipse
-st.sidebar.header("Parámetros de la Elipse")
-center_x = st.sidebar.slider("Centro X", 0, 500, 250)
-center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
-a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 150)
-b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
-
-# Parámetros de hexágonos y ruido
-st.sidebar.header("Parámetros de Hexágonos")
-num_hex = st.sidebar.slider("Número de Hexágonos", 10, 500, 100)
-hex_size = st.sidebar.slider("Tamaño de Hexágonos", 5, 30, 10)
-noise_scale = st.sidebar.slider("Nivel de Ruido Fractal", 1, 10, 3)
-
-# Generar hexágonos con ruido fractal
-hexagons = generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_hex, noise_scale)
-
-# Crear la figura con Plotly
-fig = go.Figure()
-
-# Dibujar hexágonos con ruido y colores
-for hex_x, hex_y, size, noise_intensity in hexagons:
-    color = get_color_from_intensity(noise_intensity)
-    fig.add_trace(go.Scatter(
-        x=hex_x,
-        y=hex_y,
-        fill='toself',
-        mode='lines',
-        line=dict(color='deepskyblue', width=1),
-        fillcolor='rgba(0, 0.4, 1, 0.3)',  # Valor corregido
-        showlegend=False
-        ))
+            x = offset_x + col * 1.5 * hex_size
+            y = offset_y + row * np.sqrt(3) * hex_size
+            if col % 2 != 0:
+                y += np.sqrt(3) / 2 * hex_size
+                
+            # Generar vértices del hexágono con ruido fractal
+            vertices = []
+            for angle in np.linspace(0, 2 * np.pi, 7):  # 6 lados + cierre
+                nx = x + hex_size * np.cos(angle) + np.random.uniform(-noise_intensity, noise_intensity)
+                ny = y + hex_size * np.sin(angle) + np.random.uniform(-noise_intensity, noise_intensity)
+                vertices.append((nx, ny))
+            
+            # Dibujar hexágono con gradiente de colores
+            for thickness in range(hex_size, 0, -1):
+                color = interpolate_color(color_gradient[0], color_gradient[1], thickness / hex_size)
+                alpha = int(255 * (1 - thickness / hex_size))
+                draw.polygon(vertices, outline=color + (alpha,), width=2)
+    
+    # Aplicar desenfoque gaussiano
+    return img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
 
+# Función para interpolar entre dos colores
+def interpolate_color(color1, color2, t):
+    """
+    Interpola entre dos colores en base a un factor t (0-1).
+    """
+    c1 = np.array(ImageColor.getrgb(color1))
+    c2 = np.array(ImageColor.getrgb(color2))
+    color = (1 - t) * c1 + t * c2
+    return tuple(color.astype(int))
 
-# Generar contorno alrededor de los hexágonos
-contour_x, contour_y = [], []
-for hex_x, hex_y, _, _ in hexagons:
-    contour_x += hex_x + [None]  # Añadir separador para contorno
-    contour_y += hex_y + [None]
 
-fig.add_trace(go.Scatter(
-    x=contour_x,
-    y=contour_y,
-    mode='lines',
-    line=dict(color='white', width=2),
-    name='Contorno'
-))
+# Configuración de Streamlit
+st.title("Patrón de Hexágonos con Ruido Fractal y Gradiente")
 
-# Configuración del layout
-fig.update_layout(
-    paper_bgcolor="black",
-    plot_bgcolor="black",
-    xaxis=dict(visible=False),
-    yaxis=dict(visible=False),
-    title="Hexágonos con Ruido Fractal, Difusión y Contornos",
+# Parámetros en la barra lateral
+rows = st.sidebar.slider("Número de filas", 3, 20, 6)
+cols = st.sidebar.slider("Número de columnas", 3, 20, 8)
+noise_intensity = st.sidebar.slider("Intensidad del ruido", 1, 20, 5)
+blur_radius = st.sidebar.slider("Radio del desenfoque", 1, 20, 5)
+color1 = st.sidebar.color_picker("Color central", "#002266")
+color2 = st.sidebar.color_picker("Color de borde", "#00AADD")
+
+# Generar la imagen de hexágonos fractales
+image_size = (800, 800)
+hex_image = generate_fractal_hexagons(
+    image_size=image_size,
+    rows=rows,
+    cols=cols,
+    noise_intensity=noise_intensity,
+    blur_radius=blur_radius,
+    color_gradient=(color1, color2),
 )
 
-# Mostrar la gráfica en Streamlit
-st.plotly_chart(fig, use_container_width=True)
+st.image(hex_image, caption="Hexágonos con ruido fractal y desenfoque", use_column_width=True)
