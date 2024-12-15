@@ -875,7 +875,7 @@ fig = go.Figure()
 # Dibujar hexágonos con ruido y colores
 for hex_x, hex_y, size, noise_intensity in hexagons:
     color = get_color_from_intensity(noise_intensity)
-        fig.add_trace(go.Scatter(
+    fig.add_trace(go.Scatter(
         x=hex_x,
         y=hex_y,
         fill='toself',
