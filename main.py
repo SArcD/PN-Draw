@@ -842,10 +842,10 @@ def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_h
 
 # Función para crear un mapa de colores en base a la intensidad
 def get_color_from_intensity(intensity):
-    r = int(50 + 200 * (1 - intensity))  # Tonos más oscuros de azul
-    g = int(100 * (1 - intensity))
-    b = int(255 * intensity)
-    alpha = 0.5 + 0.5 * intensity  # Opacidad suave
+    r = min(255, max(0, int(50 + 200 * (1 - intensity))))  # Limitar r entre 0-255
+    g = min(255, max(0, int(100 * (1 - intensity))))
+    b = min(255, max(0, int(255 * intensity)))
+    alpha = round(min(1.0, max(0.0, 0.5 + 0.5 * intensity)), 2)  # Limitar alpha entre 0.0-1.0
     return f'rgba({r}, {g}, {b}, {alpha})'
 
 # Función para generar contorno elíptico
