@@ -825,8 +825,8 @@ def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_h
 
             # Calcular distancia al centro para cambiar el tamaño (efecto tipo Escher)
             distance = np.sqrt((hex_x - center_x)**2 + (hex_y - center_y)**2)
-            scale_factor = 1.5 - (distance / (a + b))  # Los hexágonos más cercanos al centro son más grandes
-            scale_factor = max(0.5, scale_factor)  # Límite mínimo
+            scale_factor = 2 - (distance / (a + b))  # Los hexágonos más cercanos al centro son más grandes
+            scale_factor = max(0.3, scale_factor)  # Límite mínimo
 
             # Verificar si el centro del hexágono está dentro de la elipse
             if ((hex_x - center_x)**2 / a**2) + ((hex_y - center_y)**2 / b**2) <= 1:
@@ -835,18 +835,10 @@ def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_h
                 noisy_size = hex_size * scale_factor * noise_factor
 
                 # Generar vértices del hexágono con ruido adicional
-                vertices_x = [hex_x + noisy_size * np.cos(angle) + np.random.uniform(-1, 1) for angle in np.linspace(0, 2 * np.pi, 7)]
-                vertices_y = [hex_y + noisy_size * np.sin(angle) + np.random.uniform(-1, 1) for angle in np.linspace(0, 2 * np.pi, 7)]
+                vertices_x = [hex_x + noisy_size * np.cos(angle) + np.random.uniform(-3, 3) for angle in np.linspace(0, 2 * np.pi, 7)]
+                vertices_y = [hex_y + noisy_size * np.sin(angle) + np.random.uniform(-3, 3) for angle in np.linspace(0, 2 * np.pi, 7)]
                 hexagons.append((vertices_x, vertices_y, noisy_size, noise_factor))
     return hexagons
-
-# Función para crear un mapa de colores en base a la intensidad
-def get_color_from_intensity(intensity):
-    r = min(255, max(0, int(50 + 200 * (1 - intensity))))  # Limitar r entre 0-255
-    g = min(255, max(0, int(100 * (1 - intensity))))
-    b = min(255, max(0, int(255 * intensity)))
-    alpha = round(min(1.0, max(0.0, 0.5 + 0.5 * intensity)), 2)  # Limitar alpha entre 0.0-1.0
-    return f'rgba({r}, {g}, {b}, {alpha})'
 
 # Función para generar contorno elíptico
 def generate_ellipse_contour(center_x, center_y, a, b, num_points=100):
@@ -869,7 +861,11 @@ b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
 st.sidebar.header("Parámetros de Hexágonos")
 num_hex = st.sidebar.slider("Número de Hexágonos", 10, 500, 100)
 hex_size = st.sidebar.slider("Tamaño de Hexágonos", 5, 30, 10)
-noise_scale = st.sidebar.slider("Nivel de Ruido Fractal", 1, 10, 3)
+noise_scale = st.sidebar.slider("Nivel de Ruido Fractal", 1, 10, 5)
+
+# Menú desplegable para seleccionar el color de los hexágonos
+st.sidebar.header("Parámetros de Colores")
+hex_color = st.sidebar.selectbox("Color de los Hexágonos", ["blue", "red", "green", "yellow", "purple"])
 
 # Nuevo parámetro para el desenfoque
 desemfoque = st.sidebar.slider("Nivel de Desenfoque", 0, 10, 2)
@@ -882,16 +878,28 @@ fig = go.Figure()
 
 # Dibujar hexágonos con ruido y colores difusos
 for hex_x, hex_y, size, noise_intensity in hexagons:
-    color = get_color_from_intensity(noise_intensity)
+    color_fill = f'rgba({hex_color_map(hex_color)}, {0.3})'  # Opacidad menor en el relleno
+    color_border = f'rgba({hex_color_map(hex_color)}, 0.8)'  # Mayor opacidad en el borde
     fig.add_trace(go.Scatter(
         x=hex_x,
         y=hex_y,
         fill='toself',
         mode='lines',
-        line=dict(color='rgba(255, 255, 255, 0.1)', width=0.5),
-        fillcolor=color,
+        line=dict(color=color_border, width=1.5),
+        fillcolor=color_fill,
         showlegend=False
     ))
+
+# Función para mapear colores seleccionados a valores RGB
+def hex_color_map(color_name):
+    colors = {
+        "blue": "0, 0, 255",
+        "red": "255, 0, 0",
+        "green": "0, 255, 0",
+        "yellow": "255, 255, 0",
+        "purple": "128, 0, 128",
+    }
+    return colors.get(color_name, "0, 0, 255")
 
 # Dibujar el contorno elíptico
 ellipse_x, ellipse_y = generate_ellipse_contour(center_x, center_y, a, b)
