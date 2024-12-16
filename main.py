@@ -838,6 +838,12 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from scipy.ndimage import gaussian_filter
+from scipy.spatial import ConvexHull
+
 # Función para mapear colores seleccionados a valores RGB
 def hex_color_map(color_name):
     colors = {
@@ -851,8 +857,8 @@ def hex_color_map(color_name):
     }
     return colors.get(color_name, "0, 0, 255")
 
-# Función recursiva para generar un patrón de ramas fractales con ruido adicional
-def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angle_variation=30, noise=5):
+# Función recursiva para generar un patrón de ramas fractales con ruido y opacidad decreciente
+def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angle_variation=30, noise=5, opacity=1.0):
     branches = []
     if depth == 0 or length < 2:  # Criterio de parada
         return branches
@@ -860,15 +866,16 @@ def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angl
     # Calcular ruido aleatorio en la posición final
     x_end = x + length * np.cos(np.radians(angle)) + np.random.uniform(-noise, noise)
     y_end = y + length * np.sin(np.radians(angle)) + np.random.uniform(-noise, noise)
-    branches.append(((x, y), (x_end, y_end)))
+    branches.append(((x, y), (x_end, y_end), opacity))
 
-    # Variabilidad adicional en escala y ángulo
+    # Variabilidad adicional en escala, ángulo y opacidad
     scale_factor_noisy = scale_factor * np.random.uniform(0.85, 1.15)
     angle_varied = angle_variation * np.random.uniform(0.7, 1.3)
+    opacity_next = max(opacity * 0.8, 0.1)  # Decrecer opacidad
 
     # Generar ramas hijas (izquierda y derecha)
-    branches += generate_fractal_branches(x_end, y_end, angle - angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise)
-    branches += generate_fractal_branches(x_end, y_end, angle + angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise)
+    branches += generate_fractal_branches(x_end, y_end, angle - angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise, opacity_next)
+    branches += generate_fractal_branches(x_end, y_end, angle + angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise, opacity_next)
 
     return branches
 
@@ -895,15 +902,19 @@ def generate_ellipse_contour(center_x, center_y, a, b, num_points=100):
     contour_y = center_y + b * np.sin(theta)
     return contour_x, contour_y
 
-# Función para agregar un efecto central difuso (brillo gaussiano)
-def generate_central_glow(center_x, center_y, glow_radius, resolution=200):
-    theta = np.linspace(0, 2 * np.pi, resolution)
-    glow_x = center_x + glow_radius * np.cos(theta)
-    glow_y = center_y + glow_radius * np.sin(theta)
-    return glow_x, glow_y
+# Función para agregar ruido difuso tipo nube usando Perlin noise
+def generate_perlin_noise(size, scale=10):
+    np.random.seed(42)
+    noise = np.random.randn(size, size)
+    return gaussian_filter(noise, sigma=scale, mode="reflect")
+
+# Función para calcular el perímetro conectado (Convex Hull)
+def compute_outer_perimeter(points):
+    hull = ConvexHull(points)
+    return points[hull.vertices, 0], points[hull.vertices, 1]
 
 # Streamlit UI
-st.title("Patrón Fractal de Ramas con Efecto Difuso")
+st.title("Patrón Fractal de Ramas con Efecto Difuso y Contorno Conectado")
 
 # Parámetros de la elipse
 st.sidebar.header("Parámetros de la Elipse")
@@ -931,31 +942,45 @@ tree_branches = generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initi
 # Crear la figura con Plotly
 fig = go.Figure()
 
-# Agregar efecto central difuso (glow)
-glow_x, glow_y = generate_central_glow(center_x, center_y, glow_radius=a * 0.6)
-fig.add_trace(go.Scatter(
-    x=glow_x,
-    y=glow_y,
-    fill="toself",
-    mode="lines",
-    line=dict(color=f'rgba({hex_color_map("orange")}, 0.1)', width=0),
-    fillcolor=f'rgba({hex_color_map("orange")}, 0.3)',
-    showlegend=False
+# Agregar efecto difuso con ruido de Perlin
+size = 500
+diffuse_noise = generate_perlin_noise(size)
+x_noise, y_noise = np.meshgrid(np.linspace(center_x - a, center_x + a, size), np.linspace(center_y - b, center_y + b, size))
+fig.add_trace(go.Contour(
+    x=x_noise[0],
+    y=y_noise[:, 0],
+    z=diffuse_noise,
+    colorscale=[[0, f'rgba({hex_color_map("orange")}, 0.2)'], [1, 'rgba(0,0,0,0)']],
+    showscale=False,
 ))
 
-# Dibujar las ramas fractales (borrando las que tocan el contorno interno)
+# Dibujar las ramas fractales
+points = []
 for branch in tree_branches:
-    (x1, y1), (x2, y2) = branch
+    (x1, y1), (x2, y2), opacity = branch
     # Desaparecer ramas que tocan el contorno interno
     if ((x2 - center_x)**2 / a**2) + ((y2 - center_y)**2 / b**2) <= 1.0:
         continue  # No dibujar ramas que tocan el círculo interno
 
+    points.append([x2, y2])
     fig.add_trace(go.Scatter(
         x=[x1, x2],
         y=[y1, y2],
         mode='lines',
-        line=dict(color=f'rgba({hex_color_map(branch_color)}, 0.8)', width=1),
+        line=dict(color=f'rgba({hex_color_map(branch_color)}, {opacity})', width=1),
         showlegend=False
+    ))
+
+# Dibujar el perímetro exterior conectado
+if points:
+    points = np.array(points)
+    perimeter_x, perimeter_y = compute_outer_perimeter(points)
+    fig.add_trace(go.Scatter(
+        x=perimeter_x,
+        y=perimeter_y,
+        mode='lines',
+        line=dict(color='white', width=2),
+        name='Contorno Conectado'
     ))
 
 # Dibujar el contorno interno
@@ -966,16 +991,6 @@ fig.add_trace(go.Scatter(
     mode='lines',
     line=dict(color='white', width=2),
     name='Contorno Interno'
-))
-
-# Dibujar el contorno externo (perímetro)
-external_x, external_y = generate_ellipse_contour(center_x, center_y, external_a, external_b)
-fig.add_trace(go.Scatter(
-    x=external_x,
-    y=external_y,
-    mode='lines',
-    line=dict(color='white', width=2),
-    name='Contorno Externo'
 ))
 
 # Configuración del layout
