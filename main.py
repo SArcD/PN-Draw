@@ -817,14 +817,10 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-# Función para generar ruido de Perlin
-def generate_perlin_noise(shape, scale):
-    np.random.seed(42)
-    noise = np.random.rand(*shape)
-    for _ in range(scale):
-        noise = gaussian_filter(noise, sigma=1, mode='reflect')
-    noise = (noise - noise.min()) / (noise.max() - noise.min())  # Normalizar
-    return noise
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from scipy.ndimage import gaussian_filter
 
 # Función para mapear colores seleccionados a valores RGB
 def hex_color_map(color_name):
@@ -842,7 +838,7 @@ def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angl
     branches = []
     if depth == 0 or length < 2:  # Criterio de parada
         return branches
-    
+
     # Calcular ruido aleatorio en la posición final
     x_end = x + length * np.cos(np.radians(angle)) + np.random.uniform(-noise, noise)
     y_end = y + length * np.sin(np.radians(angle)) + np.random.uniform(-noise, noise)
@@ -855,22 +851,23 @@ def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angl
     # Generar ramas hijas (izquierda y derecha)
     branches += generate_fractal_branches(x_end, y_end, angle - angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise)
     branches += generate_fractal_branches(x_end, y_end, angle + angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise)
-    
+
     return branches
 
-# Función para generar ramas fractales desde el contorno de la elipse con ruido en posiciones
+# Función para generar ramas fractales desde el contorno interno (elíptico)
 def generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points=20, position_noise=5):
     trees = []
     theta = np.linspace(0, 2 * np.pi, num_points)
-    for angle_index, angle in enumerate(theta):
-        # Calcular un punto sobre el contorno de la elipse con ruido adicional
+    for angle in theta:
+        # Calcular punto en el contorno elíptico
         x = center_x + a * np.cos(angle) + np.random.uniform(-position_noise, position_noise)
         y = center_y + b * np.sin(angle) + np.random.uniform(-position_noise, position_noise)
         
-        # Generar ramas desde este punto hacia afuera con un ángulo base
-        initial_angle = np.degrees(angle) + np.random.uniform(-15, 15)  # Variar ligeramente el ángulo inicial
-        branches = generate_fractal_branches(x, y, initial_angle, initial_length, depth)
-        trees.extend(branches)
+        # Ángulo base (desde el centro hacia afuera)
+        base_angle = np.degrees(angle) + np.random.uniform(-10, 10)
+        
+        # Generar ramas desde el contorno
+        trees.extend(generate_fractal_branches(x, y, base_angle, initial_length, depth, noise=position_noise))
     return trees
 
 # Función para generar contorno elíptico
@@ -881,54 +878,69 @@ def generate_ellipse_contour(center_x, center_y, a, b, num_points=100):
     return contour_x, contour_y
 
 # Streamlit UI
-st.title("Patrón Fractal de Ramas en una Elipse")
+st.title("Patrón Fractal de Ramas Desde un Contorno Interno")
 
 # Parámetros de la elipse
 st.sidebar.header("Parámetros de la Elipse")
 center_x = st.sidebar.slider("Centro X", 0, 500, 250)
 center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
-a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 150)
+a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 100)
 b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
+external_a = st.sidebar.slider("Semieje Mayor Externo", 100, 300, 150)
+external_b = st.sidebar.slider("Semieje Menor Externo", 100, 300, 150)
 
 # Parámetros de las ramas fractales
 st.sidebar.header("Parámetros del Patrón Fractal")
-initial_length = st.sidebar.slider("Longitud Inicial", 10, 100, 30)
-depth = st.sidebar.slider("Profundidad del Fractal", 1, 10, 4)
-scale_factor = st.sidebar.slider("Factor de Escala", 0.5, 0.9, 0.7)
-angle_variation = st.sidebar.slider("Variación de Ángulo", 10, 90, 30)
-num_points = st.sidebar.slider("Puntos en el Contorno", 5, 50, 20)
-position_noise = st.sidebar.slider("Ruido en Posición Inicial", 0, 20, 5)
-branch_noise = st.sidebar.slider("Ruido en las Ramas", 0, 10, 5)
+initial_length = st.sidebar.slider("Longitud Inicial", 10, 100, 40)
+depth = st.sidebar.slider("Profundidad del Fractal", 1, 10, 6)
+num_points = st.sidebar.slider("Puntos Iniciales", 5, 50, 20)
+position_noise = st.sidebar.slider("Ruido en Posición", 0, 20, 8)
 
 # Menú desplegable para seleccionar el color de las ramas
 st.sidebar.header("Parámetros de Colores")
 branch_color = st.sidebar.selectbox("Color de las Ramas", ["blue", "red", "green", "yellow", "purple"])
 
-# Generar ramas fractales desde el contorno de la elipse con ruido
+# Generar ramas fractales desde el contorno de la elipse interna
 tree_branches = generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points, position_noise)
 
 # Crear la figura con Plotly
 fig = go.Figure()
 
-# Dibujar las ramas fractales
+# Dibujar las ramas fractales (borrando las que tocan el contorno interno)
 for branch in tree_branches:
     (x1, y1), (x2, y2) = branch
+    # Desaparecer ramas que tocan el contorno interno
+    if ((x2 - center_x)**2 / a**2) + ((y2 - center_y)**2 / b**2) <= 1.0:
+        line_color = 'rgba(0, 0, 0, 0)'  # Invisible (negro con opacidad cero)
+    else:
+        line_color = f'rgba({hex_color_map(branch_color)}, 0.8)'
+
     fig.add_trace(go.Scatter(
         x=[x1, x2],
         y=[y1, y2],
         mode='lines',
-        line=dict(color=f'rgba({hex_color_map(branch_color)}, 0.8)', width=1.5),
+        line=dict(color=line_color, width=1.5),
         showlegend=False
     ))
 
-# Dibujar el contorno elíptico
+# Dibujar el contorno interno
 ellipse_x, ellipse_y = generate_ellipse_contour(center_x, center_y, a, b)
 fig.add_trace(go.Scatter(
     x=ellipse_x,
     y=ellipse_y,
     mode='lines',
     line=dict(color='white', width=2),
-    name='Contorno Elíptico'
+    name='Contorno Interno'
+))
+
+# Dibujar el contorno externo (perímetro)
+external_x, external_y = generate_ellipse_contour(center_x, center_y, external_a, external_b)
+fig.add_trace(go.Scatter(
+    x=external_x,
+    y=external_y,
+    mode='lines',
+    line=dict(color='white', width=2),
+    name='Contorno Externo'
 ))
 
 # Configuración del layout
@@ -937,10 +949,11 @@ fig.update_layout(
     plot_bgcolor="black",
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
-    title="Patrón Fractal de Ramas Cubriendo una Elipse",
+    title="Patrón Fractal Desde un Contorno con Perímetro Externo",
 )
 
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
+
 
 
