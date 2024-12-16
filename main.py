@@ -822,6 +822,11 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from scipy.ndimage import gaussian_filter
+
 # Función para mapear colores seleccionados a valores RGB
 def hex_color_map(color_name):
     colors = {
@@ -954,6 +959,7 @@ fig.update_layout(
 
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
+
 
 
 
