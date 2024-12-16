@@ -807,6 +807,11 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from scipy.ndimage import gaussian_filter
+
 # Función para generar ruido de Perlin
 def generate_perlin_noise(shape, scale):
     np.random.seed(42)
@@ -844,16 +849,19 @@ def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angl
     
     return branches
 
-# Función para generar un patrón de ramas dentro de una elipse
-def generate_fractal_tree_in_ellipse(center_x, center_y, a, b, initial_length, depth):
+# Función para generar ramas fractales desde el contorno de la elipse
+def generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points=20):
     trees = []
-    for angle in np.linspace(-90, 90, num=5):  # Distribuir varias ramas desde el centro
-        branches = generate_fractal_branches(center_x, center_y, angle, initial_length, depth)
-        for branch in branches:
-            # Verificar si las ramas caen dentro de la elipse
-            (x1, y1), (x2, y2) = branch
-            if ((x2 - center_x)**2 / a**2) + ((y2 - center_y)**2 / b**2) <= 1:
-                trees.append(branch)
+    theta = np.linspace(0, 2 * np.pi, num_points)
+    for angle_index, angle in enumerate(theta):
+        # Calcular un punto sobre el contorno de la elipse
+        x = center_x + a * np.cos(angle)
+        y = center_y + b * np.sin(angle)
+        
+        # Generar ramas desde este punto hacia afuera
+        initial_angle = np.degrees(angle)  # Usar la tangente al contorno como ángulo inicial
+        branches = generate_fractal_branches(x, y, initial_angle, initial_length, depth)
+        trees.extend(branches)
     return trees
 
 # Función para generar contorno elíptico
@@ -875,17 +883,18 @@ b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
 
 # Parámetros de las ramas fractales
 st.sidebar.header("Parámetros del Patrón Fractal")
-initial_length = st.sidebar.slider("Longitud Inicial", 10, 100, 50)
-depth = st.sidebar.slider("Profundidad del Fractal", 1, 10, 5)
+initial_length = st.sidebar.slider("Longitud Inicial", 10, 100, 30)
+depth = st.sidebar.slider("Profundidad del Fractal", 1, 10, 4)
 scale_factor = st.sidebar.slider("Factor de Escala", 0.5, 0.9, 0.7)
 angle_variation = st.sidebar.slider("Variación de Ángulo", 10, 90, 30)
+num_points = st.sidebar.slider("Puntos en el Contorno", 5, 50, 20)
 
 # Menú desplegable para seleccionar el color de las ramas
 st.sidebar.header("Parámetros de Colores")
 branch_color = st.sidebar.selectbox("Color de las Ramas", ["blue", "red", "green", "yellow", "purple"])
 
-# Generar ramas fractales dentro de la elipse
-tree_branches = generate_fractal_tree_in_ellipse(center_x, center_y, a, b, initial_length, depth)
+# Generar ramas fractales desde el contorno de la elipse
+tree_branches = generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points)
 
 # Crear la figura con Plotly
 fig = go.Figure()
