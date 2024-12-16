@@ -805,6 +805,17 @@ def generate_perlin_noise(shape, scale):
     noise = (noise - noise.min()) / (noise.max() - noise.min())  # Normalizar
     return noise
 
+# Función para mapear colores seleccionados a valores RGB
+def hex_color_map(color_name):
+    colors = {
+        "blue": "0, 0, 255",
+        "red": "255, 0, 0",
+        "green": "0, 255, 0",
+        "yellow": "255, 255, 0",
+        "purple": "128, 0, 128",
+    }
+    return colors.get(color_name, "0, 0, 255")
+
 # Función para generar una cuadrícula hexagonal con ruido fractal en los bordes
 def generate_hexagonal_grid_with_noise(center_x, center_y, a, b, hex_size, num_hex, noise_scale):
     hexagons = []
@@ -878,7 +889,7 @@ fig = go.Figure()
 
 # Dibujar hexágonos con ruido y colores difusos
 for hex_x, hex_y, size, noise_intensity in hexagons:
-    color_fill = f'rgba({hex_color_map(hex_color)}, {0.3})'  # Opacidad menor en el relleno
+    color_fill = f'rgba({hex_color_map(hex_color)}, 0.3)'  # Opacidad menor en el relleno
     color_border = f'rgba({hex_color_map(hex_color)}, 0.8)'  # Mayor opacidad en el borde
     fig.add_trace(go.Scatter(
         x=hex_x,
@@ -889,17 +900,6 @@ for hex_x, hex_y, size, noise_intensity in hexagons:
         fillcolor=color_fill,
         showlegend=False
     ))
-
-# Función para mapear colores seleccionados a valores RGB
-def hex_color_map(color_name):
-    colors = {
-        "blue": "0, 0, 255",
-        "red": "255, 0, 0",
-        "green": "0, 255, 0",
-        "yellow": "255, 255, 0",
-        "purple": "128, 0, 128",
-    }
-    return colors.get(color_name, "0, 0, 255")
 
 # Dibujar el contorno elíptico
 ellipse_x, ellipse_y = generate_ellipse_contour(center_x, center_y, a, b)
