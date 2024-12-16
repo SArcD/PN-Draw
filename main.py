@@ -833,6 +833,11 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from scipy.ndimage import gaussian_filter
+
 # Función para mapear colores seleccionados a valores RGB
 def hex_color_map(color_name):
     colors = {
@@ -841,6 +846,8 @@ def hex_color_map(color_name):
         "green": "0, 255, 0",
         "yellow": "255, 255, 0",
         "purple": "128, 0, 128",
+        "orange": "255, 165, 0",
+        "white": "255, 255, 255"
     }
     return colors.get(color_name, "0, 0, 255")
 
@@ -888,8 +895,15 @@ def generate_ellipse_contour(center_x, center_y, a, b, num_points=100):
     contour_y = center_y + b * np.sin(theta)
     return contour_x, contour_y
 
+# Función para agregar un efecto central difuso (brillo gaussiano)
+def generate_central_glow(center_x, center_y, glow_radius, resolution=200):
+    theta = np.linspace(0, 2 * np.pi, resolution)
+    glow_x = center_x + glow_radius * np.cos(theta)
+    glow_y = center_y + glow_radius * np.sin(theta)
+    return glow_x, glow_y
+
 # Streamlit UI
-st.title("Patrón Fractal de Ramas Desde un Contorno Interno")
+st.title("Patrón Fractal de Ramas con Efecto Difuso")
 
 # Parámetros de la elipse
 st.sidebar.header("Parámetros de la Elipse")
@@ -902,14 +916,14 @@ external_b = st.sidebar.slider("Semieje Menor Externo", 100, 300, 150)
 
 # Parámetros de las ramas fractales
 st.sidebar.header("Parámetros del Patrón Fractal")
-initial_length = st.sidebar.slider("Longitud Inicial", 10, 100, 40)
+initial_length = st.sidebar.slider("Longitud Inicial", 5, 50, 20)
 depth = st.sidebar.slider("Profundidad del Fractal", 1, 10, 6)
-num_points = st.sidebar.slider("Puntos Iniciales", 5, 50, 20)
+num_points = st.sidebar.slider("Puntos Iniciales", 10, 50, 30)
 position_noise = st.sidebar.slider("Ruido en Posición", 0, 20, 8)
 
 # Menú desplegable para seleccionar el color de las ramas
 st.sidebar.header("Parámetros de Colores")
-branch_color = st.sidebar.selectbox("Color de las Ramas", ["blue", "red", "green", "yellow", "purple"])
+branch_color = st.sidebar.selectbox("Color de las Ramas", ["blue", "red", "green", "yellow", "purple", "orange"])
 
 # Generar ramas fractales desde el contorno de la elipse interna
 tree_branches = generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points, position_noise)
@@ -917,20 +931,30 @@ tree_branches = generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initi
 # Crear la figura con Plotly
 fig = go.Figure()
 
+# Agregar efecto central difuso (glow)
+glow_x, glow_y = generate_central_glow(center_x, center_y, glow_radius=a * 0.6)
+fig.add_trace(go.Scatter(
+    x=glow_x,
+    y=glow_y,
+    fill="toself",
+    mode="lines",
+    line=dict(color=f'rgba({hex_color_map("orange")}, 0.1)', width=0),
+    fillcolor=f'rgba({hex_color_map("orange")}, 0.3)',
+    showlegend=False
+))
+
 # Dibujar las ramas fractales (borrando las que tocan el contorno interno)
 for branch in tree_branches:
     (x1, y1), (x2, y2) = branch
     # Desaparecer ramas que tocan el contorno interno
     if ((x2 - center_x)**2 / a**2) + ((y2 - center_y)**2 / b**2) <= 1.0:
-        line_color = 'rgba(0, 0, 0, 0)'  # Invisible (negro con opacidad cero)
-    else:
-        line_color = f'rgba({hex_color_map(branch_color)}, 0.8)'
+        continue  # No dibujar ramas que tocan el círculo interno
 
     fig.add_trace(go.Scatter(
         x=[x1, x2],
         y=[y1, y2],
         mode='lines',
-        line=dict(color=line_color, width=1.5),
+        line=dict(color=f'rgba({hex_color_map(branch_color)}, 0.8)', width=1),
         showlegend=False
     ))
 
@@ -960,7 +984,7 @@ fig.update_layout(
     plot_bgcolor="black",
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
-    title="Patrón Fractal Desde un Contorno con Perímetro Externo",
+    title="Envolturas con Fractales de Bifurcación y Ruido Perlin",
 )
 
 # Mostrar la gráfica en Streamlit
