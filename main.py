@@ -796,6 +796,11 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from scipy.ndimage import gaussian_filter
+
 # Función para generar ruido de Perlin
 def generate_perlin_noise(shape, scale):
     np.random.seed(42)
