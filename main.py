@@ -793,6 +793,7 @@ st.image(final_image_with_textures, use_column_width=True)
 
 
 import numpy as np
+import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
 
 # Function to create filaments around a reference circle
@@ -857,22 +858,28 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
 
     return img
 
-# Image parameters
-image_size = (800, 800)
-center = (400, 400)
-radius = 300
+# Streamlit interface
+st.title("Nebula Outer Filaments")
 
-# Filament parameters
-num_nodes = 50
-filament_length = 100
-noise_intensity = 20
-blur_radius = 10
+# Sidebar inputs
+st.sidebar.header("Filament Parameters")
+image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
+center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
+radius = st.sidebar.slider("Reference Circle Radius", 50, 500, 300)
+num_nodes = st.sidebar.slider("Number of Nodes", 10, 100, 50)
+filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
+noise_intensity = st.sidebar.slider("Noise Intensity", 1, 50, 20)
+blur_radius = st.sidebar.slider("Gaussian Blur Radius", 1, 20, 10)
 
 # Create the filaments
+image_size = (image_width, image_height)
+center = (center_x, center_y)
 filaments_image = create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius)
 
-# Save or display the image
-filaments_image.show()
+# Display the image
+st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=True)
 
 
 
