@@ -814,7 +814,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
         PIL.Image: Image with filaments.
     """
     # Create a blank image
-    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    img = Image.new("RGBA", image_size, "black")
     draw = ImageDraw.Draw(img)
 
     # Generate nodes on the reference circle
@@ -851,7 +851,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
         # Draw the filament with decreasing width
         for i in range(1, len(filament_points)):
             width = int(max(1, 5 - i / 2))  # Width decreases along the filament
-            draw.line([filament_points[i - 1], filament_points[i]], fill=(255, 255, 255, 100), width=width)
+            draw.line([filament_points[i - 1], filament_points[i]], fill=(255, 255, 255, 255), width=width)
 
     # Apply Gaussian blur for gaseous effect
     img = img.filter(ImageFilter.GaussianBlur(blur_radius))
@@ -878,11 +878,11 @@ image_size = (image_width, image_height)
 center = (center_x, center_y)
 filaments_image = create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius)
 
+# Ensure proper conversion to RGB for display
+filaments_image = filaments_image.convert("RGB")
+
 # Display the image
 st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=True)
-
-
-
 
 
 
