@@ -851,8 +851,15 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
 
         # Draw the filament with decreasing width
         for i in range(1, len(filament_points)):
-            width = int(max(1, 5 - i / 2))  # Width decreases along the filament
-            draw.line([filament_points[i - 1], filament_points[i]], fill=filament_color + (255,), width=width)
+            width = int(max(2, 8 - i / 2))  # Width decreases along the filament
+            draw.line([filament_points[i - 1], filament_points[i]], fill=filament_color + (180,), width=width)
+
+    # Add interconnections between filaments
+    for i in range(len(nodes)):
+        if np.random.rand() > 0.7:  # Random chance to create an interconnection
+            start_node = nodes[i]
+            end_node = nodes[np.random.randint(0, len(nodes))]
+            draw.line([start_node, end_node], fill=filament_color + (100,), width=3)
 
     # Apply Gaussian blur for gaseous effect
     img = img.filter(ImageFilter.GaussianBlur(blur_radius))
@@ -869,11 +876,11 @@ image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
 center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
 center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
 radius = st.sidebar.slider("Reference Circle Radius", 50, 500, 300)
-num_nodes = st.sidebar.slider("Number of Nodes", 10, 100, 50)
-filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
+num_nodes = st.sidebar.slider("Number of Nodes", 10, 150, 80)
+filament_length = st.sidebar.slider("Filament Length", 10, 300, 150)
 noise_intensity = st.sidebar.slider("Noise Intensity", 1, 50, 20)
-blur_radius = st.sidebar.slider("Gaussian Blur Radius", 1, 20, 10)
-filament_color_hex = st.sidebar.color_picker("Filament Color", "#FFFFFF")
+blur_radius = st.sidebar.slider("Gaussian Blur Radius", 1, 30, 15)
+filament_color_hex = st.sidebar.color_picker("Filament Color", "#FFA500")
 filament_color = ImageColor.getrgb(filament_color_hex)
 
 # Create the filaments
@@ -886,7 +893,6 @@ filaments_image = filaments_image.convert("RGB")
 
 # Display the image
 st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=True)
-
 
 
 
