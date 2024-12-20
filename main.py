@@ -794,10 +794,10 @@ st.image(final_image_with_textures, use_column_width=True)
 
 import numpy as np
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
 # Function to create filaments around a reference circle
-def create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius):
+def create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius, filament_color):
     """
     Creates an outer layer of filaments with irregular connections.
 
@@ -809,6 +809,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
         filament_length (int): Maximum growth length of the filaments.
         noise_intensity (float): Intensity of irregularity in filament growth.
         blur_radius (int): Gaussian blur radius for gaseous effect.
+        filament_color (tuple): RGB color of the filaments.
 
     Returns:
         PIL.Image: Image with filaments.
@@ -851,7 +852,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
         # Draw the filament with decreasing width
         for i in range(1, len(filament_points)):
             width = int(max(1, 5 - i / 2))  # Width decreases along the filament
-            draw.line([filament_points[i - 1], filament_points[i]], fill=(255, 255, 255, 255), width=width)
+            draw.line([filament_points[i - 1], filament_points[i]], fill=filament_color + (255,), width=width)
 
     # Apply Gaussian blur for gaseous effect
     img = img.filter(ImageFilter.GaussianBlur(blur_radius))
@@ -872,18 +873,19 @@ num_nodes = st.sidebar.slider("Number of Nodes", 10, 100, 50)
 filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
 noise_intensity = st.sidebar.slider("Noise Intensity", 1, 50, 20)
 blur_radius = st.sidebar.slider("Gaussian Blur Radius", 1, 20, 10)
+filament_color_hex = st.sidebar.color_picker("Filament Color", "#FFFFFF")
+filament_color = ImageColor.getrgb(filament_color_hex)
 
 # Create the filaments
 image_size = (image_width, image_height)
 center = (center_x, center_y)
-filaments_image = create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius)
+filaments_image = create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius, filament_color)
 
 # Ensure proper conversion to RGB for display
 filaments_image = filaments_image.convert("RGB")
 
 # Display the image
 st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=True)
-
 
 
 
