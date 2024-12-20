@@ -899,7 +899,6 @@ st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=Tru
 
 
 
-
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
