@@ -791,6 +791,100 @@ final_image_with_textures = Image.alpha_composite(final_image, gaseous_shells)
 # Display the image
 st.image(final_image_with_textures, use_column_width=True)
 
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+
+# Function to create filaments around a reference circle
+def create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius):
+    """
+    Creates an outer layer of filaments with irregular connections.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the reference circle (x, y).
+        radius (int): Radius of the reference circle.
+        num_nodes (int): Number of nodes on the circle.
+        filament_length (int): Maximum growth length of the filaments.
+        noise_intensity (float): Intensity of irregularity in filament growth.
+        blur_radius (int): Gaussian blur radius for gaseous effect.
+
+    Returns:
+        PIL.Image: Image with filaments.
+    """
+    # Create a blank image
+    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # Generate nodes on the reference circle
+    angles = np.linspace(0, 2 * np.pi, num_nodes, endpoint=False)
+    nodes = [
+        (
+            int(center[0] + radius * np.cos(angle)),
+            int(center[1] + radius * np.sin(angle))
+        )
+        for angle in angles
+    ]
+
+    # Draw filaments from each node
+    for node in nodes:
+        x, y = node
+        num_segments = np.random.randint(5, 15)  # Number of segments for the filament
+        filament_points = [(x, y)]
+
+        for _ in range(num_segments):
+            # Grow the filament with random perturbations
+            dx = np.random.uniform(-noise_intensity, noise_intensity)
+            dy = np.random.uniform(-noise_intensity, noise_intensity)
+
+            # Ensure the filament grows outward
+            angle = np.random.uniform(0, 2 * np.pi)
+            dx += np.cos(angle) * filament_length / num_segments
+            dy += np.sin(angle) * filament_length / num_segments
+
+            new_x = filament_points[-1][0] + dx
+            new_y = filament_points[-1][1] + dy
+
+            filament_points.append((new_x, new_y))
+
+        # Draw the filament with decreasing width
+        for i in range(1, len(filament_points)):
+            width = int(max(1, 5 - i / 2))  # Width decreases along the filament
+            draw.line([filament_points[i - 1], filament_points[i]], fill=(255, 255, 255, 100), width=width)
+
+    # Apply Gaussian blur for gaseous effect
+    img = img.filter(ImageFilter.GaussianBlur(blur_radius))
+
+    return img
+
+# Image parameters
+image_size = (800, 800)
+center = (400, 400)
+radius = 300
+
+# Filament parameters
+num_nodes = 50
+filament_length = 100
+noise_intensity = 20
+blur_radius = 10
+
+# Create the filaments
+filaments_image = create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius)
+
+# Save or display the image
+filaments_image.show()
+
+
+
+
+
+
+
+
+
+
+
+
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
