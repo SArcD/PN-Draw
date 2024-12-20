@@ -791,7 +791,6 @@ final_image_with_textures = Image.alpha_composite(final_image, gaseous_shells)
 # Display the image
 st.image(final_image_with_textures, use_column_width=True)
 
-
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
@@ -847,19 +846,27 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
             new_x = filament_points[-1][0] + dx
             new_y = filament_points[-1][1] + dy
 
+            # Prevent inward growth
+            if (new_x - center[0])**2 + (new_y - center[1])**2 < radius**2:
+                break
+
             filament_points.append((new_x, new_y))
 
-        # Draw the filament with decreasing width
+        # Draw the filament with decreasing width and opacity
         for i in range(1, len(filament_points)):
             width = int(max(2, 8 - i / 2))  # Width decreases along the filament
-            draw.line([filament_points[i - 1], filament_points[i]], fill=filament_color + (180,), width=width)
+            opacity = max(50, 180 - i * 10)  # Opacity decreases along the filament
+            draw.line([filament_points[i - 1], filament_points[i]], fill=filament_color + (opacity,), width=width)
 
-    # Add interconnections between filaments
+    # Add interconnections between filaments, avoiding inward connections
     for i in range(len(nodes)):
         if np.random.rand() > 0.7:  # Random chance to create an interconnection
             start_node = nodes[i]
             end_node = nodes[np.random.randint(0, len(nodes))]
-            draw.line([start_node, end_node], fill=filament_color + (100,), width=3)
+
+            # Ensure connections stay outside the reference circle
+            if ((end_node[0] - center[0])**2 + (end_node[1] - center[1])**2) >= radius**2:
+                draw.line([start_node, end_node], fill=filament_color + (100,), width=3)
 
     # Apply Gaussian blur for gaseous effect
     img = img.filter(ImageFilter.GaussianBlur(blur_radius))
@@ -893,6 +900,7 @@ filaments_image = filaments_image.convert("RGB")
 
 # Display the image
 st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=True)
+
 
 
 
