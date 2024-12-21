@@ -1107,6 +1107,50 @@ def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, start_c
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
+def generate_bubble(image_size, center, inner_radius, outer_radius, start_color, end_color, turbulence, blur_radius):
+    """
+    Generate the central bubble-like structure with gradients and noise.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the bubble (x, y).
+        inner_radius (int): Inner radius of the bubble.
+        outer_radius (int): Outer radius of the bubble.
+        start_color (tuple): RGB color at the inner radius.
+        end_color (tuple): RGB color at the outer radius.
+        turbulence (float): Amount of turbulence/noise to apply.
+        blur_radius (int): Gaussian blur radius for smoothing.
+
+    Returns:
+        PIL.Image: Image with generated bubble.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for r in range(inner_radius, outer_radius):
+        t = (r - inner_radius) / (outer_radius - inner_radius)
+        alpha = int(255 * (1 - t))
+
+        # Interpolate color
+        r_color = int(start_color[0] + t * (end_color[0] - start_color[0]))
+        g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
+        b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
+
+        # Add turbulence
+        offset_x = int(turbulence * np.random.uniform(-1, 1))
+        offset_y = int(turbulence * np.random.uniform(-1, 1))
+
+        draw.ellipse(
+            [
+                center[0] - r + offset_x, center[1] - r + offset_y,
+                center[0] + r + offset_x, center[1] + r + offset_y
+            ],
+            outline=(r_color, g_color, b_color, alpha), width=1
+        )
+
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
 def blend_filaments_with_gas(filaments_image, gas_image, transition_strength):
     """
     Blend the edges of the filaments with the gas layer for a smoother transition.
@@ -1164,7 +1208,7 @@ def generate_star_field(image_size, num_stars):
     return img
 
 # Streamlit interface
-st.title("Nebula Simulation with Filaments and Gas Layers")
+st.title("Nebula Simulation with Filaments, Gas Layers, and Central Bubble")
 
 # Sidebar inputs
 st.sidebar.header("Filament Parameters")
@@ -1192,6 +1236,16 @@ gas_start_color = tuple(int(gas_start_color_hex.lstrip("#")[i:i+2], 16) for i in
 gas_end_color = tuple(int(gas_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 gas_blur_radius = st.sidebar.slider("Gas Blur Radius", 0, 50, 20)
 
+st.sidebar.header("Bubble Parameters")
+bubble_inner_radius = st.sidebar.slider("Bubble Inner Radius", 10, 200, 50)
+bubble_outer_radius = st.sidebar.slider("Bubble Outer Radius", 50, 300, 150)
+bubble_start_color_hex = st.sidebar.color_picker("Bubble Start Color", "#FF00FF")
+bubble_end_color_hex = st.sidebar.color_picker("Bubble End Color", "#000000")
+bubble_start_color = tuple(int(bubble_start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+bubble_end_color = tuple(int(bubble_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+bubble_turbulence = st.sidebar.slider("Bubble Turbulence", 0.0, 10.0, 2.0)
+bubble_blur_radius = st.sidebar.slider("Bubble Blur Radius", 0, 30, 10)
+
 st.sidebar.header("Star Field Parameters")
 num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
 
@@ -1203,15 +1257,16 @@ image_size = (image_width, image_height)
 center = (center_x, center_y)
 filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius)
 diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_start_color, gas_end_color, gas_blur_radius)
+bubble_image = generate_bubble(image_size, center, bubble_inner_radius, bubble_outer_radius, bubble_start_color, bubble_end_color, bubble_turbulence, bubble_blur_radius)
 star_field_image = generate_star_field(image_size, num_stars)
 
 # Blend filaments and gas
 blended_image = blend_filaments_with_gas(filaments_image, diffuse_gas_image, transition_strength)
 
-# Combine with star field
-final_image = Image.alpha_composite(star_field_image, blended_image)
+# Combine with bubble and star field
+final_with_bubble = Image.alpha_composite(blended_image, bubble_image)
+final_image = Image.alpha_composite(star_field_image, final_with_bubble)
 
 # Display the image
-st.image(final_image, caption="Nebula Simulation with Filaments and Gas Layers", use_column_width=True)
-
+st.image(final_image, caption="Nebula Simulation with Filaments, Gas Layers, and Central Bubble", use_column_width=True)
 
