@@ -1167,3 +1167,81 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFilter
+
+def simulate_fluid_filaments(image_size, center, radius, steps, diffusion_rate, color):
+    """
+    Simulates fluid dynamics to generate filament-like patterns.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the initial fluid source (x, y).
+        radius (int): Radius of the fluid source.
+        steps (int): Number of simulation steps.
+        diffusion_rate (float): Rate at which the fluid diffuses.
+        color (tuple): RGB color of the filaments.
+
+    Returns:
+        PIL.Image: Image with fluid-simulated filaments.
+    """
+    width, height = image_size
+    fluid = np.zeros((height, width))
+    next_fluid = np.zeros_like(fluid)
+
+    # Initialize fluid source
+    for x in range(width):
+        for y in range(height):
+            if (x - center[0])**2 + (y - center[1])**2 <= radius**2:
+                fluid[y, x] = 1.0
+
+    for _ in range(steps):
+        for x in range(1, width - 1):
+            for y in range(1, height - 1):
+                next_fluid[y, x] = fluid[y, x] + diffusion_rate * (
+                    fluid[y - 1, x] + fluid[y + 1, x] + fluid[y, x - 1] + fluid[y, x + 1] - 4 * fluid[y, x]
+                )
+        fluid, next_fluid = next_fluid, fluid
+
+    # Normalize and convert to an image
+    fluid = np.clip(fluid, 0, 1)
+    fluid_image = (fluid * 255).astype(np.uint8)
+    img = Image.fromarray(fluid_image, mode="L").convert("RGBA")
+
+    # Apply the selected color
+    colored_img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    for x in range(width):
+        for y in range(height):
+            alpha = fluid_image[y, x]
+            if alpha > 0:
+                colored_img.putpixel((x, y), color + (alpha,))
+
+    # Apply Gaussian blur for a more gaseous effect
+    colored_img = colored_img.filter(ImageFilter.GaussianBlur(5))
+    return colored_img
+
+# Streamlit interface
+st.title("Fluid-Simulated Filaments")
+
+# Sidebar inputs
+st.sidebar.header("Simulation Parameters")
+image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
+center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
+radius = st.sidebar.slider("Initial Source Radius", 10, 200, 50)
+steps = st.sidebar.slider("Simulation Steps", 10, 500, 200)
+diffusion_rate = st.sidebar.slider("Diffusion Rate", 0.1, 2.0, 1.0, step=0.1)
+filament_color_hex = st.sidebar.color_picker("Filament Color", "#FFA500")
+filament_color = tuple(int(filament_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+
+# Generate the filaments
+image_size = (image_width, image_height)
+center = (center_x, center_y)
+fluid_image = simulate_fluid_filaments(image_size, center, radius, steps, diffusion_rate, filament_color)
+
+# Display the image
+st.image(fluid_image, caption="Fluid-Simulated Filaments", use_column_width=True)
+
+
