@@ -1069,16 +1069,17 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
     # Apply Gaussian blur for a smooth effect
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
-def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, color, blur_radius):
+def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, start_color, end_color, blur_radius):
     """
-    Generate a diffuse gas layer between two radii with a Gaussian blur.
+    Generate a diffuse gas layer between two radii with a Gaussian blur and color gradient.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         center (tuple): Center of the gas layer (x, y).
         inner_radius (int): Inner radius of the gas.
         outer_radius (int): Outer radius of the gas.
-        color (tuple): RGB color of the gas.
+        start_color (tuple): RGB color at the inner radius.
+        end_color (tuple): RGB color at the outer radius.
         blur_radius (int): Gaussian blur radius for smoothing.
 
     Returns:
@@ -1089,12 +1090,19 @@ def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, color, 
     draw = ImageDraw.Draw(img)
 
     for r in range(inner_radius, outer_radius):
-        alpha = int(255 * (1 - (r - inner_radius) / (outer_radius - inner_radius)))
+        t = (r - inner_radius) / (outer_radius - inner_radius)
+        alpha = int(255 * (1 - t))
+
+        # Interpolate color
+        r_color = int(start_color[0] + t * (end_color[0] - start_color[0]))
+        g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
+        b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
+
         draw.ellipse(
             [
                 center[0] - r, center[1] - r, center[0] + r, center[1] + r
             ],
-            outline=color + (alpha,), width=1
+            outline=(r_color, g_color, b_color, alpha), width=1
         )
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
@@ -1178,8 +1186,10 @@ blur_radius = st.sidebar.slider("Blur Radius", 0, 30, 5)
 st.sidebar.header("Diffuse Gas Parameters")
 inner_radius = st.sidebar.slider("Inner Radius", 50, 400, 150)
 outer_radius = st.sidebar.slider("Outer Radius", 100, 500, 300)
-gas_color_hex = st.sidebar.color_picker("Gas Color", "#FF4500")
-gas_color = tuple(int(gas_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+gas_start_color_hex = st.sidebar.color_picker("Gas Start Color", "#FF4500")
+gas_end_color_hex = st.sidebar.color_picker("Gas End Color", "#0000FF")
+gas_start_color = tuple(int(gas_start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+gas_end_color = tuple(int(gas_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 gas_blur_radius = st.sidebar.slider("Gas Blur Radius", 0, 50, 20)
 
 st.sidebar.header("Star Field Parameters")
@@ -1192,7 +1202,7 @@ transition_strength = st.sidebar.slider("Transition Strength", 0.0, 1.0, 0.5, st
 image_size = (image_width, image_height)
 center = (center_x, center_y)
 filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius)
-diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_color, gas_blur_radius)
+diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_start_color, gas_end_color, gas_blur_radius)
 star_field_image = generate_star_field(image_size, num_stars)
 
 # Blend filaments and gas
@@ -1203,4 +1213,5 @@ final_image = Image.alpha_composite(star_field_image, blended_image)
 
 # Display the image
 st.image(final_image, caption="Nebula Simulation with Filaments and Gas Layers", use_column_width=True)
+
 
