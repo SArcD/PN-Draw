@@ -2,25 +2,7 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
 
-def hex_to_rgb(hex_color):
-    """Convert hexadecimal color to an RGB tuple."""
-    return tuple(int(hex_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-
-import numpy as np
-import streamlit as st
-from PIL import Image, ImageDraw, ImageFilter
-
-def generate_star_field(image_size, num_stars):
-    """
-    Generate a star field as a PIL image with white stars.
-
-    Parameters:
-        image_size (tuple): Size of the image (width, height).
-        num_stars (int): Number of stars to generate.
-
-    Returns:
-        PIL.Image: Image with generated stars.
-    """
+def generate_star_field(image_size, num_stars, star_colors):
     width, height = image_size
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -29,14 +11,13 @@ def generate_star_field(image_size, num_stars):
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
         size = np.random.randint(1, 4)
-        brightness = np.random.randint(200, 255)  # Brightness for white stars
+        color = star_colors[np.random.randint(len(star_colors))]
         draw.ellipse(
             [x - size, y - size, x + size, y + size],
-            fill=(255, 255, 255, brightness)
+            fill=color + (255,)
         )
 
     return img
-
 
 def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius, elliptical):
     width, height = image_size
@@ -231,6 +212,43 @@ def draw_central_star(image_size, position, star_size, halo_size, color):
 
     return img
 
+def generate_bubble_texture(image_size, center, radius, line_color, line_opacity, num_lines, blur_radius):
+    """
+    Generate a textured bubble with intersecting semi-transparent lines.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the bubble (x, y).
+        radius (int): Radius of the bubble.
+        line_color (tuple): RGB color of the lines.
+        line_opacity (int): Opacity of the lines.
+        num_lines (int): Number of intersecting lines.
+        blur_radius (int): Gaussian blur radius for smoothing lines.
+
+    Returns:
+        PIL.Image: Image with textured bubble.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for _ in range(num_lines):
+        start_angle = np.random.uniform(0, 2 * np.pi)
+        end_angle = start_angle + np.random.uniform(np.pi / 6, np.pi / 3)
+
+        start_x = int(center[0] + radius * np.cos(start_angle))
+        start_y = int(center[1] + radius * np.sin(start_angle))
+        end_x = int(center[0] + radius * np.cos(end_angle))
+        end_y = int(center[1] + radius * np.sin(end_angle))
+
+        draw.line(
+            [(start_x, start_y), (end_x, end_y)],
+            fill=line_color + (line_opacity,),
+            width=2
+        )
+
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
 # Streamlit UI
 st.title("Nebula Simulation with Circular and Elliptical Layers")
 
@@ -257,81 +275,38 @@ gas_end_color = st.sidebar.color_picker("Gas End Color", "#0000FF")
 gas_blur = st.sidebar.slider("Gas Blur", 0, 50, 20)
 gas_elliptical = st.sidebar.checkbox("Elliptical Gas", False)
 
-# Bubble parameters (continuación)
+# Bubble parameters
 bubble_inner_radius = st.sidebar.slider("Bubble Inner Radius", 10, 200, 50)
 bubble_outer_radius = st.sidebar.slider("Bubble Outer Radius", 50, 300, 150)
 bubble_start_color = st.sidebar.color_picker("Bubble Start Color", "#FF00FF")
 bubble_end_color = st.sidebar.color_picker("Bubble End Color", "#000000")
 bubble_turbulence = st.sidebar.slider("Bubble Turbulence", 0.0, 10.0, 2.0)
 bubble_blur = st.sidebar.slider("Bubble Blur", 0, 30, 10)
-bubble_elliptical = st.sidebar.checkbox("Elliptical Bubble", False)
 
-# Arc parameters
-arc_radius = st.sidebar.slider("Arc Radius", 50, 300, 150)
-arc_thickness = st.sidebar.slider("Arc Thickness", 1, 20, 5)
-arc_start_angle = st.sidebar.slider("Arc Start Angle", 0, 360, 0)
-arc_end_angle = st.sidebar.slider("Arc End Angle", 0, 360, 180)
-arc_start_color = st.sidebar.color_picker("Arc Start Color", "#FFFFFF")
-arc_end_color = st.sidebar.color_picker("Arc End Color", "#CCCCCC")
-arc_turbulence = st.sidebar.slider("Arc Turbulence", 0.0, 10.0, 2.0)
-arc_blur = st.sidebar.slider("Arc Blur", 0, 30, 5)
-arc_elliptical = st.sidebar.checkbox("Elliptical Arcs", False)
+# Bubble texture parameters
+texture_radius = st.sidebar.slider("Bubble Texture Radius", 50, 300, 150)
+texture_color = st.sidebar.color_picker("Texture Line Color", "#FFFFFF")
+texture_opacity = st.sidebar.slider("Texture Line Opacity", 50, 255, 100)
+texture_num_lines = st.sidebar.slider("Number of Texture Lines", 10, 100, 50)
+texture_blur = st.sidebar.slider("Texture Blur Radius", 0, 20, 5)
+
+# Generate bubble texture
+bubble_texture = generate_bubble_texture(
+    image_size=(image_width, image_height),
+    center=center,
+    radius=texture_radius,
+    line_color=tuple(int(texture_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+    line_opacity=texture_opacity,
+    num_lines=texture_num_lines,
+    blur_radius=texture_blur
+)
+
+st.image(bubble_texture, caption="Bubble Texture Layer", use_column_width=True)
 
 # Star field parameters
 num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
-star_colors = ["#FFFFFF", "#FFD700", "#87CEEB"]
+star_colors = [(255, 255, 255)]
 
-# Central star parameters
-st.sidebar.header("Central Star")
-star_size = st.sidebar.slider("Star Size", 5, 50, 20)
-halo_size = st.sidebar.slider("Halo Size", 10, 100, 50)
-star_color_hex = st.sidebar.color_picker("Star Color", "#FFFF00")
-star_color = tuple(int(star_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-num_star_filaments = st.sidebar.slider("Number of Star Filaments", 5, 100, 30)
-filament_dispersion = st.sidebar.slider("Filament Dispersion", 1, 50, 10)
-star_blur_radius = st.sidebar.slider("Star Blur Radius", 0, 20, 5)
-
-# Generate layers
-image_size = (image_width, image_height)
-filaments_image = generate_filaments(
-    image_size, center, num_filaments, filament_radius, filament_length,
-    tuple(int(filament_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(filament_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    filament_blur, filament_elliptical
-)
-diffuse_gas_image = generate_diffuse_gas(
-    image_size, center, gas_inner_radius, gas_outer_radius,
-    tuple(int(gas_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(gas_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    gas_blur, gas_elliptical
-)
-bubble_image = generate_bubble(
-    image_size, center, bubble_inner_radius, bubble_outer_radius,
-    tuple(int(bubble_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(bubble_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    bubble_turbulence, bubble_blur, bubble_elliptical
-)
-gas_arcs_image = generate_gas_arcs(
-    image_size, center, arc_radius, arc_thickness, arc_start_angle, arc_end_angle,
-    tuple(int(arc_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(arc_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    arc_turbulence, arc_blur, arc_elliptical
-)
-
-star_field_image = generate_star_field(image_size, num_stars)
-
-central_star_image = draw_central_star_with_filaments(
-    image_size, center, star_size, halo_size, star_color, num_star_filaments,
-    filament_dispersion, star_blur_radius
-)
-
-# Combine images
-final_image = Image.alpha_composite(star_field_image, filaments_image)
-final_image = Image.alpha_composite(final_image, diffuse_gas_image)
-final_image = Image.alpha_composite(final_image, bubble_image)
-final_image = Image.alpha_composite(final_image, gas_arcs_image)
-final_image = Image.alpha_composite(final_image, central_star_image)
-
-# Display the final image
-st.image(final_image, use_column_width=True)
-
+# Generate and display star field
+star_field_image = generate_star_field((image_width, image_height), num_stars, star_colors)
+st.image(star_field_image, caption="Star Field", use_column_width=True)
