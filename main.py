@@ -904,7 +904,11 @@ def add_perlin_noise_ring(image, center, inner_radius, outer_radius, noise_scale
             if inner_radius**2 <= dist_sq <= outer_radius**2:
                 noise_value = int((pnoise2(x / noise_scale, y / noise_scale, octaves=6, persistence=0.5, lacunarity=2.0) + 1) * 127.5)
                 r, g, b = noise_color
-                draw.point((x, y), fill=(r, g, b, int(noise_value * (transparency / 255))))
+                alpha = int(noise_value * (transparency / 255))
+                draw.point((x, y), fill=(r, g, b, alpha))
+
+    # Apply Gaussian blur for a more gaseous appearance
+    noise_layer = noise_layer.filter(ImageFilter.GaussianBlur(10))
 
     return Image.alpha_composite(image, noise_layer)
 
