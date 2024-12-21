@@ -335,3 +335,24 @@ final_image = Image.alpha_composite(final_image, central_star_image)
 # Display the final image
 st.image(final_image, use_column_width=True)
 
+
+# Bubble texture parameters
+texture_radius = st.sidebar.slider("Bubble Texture Radius", 50, 300, 150)
+texture_color = st.sidebar.color_picker("Texture Line Color", "#FFFFFF")
+texture_opacity = st.sidebar.slider("Texture Line Opacity", 50, 255, 100)
+texture_num_lines = st.sidebar.slider("Number of Texture Lines", 10, 100, 50)
+texture_blur = st.sidebar.slider("Texture Blur Radius", 0, 20, 5)
+
+# Generate bubble texture
+bubble_texture = generate_bubble_texture(
+    image_size=(image_width, image_height),
+    center=center,
+    radius=texture_radius,
+    line_color=tuple(int(texture_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+    line_opacity=texture_opacity,
+    num_lines=texture_num_lines,
+    blur_radius=texture_blur
+)
+
+st.image(bubble_texture, caption="Bubble Texture Layer", use_column_width=True)
+
