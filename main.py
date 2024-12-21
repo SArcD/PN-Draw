@@ -866,7 +866,10 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
 
             # Ensure connections stay outside the reference circle
             if ((end_node[0] - center[0])**2 + (end_node[1] - center[1])**2) >= radius**2:
-                draw.line([start_node, end_node], fill=filament_color + (100,), width=3)
+                # Add some curvature to the connection
+                mid_x = (start_node[0] + end_node[0]) // 2 + np.random.randint(-10, 10)
+                mid_y = (start_node[1] + end_node[1]) // 2 + np.random.randint(-10, 10)
+                draw.line([start_node, (mid_x, mid_y), end_node], fill=filament_color + (100,), width=3)
 
     # Apply Gaussian blur for gaseous effect
     img = img.filter(ImageFilter.GaussianBlur(blur_radius))
