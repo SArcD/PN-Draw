@@ -1007,6 +1007,7 @@ fig.update_layout(
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
+
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
@@ -1150,6 +1151,48 @@ def generate_bubble(image_size, center, inner_radius, outer_radius, start_color,
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
+def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_angle, start_color, end_color, turbulence, blur_radius):
+    """
+    Generate semicircular gas arcs with turbulence and color gradients.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the arcs (x, y).
+        radius (int): Radius of the arcs.
+        thickness (int): Thickness of the arcs.
+        start_angle (float): Starting angle of the arc in degrees.
+        end_angle (float): Ending angle of the arc in degrees.
+        start_color (tuple): RGB color at the start of the arc.
+        end_color (tuple): RGB color at the end of the arc.
+        turbulence (float): Amount of turbulence/noise to apply.
+        blur_radius (int): Gaussian blur radius for smoothing.
+
+    Returns:
+        PIL.Image: Image with generated gas arcs.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for t in range(thickness):
+        for angle in np.linspace(np.radians(start_angle), np.radians(end_angle), 500):
+            # Apply turbulence to the radius
+            current_radius = radius + t + int(turbulence * np.random.uniform(-1, 1))
+
+            # Calculate the position of the point on the arc
+            x = int(center[0] + current_radius * np.cos(angle))
+            y = int(center[1] + current_radius * np.sin(angle))
+
+            # Interpolate color based on angle
+            t_angle = (angle - np.radians(start_angle)) / (np.radians(end_angle) - np.radians(start_angle))
+            r_color = int(start_color[0] + t_angle * (end_color[0] - start_color[0]))
+            g_color = int(start_color[1] + t_angle * (end_color[1] - start_color[1]))
+            b_color = int(start_color[2] + t_angle * (end_color[2] - start_color[2]))
+
+            draw.point((x, y), fill=(r_color, g_color, b_color, 255))
+
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
 def blend_filaments_with_gas(filaments_image, gas_image, transition_strength):
     """
     Blend the edges of the filaments with the gas layer for a smoother transition.
@@ -1245,6 +1288,18 @@ bubble_end_color = tuple(int(bubble_end_color_hex.lstrip("#")[i:i+2], 16) for i 
 bubble_turbulence = st.sidebar.slider("Bubble Turbulence", 0.0, 10.0, 2.0)
 bubble_blur_radius = st.sidebar.slider("Bubble Blur Radius", 0, 30, 10)
 
+st.sidebar.header("Gas Arc Parameters")
+arc_radius = st.sidebar.slider("Arc Radius", 50, 300, 150)
+arc_thickness = st.sidebar.slider("Arc Thickness", 1, 20, 5)
+arc_start_angle = st.sidebar.slider("Arc Start Angle", 0, 360, 0)
+arc_end_angle = st.sidebar.slider("Arc End Angle", 0, 360, 180)
+arc_start_color_hex = st.sidebar.color_picker("Arc Start Color", "#FFFFFF")
+arc_end_color_hex = st.sidebar.color_picker("Arc End Color", "#CCCCCC")
+arc_start_color = tuple(int(arc_start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+arc_end_color = tuple(int(arc_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+arc_turbulence = st.sidebar.slider("Arc Turbulence", 0.0, 10.0, 2.0)
+arc_blur_radius = st.sidebar.slider("Arc Blur Radius", 0, 30, 5)
+
 st.sidebar.header("Star Field Parameters")
 num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
 
@@ -1257,14 +1312,13 @@ center = (center_x, center_y)
 filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius)
 diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_start_color, gas_end_color, gas_blur_radius)
 bubble_image = generate_bubble(image_size, center, bubble_inner_radius, bubble_outer_radius, bubble_start_color, bubble_end_color, bubble_turbulence, bubble_blur_radius)
+gas_arcs_image = generate_gas_arcs(image_size, center, arc_radius, arc_thickness, arc_start_angle, arc_end_angle, arc_start_color, arc_end_color, arc_turbulence, arc_blur_radius)
 star_field_image = generate_star_field(image_size, num_stars)
 
 # Blend filaments and gas
 blended_image = blend_filaments_with_gas(filaments_image, diffuse_gas_image, transition_strength)
 
-# Combine with bubble and star field
+# Combine with bubble, arcs, and star field
 final_with_bubble = Image.alpha_composite(blended_image, bubble_image)
-final_image = Image.alpha_composite(star_field_image, final_with_bubble)
-
-# Display the image
-st.image(final_image, caption="Nebula Simulation with Filaments, Gas Layers, and Central Bubble", use_column_width=True)
+final_with_arcs = Image.alpha_composite(final_with_bubble, gas_arcs_image)
+final_image = Image.alpha_composite(star
