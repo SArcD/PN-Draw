@@ -1011,7 +1011,7 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
 
-def generate_filaments(image_size, center, num_filaments, radius, filament_length, color):
+def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius):
     """
     Generate radial filaments starting from points on a reference circle.
 
@@ -1021,7 +1021,9 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
         num_filaments (int): Number of filaments to generate.
         radius (int): Radius of the reference circle.
         filament_length (int): Length of the filaments.
-        color (tuple): RGB color of the filaments.
+        start_color (tuple): RGB color at the start of the filament.
+        end_color (tuple): RGB color at the end of the filament.
+        blur_radius (int): Gaussian blur radius for smoothing filaments.
 
     Returns:
         PIL.Image: Image with generated filaments.
@@ -1040,19 +1042,34 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
         end_x = int(start_x + filament_length * np.cos(angle))
         end_y = int(start_y + filament_length * np.sin(angle))
 
-        # Draw the filament with thickness decreasing along its length
+        # Draw the filament with thickness and color gradient
         for i in range(filament_length):
             t = i / filament_length
             x = int(start_x + t * (end_x - start_x))
             y = int(start_y + t * (end_y - start_y))
             thickness = max(1, int(5 * (1 - t)))  # Thickness decreases with distance
             alpha = int(255 * (1 - t))  # Opacity decreases with distance
-            draw.ellipse([x - thickness // 2, y - thickness // 2, x + thickness // 2, y + thickness // 2], fill=color + (alpha,))
 
-    return img
+            # Interpolate color
+            r = int(start_color[0] + t * (end_color[0] - start_color[0]))
+            g = int(start_color[1] + t * (end_color[1] - start_color[1]))
+            b = int(start_color[2] + t * (end_color[2] - start_color[2]))
+
+            draw.ellipse(
+                [
+                    x - thickness // 2,
+                    y - thickness // 2,
+                    x + thickness // 2,
+                    y + thickness // 2,
+                ],
+                fill=(r, g, b, alpha),
+            )
+
+    # Apply Gaussian blur for a smooth effect
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
 # Streamlit interface
-st.title("Radial Filaments from Reference Circle")
+st.title("Radial Filaments with Gradient and Blur")
 
 # Sidebar inputs
 st.sidebar.header("Filament Parameters")
@@ -1063,16 +1080,21 @@ center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
 radius = st.sidebar.slider("Reference Circle Radius", 10, 500, 100)
 num_filaments = st.sidebar.slider("Number of Filaments", 10, 500, 100)
 filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
-filament_color_hex = st.sidebar.color_picker("Filament Color", "#FFA500")
-filament_color = tuple(int(filament_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+
+start_color_hex = st.sidebar.color_picker("Start Color", "#FFA500")
+end_color_hex = st.sidebar.color_picker("End Color", "#FF4500")
+start_color = tuple(int(start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+end_color = tuple(int(end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+
+blur_radius = st.sidebar.slider("Blur Radius", 0, 30, 5)
 
 # Generate the filaments
 image_size = (image_width, image_height)
 center = (center_x, center_y)
-filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, filament_color)
+filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius)
 
 # Display the image
-st.image(filaments_image, caption="Radial Filaments from Reference Circle", use_column_width=True)
+st.image(filaments_image, caption="Radial Filaments with Gradient and Blur", use_column_width=True)
 
 
 
