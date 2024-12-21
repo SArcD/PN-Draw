@@ -311,6 +311,6 @@ final_image = Image.alpha_composite(final_image, bubble_image)
 final_image = Image.alpha_composite(final_image, gas_arcs_image)
 final_image = Image.alpha_composite(final_image, central_star_image)
 
-# Display final image
-st.image(final_image, caption=\"Nebula Simulation\", use_column_width=True)
+# Display the final image
+st.image(final_image, use_column_width=True)
 
