@@ -1007,7 +1007,6 @@ fig.update_layout(
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
-
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
@@ -1269,4 +1268,3 @@ final_image = Image.alpha_composite(star_field_image, final_with_bubble)
 
 # Display the image
 st.image(final_image, caption="Nebula Simulation with Filaments, Gas Layers, and Central Bubble", use_column_width=True)
-
