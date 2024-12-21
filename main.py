@@ -1099,6 +1099,35 @@ def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, color, 
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
+def blend_filaments_with_gas(filaments_image, gas_image, transition_strength):
+    """
+    Blend the edges of the filaments with the gas layer for a smoother transition.
+
+    Parameters:
+        filaments_image (PIL.Image): Image containing the filaments.
+        gas_image (PIL.Image): Image containing the gas.
+        transition_strength (float): Strength of the blending (0 to 1).
+
+    Returns:
+        PIL.Image: Blended image.
+    """
+    filaments = np.array(filaments_image)
+    gas = np.array(gas_image)
+
+    blended = filaments.copy()
+    alpha_filaments = filaments[..., 3] / 255.0
+    alpha_gas = gas[..., 3] / 255.0
+
+    for c in range(3):  # Blend RGB channels
+        blended[..., c] = (
+            alpha_filaments * filaments[..., c] * (1 - transition_strength) +
+            alpha_gas * gas[..., c] * transition_strength
+        ).astype(np.uint8)
+
+    blended[..., 3] = (np.maximum(alpha_filaments, alpha_gas) * 255).astype(np.uint8)  # Update alpha
+
+    return Image.fromarray(blended, "RGBA")
+
 def generate_star_field(image_size, num_stars):
     """
     Generate a star field as a PIL image.
@@ -1156,6 +1185,9 @@ gas_blur_radius = st.sidebar.slider("Gas Blur Radius", 0, 50, 20)
 st.sidebar.header("Star Field Parameters")
 num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
 
+st.sidebar.header("Blending Parameters")
+transition_strength = st.sidebar.slider("Transition Strength", 0.0, 1.0, 0.5, step=0.1)
+
 # Generate the layers
 image_size = (image_width, image_height)
 center = (center_x, center_y)
@@ -1163,11 +1195,12 @@ filaments_image = generate_filaments(image_size, center, num_filaments, radius, 
 diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_color, gas_blur_radius)
 star_field_image = generate_star_field(image_size, num_stars)
 
-# Combine the layers
-combined_image = Image.alpha_composite(star_field_image, diffuse_gas_image)
-final_image = Image.alpha_composite(combined_image, filaments_image)
+# Blend filaments and gas
+blended_image = blend_filaments_with_gas(filaments_image, diffuse_gas_image, transition_strength)
+
+# Combine with star field
+final_image = Image.alpha_composite(star_field_image, blended_image)
 
 # Display the image
 st.image(final_image, caption="Nebula Simulation with Filaments and Gas Layers", use_column_width=True)
-
 
