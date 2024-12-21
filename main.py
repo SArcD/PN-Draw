@@ -363,6 +363,9 @@ central_star_image = draw_central_star_with_filaments(
     filament_dispersion, star_blur_radius
 )
 
+
+
+
 # Combine images
 final_image = Image.alpha_composite(star_field_image, filaments_image)
 final_image = Image.alpha_composite(final_image, diffuse_gas_image)
@@ -372,6 +375,8 @@ final_image = Image.alpha_composite(final_image, central_star_image)
 
 # Display the final image
 st.image(final_image, use_column_width=True)
+
+
 
 
 # Bubble texture parameters
@@ -391,6 +396,17 @@ bubble_texture = generate_bubble_texture(
     num_lines=texture_num_lines,
     blur_radius=texture_blur
 )
+# Combine bubble texture with bubble layer
+bubble_combined = Image.alpha_composite(bubble_image.convert("RGBA"), bubble_texture.convert("RGBA"))
 
-st.image(bubble_texture, caption="Bubble Texture Layer", use_column_width=True)
+# Combine images sequentially
+final_image = Image.alpha_composite(star_field_image, filaments_image)
+final_image = Image.alpha_composite(final_image, diffuse_gas_image)
+final_image = Image.alpha_composite(final_image, bubble_combined)  # Use the combined bubble and texture
+final_image = Image.alpha_composite(final_image, gas_arcs_image)
+final_image = Image.alpha_composite(final_image, central_star_image)
+
+# Display the final image
+st.image(final_image, caption="Nebula Simulation", use_column_width=True)
+
 
