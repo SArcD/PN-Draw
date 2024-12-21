@@ -534,12 +534,13 @@ halo_end_color = tuple(int(halo_end_color_hex.lstrip("#")[i:i+2], 16) for i in (
 halo_blur = st.sidebar.slider("Halo Blur Radius", 5, 50, 20)
 
 
-# Generate new layers
-fractal_noise_image = generate_fractal_noise(image_size, noise_intensity, noise_blur)
-secondary_filaments_image = generate_secondary_filaments(image_size, center, num_secondary_filaments, secondary_radius, secondary_length, secondary_color, secondary_blur)
-soft_halo_image = generate_soft_halo(image_size, center, halo_radius, halo_start_color, halo_end_color, halo_blur)
+fractal_noise_image = fractal_noise_image.convert("RGBA").resize(final_image.size)
+secondary_filaments_image = secondary_filaments_image.convert("RGBA").resize(final_image.size)
+soft_halo_image = soft_halo_image.convert("RGBA").resize(final_image.size)
 
-# Add the new layers to the final image
+# Añade las capas al final_image
 final_image = Image.alpha_composite(final_image, fractal_noise_image)
 final_image = Image.alpha_composite(final_image, secondary_filaments_image)
 final_image = Image.alpha_composite(final_image, soft_halo_image)
+
+
