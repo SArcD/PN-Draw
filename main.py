@@ -1011,41 +1011,17 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
 
-def generate_opacity_map(image_size, center, radius, noise_scale):
+def generate_filaments(image_size, center, num_filaments, radius, filament_length, color):
     """
-    Generate a radial opacity map with procedural noise for blending effects.
+    Generate radial filaments starting from points on a reference circle.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
-        center (tuple): Center of the radial opacity (x, y).
-        radius (int): Maximum radius for the opacity effect.
-        noise_scale (float): Scale of the procedural noise.
-
-    Returns:
-        np.ndarray: Opacity map with values between 0 and 1.
-    """
-    width, height = image_size
-    y, x = np.ogrid[:height, :width]
-    dist = np.sqrt((x - center[0])**2 + (y - center[1])**2)
-    opacity = np.clip(1 - (dist / radius), 0, 1)
-
-    # Add procedural noise
-    noise = np.random.normal(0, 0.1, (height, width))
-    opacity = np.clip(opacity + noise / noise_scale, 0, 1)
-
-    return opacity
-
-def generate_filaments(image_size, center, num_filaments, filament_length, filament_width, color):
-    """
-    Generate radial filaments with irregular shapes.
-
-    Parameters:
-        image_size (tuple): Size of the image (width, height).
-        center (tuple): Center point for filaments (x, y).
+        center (tuple): Center of the reference circle (x, y).
         num_filaments (int): Number of filaments to generate.
-        filament_length (int): Maximum length of the filaments.
-        filament_width (int): Width of the filaments.
-        color (tuple): RGB color for the filaments.
+        radius (int): Radius of the reference circle.
+        filament_length (int): Length of the filaments.
+        color (tuple): RGB color of the filaments.
 
     Returns:
         PIL.Image: Image with generated filaments.
@@ -1055,81 +1031,48 @@ def generate_filaments(image_size, center, num_filaments, filament_length, filam
     draw = ImageDraw.Draw(img)
 
     for _ in range(num_filaments):
+        # Generate a random point on the reference circle
         angle = np.random.uniform(0, 2 * np.pi)
-        start_x = int(center[0] + np.random.uniform(-10, 10))
-        start_y = int(center[1] + np.random.uniform(-10, 10))
+        start_x = int(center[0] + radius * np.cos(angle))
+        start_y = int(center[1] + radius * np.sin(angle))
 
-        points = [(start_x, start_y)]
-        for _ in range(filament_length):
-            angle += np.random.uniform(-0.2, 0.2)  # Slight random deviation
-            length = np.random.uniform(1, 5)
-            new_x = points[-1][0] + length * np.cos(angle)
-            new_y = points[-1][1] + length * np.sin(angle)
+        # Calculate the end point of the filament
+        end_x = int(start_x + filament_length * np.cos(angle))
+        end_y = int(start_y + filament_length * np.sin(angle))
 
-            if 0 <= new_x < width and 0 <= new_y < height:
-                points.append((new_x, new_y))
-            else:
-                break
-
-        draw.line(points, fill=color + (120,), width=filament_width)
+        # Draw the filament with thickness decreasing along its length
+        for i in range(filament_length):
+            t = i / filament_length
+            x = int(start_x + t * (end_x - start_x))
+            y = int(start_y + t * (end_y - start_y))
+            thickness = max(1, int(5 * (1 - t)))  # Thickness decreases with distance
+            alpha = int(255 * (1 - t))  # Opacity decreases with distance
+            draw.ellipse([x - thickness // 2, y - thickness // 2, x + thickness // 2, y + thickness // 2], fill=color + (alpha,))
 
     return img
 
-def blend_with_opacity_map(base_image, opacity_map, color):
-    """
-    Blend a base image with a color using an opacity map.
-
-    Parameters:
-        base_image (PIL.Image): Base image to blend.
-        opacity_map (np.ndarray): Opacity map with values between 0 and 1.
-        color (tuple): RGB color for blending.
-
-    Returns:
-        PIL.Image: Blended image.
-    """
-    width, height = base_image.size
-    blended_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(blended_image)
-
-    for x in range(width):
-        for y in range(height):
-            alpha = int(opacity_map[y, x] * 255)
-            if alpha > 0:
-                draw.point((x, y), fill=color + (alpha,))
-
-    return Image.alpha_composite(base_image, blended_image)
-
 # Streamlit interface
-st.title("Blended Filaments with Opacity Map and Noise")
+st.title("Radial Filaments from Reference Circle")
 
 # Sidebar inputs
-st.sidebar.header("Opacity Map Parameters")
+st.sidebar.header("Filament Parameters")
 image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
 image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
 center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
 center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
-radius = st.sidebar.slider("Radius", 10, 500, 200)
-noise_scale = st.sidebar.slider("Noise Scale", 1.0, 50.0, 10.0, step=0.5)
-
-st.sidebar.header("Filament Parameters")
+radius = st.sidebar.slider("Reference Circle Radius", 10, 500, 100)
 num_filaments = st.sidebar.slider("Number of Filaments", 10, 500, 100)
-filament_length = st.sidebar.slider("Filament Length", 10, 200, 50)
-filament_width = st.sidebar.slider("Filament Width", 1, 10, 3)
+filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
 filament_color_hex = st.sidebar.color_picker("Filament Color", "#FFA500")
 filament_color = tuple(int(filament_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 
-# Generate base image, opacity map, and filaments
+# Generate the filaments
 image_size = (image_width, image_height)
 center = (center_x, center_y)
-base_image = Image.new("RGBA", image_size, (0, 0, 0, 255))
-opacity_map = generate_opacity_map(image_size, center, radius, noise_scale)
-filaments_image = generate_filaments(image_size, center, num_filaments, filament_length, filament_width, filament_color)
-
-# Blend opacity map with base image
-blended_image = blend_with_opacity_map(base_image, opacity_map, filament_color)
-final_image = Image.alpha_composite(blended_image, filaments_image)
+filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, filament_color)
 
 # Display the image
-st.image(final_image, caption="Blended Filaments with Opacity Map and Noise", use_column_width=True)
+st.image(filaments_image, caption="Radial Filaments from Reference Circle", use_column_width=True)
+
 
 
