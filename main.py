@@ -231,6 +231,44 @@ def draw_central_star(image_size, position, star_size, halo_size, color):
 
     return img
 
+def generate_bubble_texture(image_size, center, radius, line_color, line_opacity, num_lines, blur_radius):
+    """
+    Generate a textured bubble with intersecting semi-transparent lines.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the bubble (x, y).
+        radius (int): Radius of the bubble.
+        line_color (tuple): RGB color of the lines.
+        line_opacity (int): Opacity of the lines.
+        num_lines (int): Number of intersecting lines.
+        blur_radius (int): Gaussian blur radius for smoothing lines.
+
+    Returns:
+        PIL.Image: Image with textured bubble.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for _ in range(num_lines):
+        start_angle = np.random.uniform(0, 2 * np.pi)
+        end_angle = start_angle + np.random.uniform(np.pi / 6, np.pi / 3)
+
+        start_x = int(center[0] + radius * np.cos(start_angle))
+        start_y = int(center[1] + radius * np.sin(start_angle))
+        end_x = int(center[0] + radius * np.cos(end_angle))
+        end_y = int(center[1] + radius * np.sin(end_angle))
+
+        draw.line(
+            [(start_x, start_y), (end_x, end_y)],
+            fill=line_color + (line_opacity,),
+            width=2
+        )
+
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
+
 # Streamlit UI
 st.title("Nebula Simulation with Circular and Elliptical Layers")
 
