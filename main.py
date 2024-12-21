@@ -6,14 +6,17 @@ def hex_to_rgb(hex_color):
     """Convert hexadecimal color to an RGB tuple."""
     return tuple(int(hex_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 
-def generate_star_field(image_size, num_stars, star_colors):
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFilter
+
+def generate_star_field(image_size, num_stars):
     """
-    Generate a star field as a PIL image.
+    Generate a star field as a PIL image with white stars.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         num_stars (int): Number of stars to generate.
-        star_colors (list): List of star colors in hexadecimal format.
 
     Returns:
         PIL.Image: Image with generated stars.
@@ -22,17 +25,14 @@ def generate_star_field(image_size, num_stars, star_colors):
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Convert star colors to RGB tuples
-    star_colors_rgb = [hex_to_rgb(color) for color in star_colors]
-
     for _ in range(num_stars):
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
         size = np.random.randint(1, 4)
-        color = star_colors_rgb[np.random.randint(len(star_colors_rgb))]
+        brightness = np.random.randint(200, 255)  # Brightness for white stars
         draw.ellipse(
             [x - size, y - size, x + size, y + size],
-            fill=color + (255,)
+            fill=(255, 255, 255, brightness)
         )
 
     return img
