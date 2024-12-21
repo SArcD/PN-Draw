@@ -317,7 +317,9 @@ gas_arcs_image = generate_gas_arcs(
     tuple(int(arc_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
     arc_turbulence, arc_blur, arc_elliptical
 )
-star_field_image = generate_star_field(image_size, num_stars, star_colors)
+
+star_field_image = generate_star_field(image_size, num_stars)
+
 central_star_image = draw_central_star_with_filaments(
     image_size, center, star_size, halo_size, star_color, num_star_filaments,
     filament_dispersion, star_blur_radius
