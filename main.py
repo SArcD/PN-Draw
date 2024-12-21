@@ -1007,4 +1007,81 @@ fig.update_layout(
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFilter
+
+def generate_opacity_map(image_size, center, radius, noise_scale):
+    """
+    Generate a radial opacity map with procedural noise for blending effects.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the radial opacity (x, y).
+        radius (int): Maximum radius for the opacity effect.
+        noise_scale (float): Scale of the procedural noise.
+
+    Returns:
+        np.ndarray: Opacity map with values between 0 and 1.
+    """
+    width, height = image_size
+    y, x = np.ogrid[:height, :width]
+    dist = np.sqrt((x - center[0])**2 + (y - center[1])**2)
+    opacity = np.clip(1 - (dist / radius), 0, 1)
+
+    # Add procedural noise
+    noise = np.random.normal(0, 0.1, (height, width))
+    opacity = np.clip(opacity + noise / noise_scale, 0, 1)
+
+    return opacity
+
+def blend_with_opacity_map(base_image, opacity_map, color):
+    """
+    Blend a base image with a color using an opacity map.
+
+    Parameters:
+        base_image (PIL.Image): Base image to blend.
+        opacity_map (np.ndarray): Opacity map with values between 0 and 1.
+        color (tuple): RGB color for blending.
+
+    Returns:
+        PIL.Image: Blended image.
+    """
+    width, height = base_image.size
+    blended_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(blended_image)
+
+    for x in range(width):
+        for y in range(height):
+            alpha = int(opacity_map[y, x] * 255)
+            if alpha > 0:
+                draw.point((x, y), fill=color + (alpha,))
+
+    return Image.alpha_composite(base_image, blended_image)
+
+# Streamlit interface
+st.title("Blending with Opacity Maps")
+
+# Sidebar inputs
+st.sidebar.header("Opacity Map Parameters")
+image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
+center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
+radius = st.sidebar.slider("Radius", 10, 500, 200)
+noise_scale = st.sidebar.slider("Noise Scale", 1.0, 50.0, 10.0, step=0.5)
+blend_color_hex = st.sidebar.color_picker("Blend Color", "#FFA500")
+blend_color = tuple(int(blend_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+
+# Generate base image and opacity map
+image_size = (image_width, image_height)
+center = (center_x, center_y)
+base_image = Image.new("RGBA", image_size, (0, 0, 0, 255))
+opacity_map = generate_opacity_map(image_size, center, radius, noise_scale)
+
+# Blend images
+blended_image = blend_with_opacity_map(base_image, opacity_map, blend_color)
+
+# Display the image
+st.image(blended_image, caption="Blended Filaments with Opacity Map", use_column_width=True)
 
