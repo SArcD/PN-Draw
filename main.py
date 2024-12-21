@@ -815,7 +815,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
         PIL.Image: Image with filaments.
     """
     # Create a blank image
-    img = Image.new("RGBA", image_size, "black")
+    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     # Generate nodes on the reference circle
@@ -878,7 +878,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
     return img
 
 # Function to generate Perlin noise in a ring between two circles
-def add_perlin_noise_ring(image, center, inner_radius, outer_radius, noise_scale, noise_color):
+def add_perlin_noise_ring(image, center, inner_radius, outer_radius, noise_scale, noise_color, transparency):
     """
     Adds a ring of Perlin noise between two concentric circles.
 
@@ -889,12 +889,14 @@ def add_perlin_noise_ring(image, center, inner_radius, outer_radius, noise_scale
         outer_radius (int): Outer radius of the ring.
         noise_scale (float): Scale of the Perlin noise.
         noise_color (tuple): RGB color of the noise.
+        transparency (int): Transparency level of the noise (0-255).
 
     Returns:
         PIL.Image: Image with added noise.
     """
-    draw = ImageDraw.Draw(image)
     width, height = image.size
+    noise_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(noise_layer)
 
     for x in range(width):
         for y in range(height):
@@ -902,9 +904,9 @@ def add_perlin_noise_ring(image, center, inner_radius, outer_radius, noise_scale
             if inner_radius**2 <= dist_sq <= outer_radius**2:
                 noise_value = int((pnoise2(x / noise_scale, y / noise_scale, octaves=6, persistence=0.5, lacunarity=2.0) + 1) * 127.5)
                 r, g, b = noise_color
-                draw.point((x, y), fill=(r, g, b, noise_value))
+                draw.point((x, y), fill=(r, g, b, int(noise_value * (transparency / 255))))
 
-    return image
+    return Image.alpha_composite(image, noise_layer)
 
 # Streamlit interface
 st.title("Nebula Outer Filaments with Perlin Noise")
@@ -928,6 +930,7 @@ outer_radius = st.sidebar.slider("Outer Radius", radius + 10, 600, radius + 100)
 noise_scale = st.sidebar.slider("Noise Scale", 10, 200, 50)
 noise_color_hex = st.sidebar.color_picker("Noise Color", "#FFFFFF")
 noise_color = ImageColor.getrgb(noise_color_hex)
+transparency = st.sidebar.slider("Noise Transparency", 0, 255, 128)
 
 # Create the filaments
 image_size = (image_width, image_height)
@@ -935,7 +938,7 @@ center = (center_x, center_y)
 filaments_image = create_outer_filaments(image_size, center, radius, num_nodes, filament_length, noise_intensity, blur_radius, filament_color)
 
 # Add Perlin noise ring
-filaments_image = add_perlin_noise_ring(filaments_image, center, radius, outer_radius, noise_scale, noise_color)
+filaments_image = add_perlin_noise_ring(filaments_image, center, radius, outer_radius, noise_scale, noise_color, transparency)
 
 # Ensure proper conversion to RGB for display
 filaments_image = filaments_image.convert("RGB")
