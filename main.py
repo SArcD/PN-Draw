@@ -865,7 +865,7 @@ def create_outer_filaments(image_size, center, radius, num_nodes, filament_lengt
             end_node = nodes[np.random.randint(0, len(nodes))]
 
             # Ensure connections stay outside the reference circle
-            if ((end_node[0] - center[0])**2 + (end_node[1] - center[1])**2) >= radius**2:
+            if ((end_node[0] - center[0])**2 + (end_node[1] - center[1])**2) >= radius**2 and ((start_node[0] - center[0])**2 + (start_node[1] - center[1])**2) >= radius**2:
                 # Add some curvature to the connection
                 mid_x = (start_node[0] + end_node[0]) // 2 + np.random.randint(-10, 10)
                 mid_y = (start_node[1] + end_node[1]) // 2 + np.random.randint(-10, 10)
@@ -903,8 +903,6 @@ filaments_image = filaments_image.convert("RGB")
 
 # Display the image
 st.image(filaments_image, caption="Nebula Outer Filaments", use_column_width=True)
-
-
 
 
 
