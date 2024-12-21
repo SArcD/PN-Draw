@@ -846,167 +846,6 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import ConvexHull
 
-# Función para mapear colores seleccionados a valores RGB
-def hex_color_map(color_name):
-    colors = {
-        "blue": "0, 0, 255",
-        "red": "255, 0, 0",
-        "green": "0, 255, 0",
-        "yellow": "255, 255, 0",
-        "purple": "128, 0, 128",
-        "orange": "255, 165, 0",
-        "white": "255, 255, 255"
-    }
-    return colors.get(color_name, "0, 0, 255")
-
-# Función recursiva para generar un patrón de ramas fractales con ruido y opacidad decreciente
-def generate_fractal_branches(x, y, angle, length, depth, scale_factor=0.7, angle_variation=30, noise=5, opacity=1.0):
-    branches = []
-    if depth == 0 or length < 2:  # Criterio de parada
-        return branches
-
-    # Calcular ruido aleatorio en la posición final
-    x_end = x + length * np.cos(np.radians(angle)) + np.random.uniform(-noise, noise)
-    y_end = y + length * np.sin(np.radians(angle)) + np.random.uniform(-noise, noise)
-    branches.append(((x, y), (x_end, y_end), opacity))
-
-    # Variabilidad adicional en escala, ángulo y opacidad
-    scale_factor_noisy = scale_factor * np.random.uniform(0.85, 1.15)
-    angle_varied = angle_variation * np.random.uniform(0.7, 1.3)
-    opacity_next = max(opacity * 0.8, 0.1)  # Decrecer opacidad
-
-    # Generar ramas hijas (izquierda y derecha)
-    branches += generate_fractal_branches(x_end, y_end, angle - angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise, opacity_next)
-    branches += generate_fractal_branches(x_end, y_end, angle + angle_varied, length * scale_factor_noisy, depth - 1, scale_factor, angle_variation, noise, opacity_next)
-
-    return branches
-
-# Función para generar ramas fractales desde el contorno interno (elíptico)
-def generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points=20, position_noise=5):
-    trees = []
-    theta = np.linspace(0, 2 * np.pi, num_points)
-    for angle in theta:
-        # Calcular punto en el contorno elíptico
-        x = center_x + a * np.cos(angle) + np.random.uniform(-position_noise, position_noise)
-        y = center_y + b * np.sin(angle) + np.random.uniform(-position_noise, position_noise)
-        
-        # Ángulo base (desde el centro hacia afuera)
-        base_angle = np.degrees(angle) + np.random.uniform(-10, 10)
-        
-        # Generar ramas desde el contorno
-        trees.extend(generate_fractal_branches(x, y, base_angle, initial_length, depth, noise=position_noise))
-    return trees
-
-# Función para generar contorno elíptico
-def generate_ellipse_contour(center_x, center_y, a, b, num_points=100):
-    theta = np.linspace(0, 2 * np.pi, num_points)
-    contour_x = center_x + a * np.cos(theta)
-    contour_y = center_y + b * np.sin(theta)
-    return contour_x, contour_y
-
-# Función para agregar ruido difuso tipo nube usando Perlin noise
-def generate_perlin_noise(size, scale=10):
-    np.random.seed(42)
-    noise = np.random.randn(size, size)
-    return gaussian_filter(noise, sigma=scale, mode="reflect")
-
-# Función para calcular el perímetro conectado (Convex Hull)
-def compute_outer_perimeter(points):
-    hull = ConvexHull(points)
-    return points[hull.vertices, 0], points[hull.vertices, 1]
-
-# Streamlit UI
-st.title("Patrón Fractal de Ramas con Efecto Difuso y Contorno Conectado")
-
-# Parámetros de la elipse
-st.sidebar.header("Parámetros de la Elipse")
-center_x = st.sidebar.slider("Centro X", 0, 500, 250)
-center_y = st.sidebar.slider("Centro Y", 0, 500, 250)
-a = st.sidebar.slider("Semieje Mayor (a)", 50, 200, 100)
-b = st.sidebar.slider("Semieje Menor (b)", 50, 200, 100)
-external_a = st.sidebar.slider("Semieje Mayor Externo", 100, 300, 150)
-external_b = st.sidebar.slider("Semieje Menor Externo", 100, 300, 150)
-
-# Parámetros de las ramas fractales
-st.sidebar.header("Parámetros del Patrón Fractal")
-initial_length = st.sidebar.slider("Longitud Inicial", 5, 50, 20)
-depth = st.sidebar.slider("Profundidad del Fractal", 1, 10, 6)
-num_points = st.sidebar.slider("Puntos Iniciales", 10, 50, 30)
-position_noise = st.sidebar.slider("Ruido en Posición", 0, 20, 8)
-
-# Menú desplegable para seleccionar el color de las ramas
-st.sidebar.header("Parámetros de Colores")
-branch_color = st.sidebar.selectbox("Color de las Ramas", ["blue", "red", "green", "yellow", "purple", "orange"])
-
-# Generar ramas fractales desde el contorno de la elipse interna
-tree_branches = generate_fractal_tree_on_ellipse(center_x, center_y, a, b, initial_length, depth, num_points, position_noise)
-
-# Crear la figura con Plotly
-fig = go.Figure()
-
-# Agregar efecto difuso con ruido de Perlin
-size = 500
-diffuse_noise = generate_perlin_noise(size)
-x_noise, y_noise = np.meshgrid(np.linspace(center_x - a, center_x + a, size), np.linspace(center_y - b, center_y + b, size))
-fig.add_trace(go.Contour(
-    x=x_noise[0],
-    y=y_noise[:, 0],
-    z=diffuse_noise,
-    colorscale=[[0, f'rgba({hex_color_map("orange")}, 0.2)'], [1, 'rgba(0,0,0,0)']],
-    showscale=False,
-))
-
-# Dibujar las ramas fractales
-points = []
-for branch in tree_branches:
-    (x1, y1), (x2, y2), opacity = branch
-    # Desaparecer ramas que tocan el contorno interno
-    if ((x2 - center_x)**2 / a**2) + ((y2 - center_y)**2 / b**2) <= 1.0:
-        continue  # No dibujar ramas que tocan el círculo interno
-
-    points.append([x2, y2])
-    fig.add_trace(go.Scatter(
-        x=[x1, x2],
-        y=[y1, y2],
-        mode='lines',
-        line=dict(color=f'rgba({hex_color_map(branch_color)}, {opacity})', width=1),
-        showlegend=False
-    ))
-
-# Dibujar el perímetro exterior conectado
-if points:
-    points = np.array(points)
-    perimeter_x, perimeter_y = compute_outer_perimeter(points)
-    fig.add_trace(go.Scatter(
-        x=perimeter_x,
-        y=perimeter_y,
-        mode='lines',
-        line=dict(color='white', width=2),
-        name='Contorno Conectado'
-    ))
-
-# Dibujar el contorno interno
-ellipse_x, ellipse_y = generate_ellipse_contour(center_x, center_y, a, b)
-fig.add_trace(go.Scatter(
-    x=ellipse_x,
-    y=ellipse_y,
-    mode='lines',
-    line=dict(color='white', width=2),
-    name='Contorno Interno'
-))
-
-# Configuración del layout
-fig.update_layout(
-    paper_bgcolor="black",
-    plot_bgcolor="black",
-    xaxis=dict(visible=False),
-    yaxis=dict(visible=False),
-    title="Envolturas con Fractales de Bifurcación y Ruido Perlin",
-)
-
-# Mostrar la gráfica en Streamlit
-st.plotly_chart(fig, use_container_width=True)
-
 
 import numpy as np
 import streamlit as st
@@ -1318,7 +1157,11 @@ star_field_image = generate_star_field(image_size, num_stars)
 # Blend filaments and gas
 blended_image = blend_filaments_with_gas(filaments_image, diffuse_gas_image, transition_strength)
 
-# Combine with bubble, arcs, and star field
+                                    # Combine with bubble, arcs, and star field
 final_with_bubble = Image.alpha_composite(blended_image, bubble_image)
 final_with_arcs = Image.alpha_composite(final_with_bubble, gas_arcs_image)
-final_image = Image.alpha_composite(star
+final_image = Image.alpha_composite(final_with_arcs, star_field_image)
+
+# Display the final image
+st.image(final_image, caption="Nebula Simulation", use_column_width=True)
+
