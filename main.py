@@ -851,19 +851,48 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
 
-def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius):
+def generate_star_field(image_size, num_stars, star_colors):
     """
-    Generate radial filaments starting from points on a reference circle.
+    Generate a star field with randomly placed stars of varying colors.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
-        center (tuple): Center of the reference circle (x, y).
+        num_stars (int): Number of stars to generate.
+        star_colors (list): List of RGB color tuples for the stars.
+
+    Returns:
+        PIL.Image: Image with generated star field.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for _ in range(num_stars):
+        x = np.random.randint(0, width)
+        y = np.random.randint(0, height)
+        size = np.random.randint(1, 4)  # Random star size
+        color = star_colors[np.random.randint(len(star_colors))]
+        draw.ellipse(
+            [x - size, y - size, x + size, y + size],
+            fill=color + (255,)
+        )
+
+    return img
+
+def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius, elliptical=False):
+    """
+    Generate radial filaments starting from points on a reference circle or ellipse.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the reference shape (x, y).
         num_filaments (int): Number of filaments to generate.
-        radius (int): Radius of the reference circle.
+        radius (int): Radius of the reference circle or semi-major axis of the ellipse.
         filament_length (int): Length of the filaments.
         start_color (tuple): RGB color at the start of the filament.
         end_color (tuple): RGB color at the end of the filament.
         blur_radius (int): Gaussian blur radius for smoothing filaments.
+        elliptical (bool): If True, use an elliptical reference shape.
 
     Returns:
         PIL.Image: Image with generated filaments.
@@ -873,10 +902,15 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
     draw = ImageDraw.Draw(img)
 
     for _ in range(num_filaments):
-        # Generate a random point on the reference circle
+        # Generate a random point on the reference circle or ellipse
         angle = np.random.uniform(0, 2 * np.pi)
-        start_x = int(center[0] + radius * np.cos(angle))
-        start_y = int(center[1] + radius * np.sin(angle))
+        if elliptical:
+            semi_minor_axis = radius * 0.6  # Example ratio for ellipse
+            start_x = int(center[0] + radius * np.cos(angle))
+            start_y = int(center[1] + semi_minor_axis * np.sin(angle))
+        else:
+            start_x = int(center[0] + radius * np.cos(angle))
+            start_y = int(center[1] + radius * np.sin(angle))
 
         # Calculate the end point of the filament
         end_x = int(start_x + filament_length * np.cos(angle))
@@ -908,18 +942,19 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
     # Apply Gaussian blur for a smooth effect
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
-def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, start_color, end_color, blur_radius):
+def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, start_color, end_color, blur_radius, elliptical=False):
     """
     Generate a diffuse gas layer between two radii with a Gaussian blur and color gradient.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         center (tuple): Center of the gas layer (x, y).
-        inner_radius (int): Inner radius of the gas.
-        outer_radius (int): Outer radius of the gas.
+        inner_radius (int): Inner radius of the gas or semi-major axis of the inner ellipse.
+        outer_radius (int): Outer radius of the gas or semi-major axis of the outer ellipse.
         start_color (tuple): RGB color at the inner radius.
         end_color (tuple): RGB color at the outer radius.
         blur_radius (int): Gaussian blur radius for smoothing.
+        elliptical (bool): If True, use elliptical reference shapes.
 
     Returns:
         PIL.Image: Image with generated diffuse gas.
@@ -937,28 +972,39 @@ def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, start_c
         g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
         b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
 
-        draw.ellipse(
-            [
-                center[0] - r, center[1] - r, center[0] + r, center[1] + r
-            ],
-            outline=(r_color, g_color, b_color, alpha), width=1
-        )
+        if elliptical:
+            semi_minor_axis = r * 0.6  # Example ratio for ellipse
+            draw.ellipse(
+                [
+                    center[0] - r, center[1] - semi_minor_axis,
+                    center[0] + r, center[1] + semi_minor_axis
+                ],
+                outline=(r_color, g_color, b_color, alpha), width=1
+            )
+        else:
+            draw.ellipse(
+                [
+                    center[0] - r, center[1] - r, center[0] + r, center[1] + r
+                ],
+                outline=(r_color, g_color, b_color, alpha), width=1
+            )
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
-def generate_bubble(image_size, center, inner_radius, outer_radius, start_color, end_color, turbulence, blur_radius):
+def generate_bubble(image_size, center, inner_radius, outer_radius, start_color, end_color, turbulence, blur_radius, elliptical=False):
     """
     Generate the central bubble-like structure with gradients and noise.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         center (tuple): Center of the bubble (x, y).
-        inner_radius (int): Inner radius of the bubble.
-        outer_radius (int): Outer radius of the bubble.
+        inner_radius (int): Inner radius of the bubble or semi-major axis of the inner ellipse.
+        outer_radius (int): Outer radius of the bubble or semi-major axis of the outer ellipse.
         start_color (tuple): RGB color at the inner radius.
         end_color (tuple): RGB color at the outer radius.
         turbulence (float): Amount of turbulence/noise to apply.
         blur_radius (int): Gaussian blur radius for smoothing.
+        elliptical (bool): If True, use elliptical reference shapes.
 
     Returns:
         PIL.Image: Image with generated bubble.
@@ -980,24 +1026,34 @@ def generate_bubble(image_size, center, inner_radius, outer_radius, start_color,
         offset_x = int(turbulence * np.random.uniform(-1, 1))
         offset_y = int(turbulence * np.random.uniform(-1, 1))
 
-        draw.ellipse(
-            [
-                center[0] - r + offset_x, center[1] - r + offset_y,
-                center[0] + r + offset_x, center[1] + r + offset_y
-            ],
-            outline=(r_color, g_color, b_color, alpha), width=1
-        )
+        if elliptical:
+            semi_minor_axis = r * 0.6  # Example ratio for ellipse
+            draw.ellipse(
+                [
+                    center[0] - r + offset_x, center[1] - semi_minor_axis + offset_y,
+                    center[0] + r + offset_x, center[1] + semi_minor_axis + offset_y
+                ],
+                outline=(r_color, g_color, b_color, alpha), width=1
+            )
+        else:
+            draw.ellipse(
+                [
+                    center[0] - r + offset_x, center[1] - r + offset_y,
+                    center[0] + r + offset_x, center[1] + r + offset_y
+                ],
+                outline=(r_color, g_color, b_color, alpha), width=1
+            )
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
-def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_angle, start_color, end_color, turbulence, blur_radius):
+def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_angle, start_color, end_color, turbulence, blur_radius, elliptical=False):
     """
-    Generate semicircular gas arcs with turbulence and color gradients.
+    Generate semicircular or semi-elliptical gas arcs with turbulence and color gradients.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         center (tuple): Center of the arcs (x, y).
-        radius (int): Radius of the arcs.
+        radius (int): Radius of the arcs or semi-major axis of the ellipse.
         thickness (int): Thickness of the arcs.
         start_angle (float): Starting angle of the arc in degrees.
         end_angle (float): Ending angle of the arc in degrees.
@@ -1005,6 +1061,7 @@ def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_an
         end_color (tuple): RGB color at the end of the arc.
         turbulence (float): Amount of turbulence/noise to apply.
         blur_radius (int): Gaussian blur radius for smoothing.
+        elliptical (bool): If True, use elliptical reference shapes.
 
     Returns:
         PIL.Image: Image with generated gas arcs.
@@ -1016,11 +1073,15 @@ def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_an
     for t in range(thickness):
         for angle in np.linspace(np.radians(start_angle), np.radians(end_angle), 500):
             # Apply turbulence to the radius
-            current_radius = radius + t + int(turbulence * np.random.uniform(-1, 1))
-
-            # Calculate the position of the point on the arc
-            x = int(center[0] + current_radius * np.cos(angle))
-            y = int(center[1] + current_radius * np.sin(angle))
+            if elliptical:
+                semi_minor_axis = radius * 0.6  # Example ratio for ellipse
+                current_radius = radius + t + int(turbulence * np.random.uniform(-1, 1))
+                x = int(center[0] + current_radius * np.cos(angle))
+                y = int(center[1] + semi_minor_axis * np.sin(angle))
+            else:
+                current_radius = radius + t + int(turbulence * np.random.uniform(-1, 1))
+                x = int(center[0] + current_radius * np.cos(angle))
+                y = int(center[1] + current_radius * np.sin(angle))
 
             # Interpolate color based on angle
             t_angle = (angle - np.radians(start_angle)) / (np.radians(end_angle) - np.radians(start_angle))
@@ -1032,136 +1093,21 @@ def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_an
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
-def blend_filaments_with_gas(filaments_image, gas_image, transition_strength):
-    """
-    Blend the edges of the filaments with the gas layer for a smoother transition.
+# Combine all layers
+image_size = (768, 768)
+center = (image_size[0] // 2, image_size[1] // 2)
 
-    Parameters:
-        filaments_image (PIL.Image): Image containing the filaments.
-        gas_image (PIL.Image): Image containing the gas.
-        transition_strength (float): Strength of the blending (0 to 1).
+star_field = generate_star_field(image_size, num_stars=300, star_colors=[(255, 255, 255), (200, 200, 255), (255, 200, 200)])
+filaments = generate_filaments(image_size, center, num_filaments=100, radius=200, filament_length=100, start_color=(255, 100, 0), end_color=(255, 255, 0), blur_radius=2)
+diffuse_gas = generate_diffuse_gas(image_size, center, inner_radius=150, outer_radius=250, start_color=(100, 0, 255), end_color=(0, 255, 255), blur_radius=10)
+bubble = generate_bubble(image_size, center, inner_radius=50, outer_radius=100, start_color=(255, 0, 255), end_color=(0, 0, 255), turbulence=5, blur_radius=5)
+gas_arcs = generate_gas_arcs(image_size, center, radius=300, thickness=20, start_angle=0, end_angle=180, start_color=(255, 255, 255), end_color=(200, 200, 200), turbulence=5, blur_radius=5)
 
-    Returns:
-        PIL.Image: Blended image.
-    """
-    filaments = np.array(filaments_image)
-    gas = np.array(gas_image)
-
-    blended = filaments.copy()
-    alpha_filaments = filaments[..., 3] / 255.0
-    alpha_gas = gas[..., 3] / 255.0
-
-    for c in range(3):  # Blend RGB channels
-        blended[..., c] = (
-            alpha_filaments * filaments[..., c] * (1 - transition_strength) +
-            alpha_gas * gas[..., c] * transition_strength
-        ).astype(np.uint8)
-
-    blended[..., 3] = (np.maximum(alpha_filaments, alpha_gas) * 255).astype(np.uint8)  # Update alpha
-
-    return Image.fromarray(blended, "RGBA")
-
-def generate_star_field(image_size, num_stars):
-    """
-    Generate a star field as a PIL image.
-
-    Parameters:
-        image_size (tuple): Size of the image (width, height).
-        num_stars (int): Number of stars to generate.
-
-    Returns:
-        PIL.Image: Image with generated stars.
-    """
-    width, height = image_size
-    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    for _ in range(num_stars):
-        x = np.random.randint(0, width)
-        y = np.random.randint(0, height)
-        size = np.random.randint(1, 3)
-        brightness = np.random.randint(150, 255)
-        draw.ellipse(
-            [x - size, y - size, x + size, y + size],
-            fill=(255, 255, 255, brightness)
-        )
-
-    return img
-
-# Streamlit interface
-st.title("Nebula Simulation with Filaments, Gas Layers, and Central Bubble")
-
-# Sidebar inputs
-st.sidebar.header("Filament Parameters")
-image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
-image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
-center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
-center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
-radius = st.sidebar.slider("Reference Circle Radius", 10, 500, 100)
-num_filaments = st.sidebar.slider("Number of Filaments", 10, 500, 100)
-filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
-
-start_color_hex = st.sidebar.color_picker("Start Color", "#FFA500")
-end_color_hex = st.sidebar.color_picker("End Color", "#FF4500")
-start_color = tuple(int(start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-end_color = tuple(int(end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-
-blur_radius = st.sidebar.slider("Blur Radius", 0, 30, 5)
-
-st.sidebar.header("Diffuse Gas Parameters")
-inner_radius = st.sidebar.slider("Inner Radius", 50, 400, 150)
-outer_radius = st.sidebar.slider("Outer Radius", 100, 500, 300)
-gas_start_color_hex = st.sidebar.color_picker("Gas Start Color", "#FF4500")
-gas_end_color_hex = st.sidebar.color_picker("Gas End Color", "#0000FF")
-gas_start_color = tuple(int(gas_start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-gas_end_color = tuple(int(gas_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-gas_blur_radius = st.sidebar.slider("Gas Blur Radius", 0, 50, 20)
-
-st.sidebar.header("Bubble Parameters")
-bubble_inner_radius = st.sidebar.slider("Bubble Inner Radius", 10, 200, 50)
-bubble_outer_radius = st.sidebar.slider("Bubble Outer Radius", 50, 300, 150)
-bubble_start_color_hex = st.sidebar.color_picker("Bubble Start Color", "#FF00FF")
-bubble_end_color_hex = st.sidebar.color_picker("Bubble End Color", "#000000")
-bubble_start_color = tuple(int(bubble_start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-bubble_end_color = tuple(int(bubble_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-bubble_turbulence = st.sidebar.slider("Bubble Turbulence", 0.0, 10.0, 2.0)
-bubble_blur_radius = st.sidebar.slider("Bubble Blur Radius", 0, 30, 10)
-
-st.sidebar.header("Gas Arc Parameters")
-arc_radius = st.sidebar.slider("Arc Radius", 50, 300, 150)
-arc_thickness = st.sidebar.slider("Arc Thickness", 1, 20, 5)
-arc_start_angle = st.sidebar.slider("Arc Start Angle", 0, 360, 0)
-arc_end_angle = st.sidebar.slider("Arc End Angle", 0, 360, 180)
-arc_start_color_hex = st.sidebar.color_picker("Arc Start Color", "#FFFFFF")
-arc_end_color_hex = st.sidebar.color_picker("Arc End Color", "#CCCCCC")
-arc_start_color = tuple(int(arc_start_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-arc_end_color = tuple(int(arc_end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-arc_turbulence = st.sidebar.slider("Arc Turbulence", 0.0, 10.0, 2.0)
-arc_blur_radius = st.sidebar.slider("Arc Blur Radius", 0, 30, 5)
-
-st.sidebar.header("Star Field Parameters")
-num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
-
-st.sidebar.header("Blending Parameters")
-transition_strength = st.sidebar.slider("Transition Strength", 0.0, 1.0, 0.5, step=0.1)
-
-# Generate the layers
-image_size = (image_width, image_height)
-center = (center_x, center_y)
-filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius)
-diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_start_color, gas_end_color, gas_blur_radius)
-bubble_image = generate_bubble(image_size, center, bubble_inner_radius, bubble_outer_radius, bubble_start_color, bubble_end_color, bubble_turbulence, bubble_blur_radius)
-gas_arcs_image = generate_gas_arcs(image_size, center, arc_radius, arc_thickness, arc_start_angle, arc_end_angle, arc_start_color, arc_end_color, arc_turbulence, arc_blur_radius)
-star_field_image = generate_star_field(image_size, num_stars)
-
-# Blend filaments and gas
-blended_image = blend_filaments_with_gas(filaments_image, diffuse_gas_image, transition_strength)
-
-                                    # Combine with bubble, arcs, and star field
-final_with_bubble = Image.alpha_composite(blended_image, bubble_image)
-final_with_arcs = Image.alpha_composite(final_with_bubble, gas_arcs_image)
-final_image = Image.alpha_composite(final_with_arcs, star_field_image)
+# Combine all layers
+combined_image = Image.alpha_composite(star_field, filaments)
+combined_image = Image.alpha_composite(combined_image, diffuse_gas)
+combined_image = Image.alpha_composite(combined_image, bubble)
+final_image = Image.alpha_composite(combined_image, gas_arcs)
 
 # Display the final image
-st.image(final_image, caption="Nebula Simulation", use_column_width=True)
-
+final_image.show()
