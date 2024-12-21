@@ -534,7 +534,19 @@ halo_end_color = tuple(int(halo_end_color_hex.lstrip("#")[i:i+2], 16) for i in (
 halo_blur = st.sidebar.slider("Halo Blur Radius", 5, 50, 20)
 
 
-fractal_noise_image = fractal_noise_image.convert("RGBA").resize(final_image.size)
+# Generate new layers
+fractal_noise_image = generate_fractal_noise(image_size, noise_intensity, noise_blur)
+
+# Convert and resize fractal noise to match the final image size
+if 'final_image' in locals():  # Ensure final_image exists before referencing
+    fractal_noise_image = fractal_noise_image.convert("RGBA").resize(final_image.size)
+else:
+    fractal_noise_image = fractal_noise_image.convert("RGBA").resize(image_size)
+
+# Overlay fractal noise on the final image
+final_image = Image.alpha_composite(final_image, fractal_noise_image)
+
+
 secondary_filaments_image = secondary_filaments_image.convert("RGBA").resize(final_image.size)
 soft_halo_image = soft_halo_image.convert("RGBA").resize(final_image.size)
 
