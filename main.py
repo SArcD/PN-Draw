@@ -1029,24 +1029,20 @@ def simulate_fluid_filaments(image_size, center, radius, steps, diffusion_rate, 
     """
     width, height = image_size
     fluid = np.zeros((height, width))
-    next_fluid = np.zeros_like(fluid)
 
     # Initialize fluid source
-    for x in range(width):
-        for y in range(height):
-            if (x - center[0])**2 + (y - center[1])**2 <= radius**2:
-                fluid[y, x] = 1.0
+    y, x = np.ogrid[:height, :width]
+    mask = (x - center[0])**2 + (y - center[1])**2 <= radius**2
+    fluid[mask] = 1.0
+
+    kernel = np.array([[0, diffusion_rate, 0],
+                       [diffusion_rate, 1 - 4 * diffusion_rate, diffusion_rate],
+                       [0, diffusion_rate, 0]])
 
     for _ in range(steps):
-        for x in range(1, width - 1):
-            for y in range(1, height - 1):
-                next_fluid[y, x] = fluid[y, x] + diffusion_rate * (
-                    fluid[y - 1, x] + fluid[y + 1, x] + fluid[y, x - 1] + fluid[y, x + 1] - 4 * fluid[y, x]
-                )
-        fluid, next_fluid = next_fluid, fluid
+        fluid = np.clip(np.convolve(fluid.flatten(), kernel.flatten(), 'same').reshape(height, width), 0, 1)
 
-    # Normalize and convert to an image
-    fluid = np.clip(fluid, 0, 1)
+    # Convert to an image
     fluid_image = (fluid * 255).astype(np.uint8)
     img = Image.fromarray(fluid_image, mode="L").convert("RGBA")
 
@@ -1084,5 +1080,3 @@ fluid_image = simulate_fluid_filaments(image_size, center, radius, steps, diffus
 
 # Display the image
 st.image(fluid_image, caption="Fluid-Simulated Filaments", use_column_width=True)
-
-
