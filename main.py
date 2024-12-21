@@ -1007,6 +1007,7 @@ fig.update_layout(
 # Mostrar la gráfica en Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
+
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
@@ -1047,7 +1048,7 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
             t = i / filament_length
             x = int(start_x + t * (end_x - start_x))
             y = int(start_y + t * (end_y - start_y))
-            thickness = max(1, int(5 * (1 - t)))  # Thickness decreases with distance
+            thickness = max(1, int(5 * (1 - t**2)))  # Thickness decreases smoothly with distance
             alpha = int(255 * (1 - t))  # Opacity decreases with distance
 
             # Interpolate color
@@ -1095,6 +1096,7 @@ filaments_image = generate_filaments(image_size, center, num_filaments, radius, 
 
 # Display the image
 st.image(filaments_image, caption="Radial Filaments with Gradient and Blur", use_column_width=True)
+
 
 
 
