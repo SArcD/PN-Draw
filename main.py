@@ -1069,8 +1069,65 @@ def generate_filaments(image_size, center, num_filaments, radius, filament_lengt
     # Apply Gaussian blur for a smooth effect
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
+def generate_diffuse_gas(image_size, center, inner_radius, outer_radius, color, blur_radius):
+    """
+    Generate a diffuse gas layer between two radii with a Gaussian blur.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        center (tuple): Center of the gas layer (x, y).
+        inner_radius (int): Inner radius of the gas.
+        outer_radius (int): Outer radius of the gas.
+        color (tuple): RGB color of the gas.
+        blur_radius (int): Gaussian blur radius for smoothing.
+
+    Returns:
+        PIL.Image: Image with generated diffuse gas.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for r in range(inner_radius, outer_radius):
+        alpha = int(255 * (1 - (r - inner_radius) / (outer_radius - inner_radius)))
+        draw.ellipse(
+            [
+                center[0] - r, center[1] - r, center[0] + r, center[1] + r
+            ],
+            outline=color + (alpha,), width=1
+        )
+
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
+def generate_star_field(image_size, num_stars):
+    """
+    Generate a star field as a PIL image.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        num_stars (int): Number of stars to generate.
+
+    Returns:
+        PIL.Image: Image with generated stars.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for _ in range(num_stars):
+        x = np.random.randint(0, width)
+        y = np.random.randint(0, height)
+        size = np.random.randint(1, 3)
+        brightness = np.random.randint(150, 255)
+        draw.ellipse(
+            [x - size, y - size, x + size, y + size],
+            fill=(255, 255, 255, brightness)
+        )
+
+    return img
+
 # Streamlit interface
-st.title("Radial Filaments with Gradient and Blur")
+st.title("Nebula Simulation with Filaments and Gas Layers")
 
 # Sidebar inputs
 st.sidebar.header("Filament Parameters")
@@ -1089,14 +1146,28 @@ end_color = tuple(int(end_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 
 blur_radius = st.sidebar.slider("Blur Radius", 0, 30, 5)
 
-# Generate the filaments
+st.sidebar.header("Diffuse Gas Parameters")
+inner_radius = st.sidebar.slider("Inner Radius", 50, 400, 150)
+outer_radius = st.sidebar.slider("Outer Radius", 100, 500, 300)
+gas_color_hex = st.sidebar.color_picker("Gas Color", "#FF4500")
+gas_color = tuple(int(gas_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+gas_blur_radius = st.sidebar.slider("Gas Blur Radius", 0, 50, 20)
+
+st.sidebar.header("Star Field Parameters")
+num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
+
+# Generate the layers
 image_size = (image_width, image_height)
 center = (center_x, center_y)
 filaments_image = generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius)
+diffuse_gas_image = generate_diffuse_gas(image_size, center, inner_radius, outer_radius, gas_color, gas_blur_radius)
+star_field_image = generate_star_field(image_size, num_stars)
+
+# Combine the layers
+combined_image = Image.alpha_composite(star_field_image, diffuse_gas_image)
+final_image = Image.alpha_composite(combined_image, filaments_image)
 
 # Display the image
-st.image(filaments_image, caption="Radial Filaments with Gradient and Blur", use_column_width=True)
-
-
+st.image(final_image, caption="Nebula Simulation with Filaments and Gas Layers", use_column_width=True)
 
 
