@@ -419,15 +419,6 @@ from PIL import Image, ImageDraw, ImageFilter, ImageColor
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageColor
-
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageColor
-
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageColor
-
 # Function to draw textured gaseous shells with deformities and various profiles
 def draw_textured_gaseous_shells(image_size, shells):
     """
@@ -500,7 +491,7 @@ def draw_textured_gaseous_shells(image_size, shells):
                     y = center[1] + (spiral_factor + deformity * np.cos(theta)) * np.sin(theta)
                     points.append((x, y))
 
-                shell_draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
+                shell_draw.line(points, fill=(r_color, g_color, b_color, alpha), width=2)
 
         elif profile == "irregular":
             for t in np.linspace(0, 1, 200):
@@ -584,4 +575,6 @@ final_image_with_textured_shells = Image.alpha_composite(final_image, textured_s
 
 # Display the updated image
 st.image(final_image_with_textured_shells, caption="Nebula Simulation with Textured Gaseous Shells", use_column_width=True)
+
+
 
