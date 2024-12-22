@@ -413,6 +413,8 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
 ############################################################import numpy as np
+import numpy as np
+import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
 # Function to draw textured gaseous shells with deformities and various profiles
@@ -429,7 +431,7 @@ def draw_textured_gaseous_shells(image_size, shells):
             - "spiral_turns": int - Number of turns (for spiral).
             - "spiral_amplitude": float - Amplitude of the spiral (for spiral).
             - "deformity": float - Degree of deformity (0 = perfect shape).
-            - "angle": float - Rotation angle of the shell in degrees.
+            - "angle": float - Rotation angle of the shell in degrees (optional).
             - "color_start": str - Start color (e.g., "#FF0000").
             - "color_end": str - End color (e.g., "#000000").
             - "blur": int - Gaussian blur radius.
@@ -440,7 +442,6 @@ def draw_textured_gaseous_shells(image_size, shells):
     for shell in shells:
         center = shell["center"]
         deformity = shell["deformity"]
-        angle = shell["angle"]
         color_start = ImageColor.getrgb(shell["color_start"])
         color_end = ImageColor.getrgb(shell["color_end"])
         blur_radius = shell["blur"]
@@ -647,7 +648,6 @@ for i in range(num_shells):
         center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, 800, 400)
         center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, 800, 400)
         deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
-        angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
         color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
         color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
         blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
@@ -655,7 +655,6 @@ for i in range(num_shells):
         shells.append({
             "center": (center_x, center_y),
             "deformity": deformity,
-            "angle": angle,
             "color_start": color_start,
             "color_end": color_end,
             "blur": blur_radius,
@@ -664,11 +663,8 @@ for i in range(num_shells):
 
 # Generate and combine shells with the previous final image
 textured_shells = draw_textured_gaseous_shells((800, 800), shells)
-final_image_with_textured_shells = textured_shells
 
 # Display the updated image
-final_image_with_textured_shells.show()
-
-
+st.image(textured_shells, caption="Nebula Simulation with Textured Gaseous Shells", use_column_width=True)
 
 
