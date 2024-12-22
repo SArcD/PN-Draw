@@ -419,6 +419,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageColor
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
+
 # Function to draw textured gaseous shells with deformities and various profiles
 def draw_textured_gaseous_shells(image_size, shells):
     """
