@@ -412,11 +412,7 @@ final_image = Image.alpha_composite(final_image, central_star_image)
 st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
-############################################################
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageColor
-
-import numpy as np
+############################################################import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
 # Function to draw textured gaseous shells with deformities and various profiles
@@ -437,7 +433,7 @@ def draw_textured_gaseous_shells(image_size, shells):
             - "color_start": str - Start color (e.g., "#FF0000").
             - "color_end": str - End color (e.g., "#000000").
             - "blur": int - Gaussian blur radius.
-            - "profile": str - Shape profile ("bipolar", "spiral", "irregular").
+            - "profile": str - Shape profile ("circular", "elliptical", "bipolar", "spiral", "irregular").
     """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
 
@@ -454,7 +450,45 @@ def draw_textured_gaseous_shells(image_size, shells):
         shell_draw = ImageDraw.Draw(shell_img)
 
         # Generate contours based on profile
-        if profile == "bipolar":
+        if profile == "circular":
+            radius = shell["radius"]
+            for t in np.linspace(0, 1, 200):
+                alpha = int(255 * (1 - t))
+                r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
+                g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
+                b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
+
+                current_radius = radius + deformity * np.random.uniform(-1, 1)
+                shell_draw.ellipse(
+                    [
+                        center[0] - current_radius,
+                        center[1] - current_radius,
+                        center[0] + current_radius,
+                        center[1] + current_radius,
+                    ],
+                    outline=(r_color, g_color, b_color, alpha),
+                )
+
+        elif profile == "elliptical":
+            semi_major = shell["semi_major"]
+            semi_minor = shell["semi_minor"]
+            for t in np.linspace(0, 1, 200):
+                alpha = int(255 * (1 - t))
+                r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
+                g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
+                b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
+
+                shell_draw.ellipse(
+                    [
+                        center[0] - semi_major,
+                        center[1] - semi_minor,
+                        center[0] + semi_major,
+                        center[1] + semi_minor,
+                    ],
+                    outline=(r_color, g_color, b_color, alpha),
+                )
+
+        elif profile == "bipolar":
             lobule_positive = shell["lobule_positive"]
             lobule_negative = shell["lobule_negative"]
             separation = shell.get("separation", 0)
@@ -521,18 +555,59 @@ shells = []
 
 for i in range(num_shells):
     st.sidebar.markdown(f"#### Shell {i+1}")
-    center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], image_size[0] // 2)
-    center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], image_size[1] // 2)
-    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
-    angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
-    color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
-    color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
-    blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
-    profile = st.sidebar.selectbox(f"Shell {i+1} Profile", ["bipolar", "spiral", "irregular"], index=0)
+    profile = st.sidebar.selectbox(f"Shell {i+1} Profile", ["circular", "elliptical", "bipolar", "spiral", "irregular"], index=0)
 
-    if profile == "bipolar":
+    if profile == "circular":
+        center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, 800, 400)
+        center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, 800, 400)
+        radius = st.sidebar.slider(f"Shell {i+1} Radius", 10, 400, 200)
+        deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
+        color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
+        color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
+        blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
+
+        shells.append({
+            "center": (center_x, center_y),
+            "radius": radius,
+            "deformity": deformity,
+            "color_start": color_start,
+            "color_end": color_end,
+            "blur": blur_radius,
+            "profile": profile
+        })
+
+    elif profile == "elliptical":
+        center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, 800, 400)
+        center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, 800, 400)
+        semi_major = st.sidebar.slider(f"Shell {i+1} Semi-Major Axis", 10, 400, 200)
+        semi_minor = st.sidebar.slider(f"Shell {i+1} Semi-Minor Axis", 10, 400, 150)
+        deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
+        color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
+        color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
+        blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
+
+        shells.append({
+            "center": (center_x, center_y),
+            "semi_major": semi_major,
+            "semi_minor": semi_minor,
+            "deformity": deformity,
+            "color_start": color_start,
+            "color_end": color_end,
+            "blur": blur_radius,
+            "profile": profile
+        })
+
+    elif profile == "bipolar":
+        center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, 800, 400)
+        center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, 800, 400)
         lobule_positive = st.sidebar.slider(f"Shell {i+1} Positive Lobe Size", 10, 200, 100)
         lobule_negative = st.sidebar.slider(f"Shell {i+1} Negative Lobe Size", 10, 200, 100)
+        deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
+        angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
+        color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
+        color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
+        blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
+
         shells.append({
             "center": (center_x, center_y),
             "lobule_positive": lobule_positive,
@@ -544,9 +619,18 @@ for i in range(num_shells):
             "blur": blur_radius,
             "profile": profile
         })
+
     elif profile == "spiral":
+        center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, 800, 400)
+        center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, 800, 400)
         spiral_turns = st.sidebar.slider(f"Shell {i+1} Number of Turns", 1, 10, 3)
         spiral_amplitude = st.sidebar.slider(f"Shell {i+1} Amplitude", 10, 200, 50)
+        deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
+        angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
+        color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
+        color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
+        blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
+
         shells.append({
             "center": (center_x, center_y),
             "spiral_turns": spiral_turns,
@@ -558,7 +642,16 @@ for i in range(num_shells):
             "blur": blur_radius,
             "profile": profile
         })
+
     elif profile == "irregular":
+        center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, 800, 400)
+        center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, 800, 400)
+        deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
+        angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
+        color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
+        color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
+        blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
+
         shells.append({
             "center": (center_x, center_y),
             "deformity": deformity,
@@ -570,11 +663,12 @@ for i in range(num_shells):
         })
 
 # Generate and combine shells with the previous final image
-textured_shells = draw_textured_gaseous_shells(image_size, shells)
-final_image_with_textured_shells = Image.alpha_composite(final_image, textured_shells)
+textured_shells = draw_textured_gaseous_shells((800, 800), shells)
+final_image_with_textured_shells = textured_shells
 
 # Display the updated image
-st.image(final_image_with_textured_shells, caption="Nebula Simulation with Textured Gaseous Shells", use_column_width=True)
+final_image_with_textured_shells.show()
+
 
 
 
