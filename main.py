@@ -425,6 +425,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageColor
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
+
 # Function to draw textured gaseous shells with deformities and various profiles
 def draw_textured_gaseous_shells(image_size, shells):
     """
@@ -581,5 +584,4 @@ final_image_with_textured_shells = Image.alpha_composite(final_image, textured_s
 
 # Display the updated image
 st.image(final_image_with_textured_shells, caption="Nebula Simulation with Textured Gaseous Shells", use_column_width=True)
-
 
