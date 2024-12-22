@@ -496,7 +496,7 @@ for i in range(num_shells):
     semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 150)
     inner_radius = st.sidebar.slider(f"Shell {i+1} Inner Radius", 10, 200, 50)
     outer_radius = st.sidebar.slider(f"Shell {i+1} Outer Radius", inner_radius, 400, 150)
-    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 2.0, 0.5)
+    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 0.5)
     angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
     color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
     color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
