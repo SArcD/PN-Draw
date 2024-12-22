@@ -1,6 +1,8 @@
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
+from PIL import ImageColor
+
 
 def hex_to_rgb(hex_color):
     """Convert hexadecimal color to an RGB tuple."""
