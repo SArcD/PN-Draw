@@ -454,6 +454,7 @@ def draw_textured_gaseous_shells(image_size, shells):
         shell_img = Image.new("RGBA", image_size, (0, 0, 0, 0))
         shell_draw = ImageDraw.Draw(shell_img)
 
+        # Generate deformable contours for each radius
         for r in range(inner_radius, outer_radius):
             t = (r - inner_radius) / (outer_radius - inner_radius)
             r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
@@ -461,19 +462,17 @@ def draw_textured_gaseous_shells(image_size, shells):
             b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
             alpha = int(255 * (1 - t))
 
-            deform_x = int(deformity * np.random.uniform(-r * 0.1, r * 0.1))
-            deform_y = int(deformity * np.random.uniform(-r * 0.1, r * 0.1))
-
-            bounding_box = (
-                center[0] - a - r + deform_x,
-                center[1] - b - r + deform_y,
-                center[0] + a + r + deform_x,
-                center[1] + b + r + deform_y,
-            )
+            points = []
+            for theta in np.linspace(0, 2 * np.pi, 200):
+                deform_x = deformity * np.sin(theta * np.random.uniform(0.5, 2.0)) * r
+                deform_y = deformity * np.cos(theta * np.random.uniform(0.5, 2.0)) * r
+                x = center[0] + (a + r + deform_x) * np.cos(theta)
+                y = center[1] + (b + r + deform_y) * np.sin(theta)
+                points.append((x, y))
 
             rotated_shell = Image.new("RGBA", image_size, (0, 0, 0, 0))
             rotated_draw = ImageDraw.Draw(rotated_shell)
-            rotated_draw.ellipse(bounding_box, outline=(r_color, g_color, b_color, alpha), width=1)
+            rotated_draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
 
             rotated_shell = rotated_shell.rotate(angle, center=center)
             shell_img = Image.alpha_composite(shell_img, rotated_shell)
@@ -496,7 +495,7 @@ for i in range(num_shells):
     semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 150)
     inner_radius = st.sidebar.slider(f"Shell {i+1} Inner Radius", 10, 200, 50)
     outer_radius = st.sidebar.slider(f"Shell {i+1} Outer Radius", inner_radius, 400, 150)
-    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 0.5)
+    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
     angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
     color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
     color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
