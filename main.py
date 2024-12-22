@@ -534,25 +534,40 @@ halo_end_color = tuple(int(halo_end_color_hex.lstrip("#")[i:i+2], 16) for i in (
 halo_blur = st.sidebar.slider("Halo Blur Radius", 5, 50, 20)
 
 
-# Generate new layers
+# Generar fractal noise
 fractal_noise_image = generate_fractal_noise(image_size, noise_intensity, noise_blur)
 
-# Convert and resize fractal noise to match the final image size
-if 'final_image' in locals():  # Ensure final_image exists before referencing
-    fractal_noise_image = fractal_noise_image.convert("RGBA").resize(final_image.size)
-else:
-    fractal_noise_image = fractal_noise_image.convert("RGBA").resize(image_size)
+# Generar filamentos secundarios
+secondary_filaments_image = generate_secondary_filaments(
+    image_size=image_size,
+    center=center,
+    num_filaments=num_secondary_filaments,
+    radius=secondary_radius,
+    length=secondary_length,
+    color=secondary_color,
+    blur_radius=secondary_blur
+)
 
-# Overlay fractal noise on the final image
-final_image = Image.alpha_composite(final_image, fractal_noise_image)
+# Generar halo suave
+soft_halo_image = generate_soft_halo(
+    image_size=image_size,
+    center=center,
+    radius=halo_radius,
+    start_color=halo_start_color,
+    end_color=halo_end_color,
+    blur_radius=halo_blur
+)
 
+# Convertir y redimensionar las imágenes nuevas
+fractal_noise_image = fractal_noise_image.convert("RGBA").resize(image_size)
+secondary_filaments_image = secondary_filaments_image.convert("RGBA").resize(image_size)
+soft_halo_image = soft_halo_image.convert("RGBA").resize(image_size)
 
-secondary_filaments_image = secondary_filaments_image.convert("RGBA").resize(final_image.size)
-soft_halo_image = soft_halo_image.convert("RGBA").resize(final_image.size)
-
-# Añade las capas al final_image
+# Añadir las capas al final_image en orden correcto
 final_image = Image.alpha_composite(final_image, fractal_noise_image)
 final_image = Image.alpha_composite(final_image, secondary_filaments_image)
 final_image = Image.alpha_composite(final_image, soft_halo_image)
 
+# Mostrar la imagen final
+st.image(final_image, caption="Nebula Simulation with Enhanced Layers", use_column_width=True)
 
