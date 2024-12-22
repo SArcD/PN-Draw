@@ -422,6 +422,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageColor
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
+
 # Function to draw textured gaseous shells with deformities and various profiles
 def draw_textured_gaseous_shells(image_size, shells):
     """
@@ -431,25 +434,21 @@ def draw_textured_gaseous_shells(image_size, shells):
         image_size: Tuple[int, int] - Dimensions of the image.
         shells: List[Dict] - List of dictionaries defining shell properties:
             - "center": Tuple[int, int] - Center of the shell.
-            - "semimajor_axis": int - Semimajor axis (radius for ellipse).
-            - "semiminor_axis": int - Semiminor axis.
-            - "inner_radius": int - Inner radius of the shell.
-            - "outer_radius": int - Outer radius of the shell.
+            - "lobule_positive": int - Size of the positive lobe (for bipolar).
+            - "lobule_negative": int - Size of the negative lobe (for bipolar).
+            - "spiral_turns": int - Number of turns (for spiral).
+            - "spiral_amplitude": float - Amplitude of the spiral (for spiral).
             - "deformity": float - Degree of deformity (0 = perfect shape).
             - "angle": float - Rotation angle of the shell in degrees.
             - "color_start": str - Start color (e.g., "#FF0000").
             - "color_end": str - End color (e.g., "#000000").
             - "blur": int - Gaussian blur radius.
-            - "profile": str - Shape profile ("circular", "elliptical", "bipolar", "spiral", "irregular").
+            - "profile": str - Shape profile ("bipolar", "spiral", "irregular").
     """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
 
     for shell in shells:
         center = shell["center"]
-        a = shell["semimajor_axis"]
-        b = shell["semiminor_axis"]
-        inner_radius = shell["inner_radius"]
-        outer_radius = shell["outer_radius"]
         deformity = shell["deformity"]
         angle = shell["angle"]
         color_start = ImageColor.getrgb(shell["color_start"])
@@ -460,50 +459,61 @@ def draw_textured_gaseous_shells(image_size, shells):
         shell_img = Image.new("RGBA", image_size, (0, 0, 0, 0))
         shell_draw = ImageDraw.Draw(shell_img)
 
-        # Generate deformable contours for each radius
-        for r in range(inner_radius, outer_radius):
-            t = (r - inner_radius) / (outer_radius - inner_radius)
-            r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
-            g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
-            b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
-            alpha = int(255 * (1 - t))
+        # Generate contours based on profile
+        if profile == "bipolar":
+            lobule_positive = shell["lobule_positive"]
+            lobule_negative = shell["lobule_negative"]
+            separation = shell.get("separation", 0)
 
-            points = []
-            if profile == "circular":
-                for theta in np.linspace(0, 2 * np.pi, 200):
-                    x = center[0] + (r + deformity * np.sin(theta * np.random.uniform(1, 3))) * np.cos(theta)
-                    y = center[1] + (r + deformity * np.cos(theta * np.random.uniform(1, 3))) * np.sin(theta)
-                    points.append((x, y))
-            elif profile == "elliptical":
-                for theta in np.linspace(0, 2 * np.pi, 200):
-                    x = center[0] + (a + deformity * np.sin(theta * np.random.uniform(1, 3))) * np.cos(theta)
-                    y = center[1] + (b + deformity * np.cos(theta * np.random.uniform(1, 3))) * np.sin(theta)
-                    points.append((x, y))
-            elif profile == "bipolar":
+            for t in np.linspace(0, 1, 200):
+                alpha = int(255 * (1 - t))
+                r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
+                g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
+                b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
+
+                points = []
                 for theta in np.linspace(0, 2 * np.pi, 200):
                     factor = np.sin(2 * theta)
-                    x = center[0] + (a + r * factor + deformity * np.random.uniform(-1, 1)) * np.cos(theta)
-                    y = center[1] + (b + r * factor + deformity * np.random.uniform(-1, 1)) * np.sin(theta)
+                    x = center[0] + (lobule_positive if factor > 0 else lobule_negative) * np.cos(theta) + separation * factor
+                    y = center[1] + (lobule_positive if factor > 0 else lobule_negative) * np.sin(theta) + deformity * np.random.uniform(-1, 1)
                     points.append((x, y))
-            elif profile == "spiral":
-                for theta in np.linspace(0, 6 * np.pi, 300):
-                    spiral_factor = r / outer_radius
-                    x = center[0] + (spiral_factor * r + deformity * np.sin(theta)) * np.cos(theta)
-                    y = center[1] + (spiral_factor * r + deformity * np.cos(theta)) * np.sin(theta)
+
+                shell_draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
+
+        elif profile == "spiral":
+            turns = shell["spiral_turns"]
+            amplitude = shell["spiral_amplitude"]
+
+            for t in np.linspace(0, 1, 200):
+                alpha = int(255 * (1 - t))
+                r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
+                g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
+                b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
+
+                points = []
+                for theta in np.linspace(0, 2 * np.pi * turns, 500):
+                    spiral_factor = amplitude * theta / (2 * np.pi * turns)
+                    x = center[0] + (spiral_factor + deformity * np.sin(theta)) * np.cos(theta)
+                    y = center[1] + (spiral_factor + deformity * np.cos(theta)) * np.sin(theta)
                     points.append((x, y))
-            elif profile == "irregular":
+
+                shell_draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
+
+        elif profile == "irregular":
+            for t in np.linspace(0, 1, 200):
+                alpha = int(255 * (1 - t))
+                r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
+                g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
+                b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
+
+                points = []
                 for theta in np.linspace(0, 2 * np.pi, 200):
                     noise = np.random.uniform(-deformity, deformity)
-                    x = center[0] + (r + noise) * np.cos(theta)
-                    y = center[1] + (r + noise) * np.sin(theta)
+                    x = center[0] + (100 + noise) * np.cos(theta)
+                    y = center[1] + (100 + noise) * np.sin(theta)
                     points.append((x, y))
 
-            rotated_shell = Image.new("RGBA", image_size, (0, 0, 0, 0))
-            rotated_draw = ImageDraw.Draw(rotated_shell)
-            rotated_draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
-
-            rotated_shell = rotated_shell.rotate(angle, center=center)
-            shell_img = Image.alpha_composite(shell_img, rotated_shell)
+                shell_draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
 
         shell_img = shell_img.filter(ImageFilter.GaussianBlur(blur_radius))
         img = Image.alpha_composite(img, shell_img)
@@ -519,30 +529,51 @@ for i in range(num_shells):
     st.sidebar.markdown(f"#### Shell {i+1}")
     center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], image_size[0] // 2)
     center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], image_size[1] // 2)
-    semimajor_axis = st.sidebar.slider(f"Shell {i+1} Semimajor Axis", 50, 400, 200)
-    semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 150)
-    inner_radius = st.sidebar.slider(f"Shell {i+1} Inner Radius", 10, 200, 50)
-    outer_radius = st.sidebar.slider(f"Shell {i+1} Outer Radius", inner_radius, 400, 150)
     deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
     angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
     color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
     color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
     blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
-    profile = st.sidebar.selectbox(f"Shell {i+1} Profile", ["circular", "elliptical", "bipolar", "spiral", "irregular"], index=0)
+    profile = st.sidebar.selectbox(f"Shell {i+1} Profile", ["bipolar", "spiral", "irregular"], index=0)
 
-    shells.append({
-        "center": (center_x, center_y),
-        "semimajor_axis": semimajor_axis,
-        "semiminor_axis": semiminor_axis,
-        "inner_radius": inner_radius,
-        "outer_radius": outer_radius,
-        "deformity": deformity,
-        "angle": angle,
-        "color_start": color_start,
-        "color_end": color_end,
-        "blur": blur_radius,
-        "profile": profile,
-    })
+    if profile == "bipolar":
+        lobule_positive = st.sidebar.slider(f"Shell {i+1} Positive Lobe Size", 10, 200, 100)
+        lobule_negative = st.sidebar.slider(f"Shell {i+1} Negative Lobe Size", 10, 200, 100)
+        shells.append({
+            "center": (center_x, center_y),
+            "lobule_positive": lobule_positive,
+            "lobule_negative": lobule_negative,
+            "deformity": deformity,
+            "angle": angle,
+            "color_start": color_start,
+            "color_end": color_end,
+            "blur": blur_radius,
+            "profile": profile
+        })
+    elif profile == "spiral":
+        spiral_turns = st.sidebar.slider(f"Shell {i+1} Number of Turns", 1, 10, 3)
+        spiral_amplitude = st.sidebar.slider(f"Shell {i+1} Amplitude", 10, 200, 50)
+        shells.append({
+            "center": (center_x, center_y),
+            "spiral_turns": spiral_turns,
+            "spiral_amplitude": spiral_amplitude,
+            "deformity": deformity,
+            "angle": angle,
+            "color_start": color_start,
+            "color_end": color_end,
+            "blur": blur_radius,
+            "profile": profile
+        })
+    elif profile == "irregular":
+        shells.append({
+            "center": (center_x, center_y),
+            "deformity": deformity,
+            "angle": angle,
+            "color_start": color_start,
+            "color_end": color_end,
+            "blur": blur_radius,
+            "profile": profile
+        })
 
 # Generate and combine shells with the previous final image
 textured_shells = draw_textured_gaseous_shells(image_size, shells)
