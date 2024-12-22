@@ -416,31 +416,37 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageChops, ImageColor
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
+# Function to draw textured gaseous shells with deformities and elliptical properties
 def draw_textured_gaseous_shells(image_size, shells):
     """
-    Draws diffuse, textured gaseous shells with deformities on an image.
+    Draws diffuse, textured gaseous shells with deformities and elliptical properties on an image.
 
     Parameters:
         image_size: Tuple[int, int] - Dimensions of the image.
         shells: List[Dict] - List of dictionaries defining shell properties:
             - "center": Tuple[int, int] - Center of the shell.
+            - "semimajor_axis": int - Semimajor axis (radius for ellipse).
+            - "semiminor_axis": int - Semiminor axis.
             - "inner_radius": int - Inner radius of the shell.
             - "outer_radius": int - Outer radius of the shell.
-            - "deformity": float - Degree of deformity (0 = perfect circle).
+            - "deformity": float - Degree of deformity (0 = perfect ellipse).
+            - "angle": float - Rotation angle of the shell in degrees.
             - "color_start": str - Start color (e.g., "#FF0000").
             - "color_end": str - End color (e.g., "#000000").
             - "blur": int - Gaussian blur radius.
     """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
-    width, height = image_size
 
     for shell in shells:
         center = shell["center"]
+        a = shell["semimajor_axis"]
+        b = shell["semiminor_axis"]
         inner_radius = shell["inner_radius"]
         outer_radius = shell["outer_radius"]
         deformity = shell["deformity"]
+        angle = shell["angle"]
         color_start = ImageColor.getrgb(shell["color_start"])
         color_end = ImageColor.getrgb(shell["color_end"])
         blur_radius = shell["blur"]
@@ -449,35 +455,35 @@ def draw_textured_gaseous_shells(image_size, shells):
         shell_draw = ImageDraw.Draw(shell_img)
 
         for r in range(inner_radius, outer_radius):
-            deform_x = int(deformity * np.random.uniform(-r * 0.1, r * 0.1))
-            deform_y = int(deformity * np.random.uniform(-r * 0.1, r * 0.1))
-
-            bounding_box = [
-                center[0] - r + deform_x,
-                center[1] - r + deform_y,
-                center[0] + r + deform_x,
-                center[1] + r + deform_y,
-            ]
             t = (r - inner_radius) / (outer_radius - inner_radius)
             r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
             g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
             b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
             alpha = int(255 * (1 - t))
 
-            shell_draw.ellipse(
-                bounding_box,
-                outline=(r_color, g_color, b_color, alpha),
-                width=1,
+            deform_x = int(deformity * np.random.uniform(-r * 0.1, r * 0.1))
+            deform_y = int(deformity * np.random.uniform(-r * 0.1, r * 0.1))
+
+            bounding_box = (
+                center[0] - a - r + deform_x,
+                center[1] - b - r + deform_y,
+                center[0] + a + r + deform_x,
+                center[1] + b + r + deform_y,
             )
 
-        # Apply Gaussian blur to the shell
+            rotated_shell = Image.new("RGBA", image_size, (0, 0, 0, 0))
+            rotated_draw = ImageDraw.Draw(rotated_shell)
+            rotated_draw.ellipse(bounding_box, outline=(r_color, g_color, b_color, alpha), width=1)
+
+            rotated_shell = rotated_shell.rotate(angle, center=center)
+            shell_img = Image.alpha_composite(shell_img, rotated_shell)
+
         shell_img = shell_img.filter(ImageFilter.GaussianBlur(blur_radius))
         img = Image.alpha_composite(img, shell_img)
 
     return img
 
-
-# Example usage in Streamlit
+# Streamlit section for adding textured gaseous shells
 st.sidebar.markdown("### Textured Gaseous Shells")
 num_shells = st.sidebar.slider("Number of Shells", 1, 5, 2)
 shells = []
@@ -486,18 +492,24 @@ for i in range(num_shells):
     st.sidebar.markdown(f"#### Shell {i+1}")
     center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], image_size[0] // 2)
     center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], image_size[1] // 2)
+    semimajor_axis = st.sidebar.slider(f"Shell {i+1} Semimajor Axis", 50, 400, 200)
+    semiminor_axis = st.sidebar.slider(f"Shell {i+1} Semiminor Axis", 50, 400, 150)
     inner_radius = st.sidebar.slider(f"Shell {i+1} Inner Radius", 10, 200, 50)
     outer_radius = st.sidebar.slider(f"Shell {i+1} Outer Radius", inner_radius, 400, 150)
-    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 1.0, 0.3)
+    deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 2.0, 0.5)
+    angle = st.sidebar.slider(f"Shell {i+1} Angle", 0, 360, 0)
     color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
     color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
     blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
 
     shells.append({
         "center": (center_x, center_y),
+        "semimajor_axis": semimajor_axis,
+        "semiminor_axis": semiminor_axis,
         "inner_radius": inner_radius,
         "outer_radius": outer_radius,
         "deformity": deformity,
+        "angle": angle,
         "color_start": color_start,
         "color_end": color_end,
         "blur": blur_radius,
