@@ -590,15 +590,15 @@ def apply_noise_to_layer(base_image, noise_image, opacity):
 # Streamlit UI
 st.title("Nebula Simulation with Noise Control")
 
-image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
-image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+image_width = st.sidebar.slider("Image Wisdth", 400, 1600, 800)
+image_height = st.sidebar.slider("Imasge Height", 400, 1600, 800)
 image_size = (image_width, image_height)
 
 # Fractal noise parameters
 st.sidebar.header("Fractal Noise")
-noise_intensity = st.sidebar.slider("Noise Intensity", 1, 10, 3)
-noise_blur = st.sidebar.slider("Noise Blur Radius", 1, 10, 3)
-noise_opacity = st.sidebar.slider("Noise Opacity", 0, 255, 100)
+noise_intensity = st.sidebar.slider("Nosise Intensity", 1, 10, 3)
+noise_blur = st.sidebar.slider("Noise sBlur Radius", 1, 10, 3)
+noise_opacity = st.sidebar.slider("Nosise Opacity", 0, 255, 100)
 
 def generate_placeholder_layer(image_size, color=(0, 0, 0, 0)):
     return Image.new("RGBA", image_size, color)
@@ -614,7 +614,7 @@ layers_dict = {
 }
 
 # Checkbox controls for selecting affected layers
-st.sidebar.header("Select Layers for Noise Application")
+st.sidebar.header("Select Layers ford Noise Application")
 selected_layers = {
     layer_name: st.sidebar.checkbox(layer_name, False) for layer_name in layers_dict.keys()
 }
