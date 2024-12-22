@@ -571,3 +571,64 @@ final_image = Image.alpha_composite(final_image, soft_halo_image)
 # Mostrar la imagen final
 st.image(final_image, caption="Nebula Simulation with Enhanced Layers", use_column_width=True)
 
+def apply_noise_to_layer(base_image, noise_image, opacity):
+    """
+    Apply noise to a specific layer with adjustable opacity.
+
+    Parameters:
+        base_image (PIL.Image): The base image to overlay noise on.
+        noise_image (PIL.Image): The noise image.
+        opacity (int): Opacity of the noise overlay (0-255).
+
+    Returns:
+        PIL.Image: Image with noise applied.
+    """
+    noise_overlay = Image.new("RGBA", noise_image.size, (0, 0, 0, 0))
+    noise_overlay = Image.blend(noise_overlay, noise_image, opacity / 255.0)
+    return Image.alpha_composite(base_image.convert("RGBA"), noise_overlay)
+
+# Streamlit UI
+st.title("Nebula Simulation with Noise Control")
+
+image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+image_size = (image_width, image_height)
+
+# Fractal noise parameters
+st.sidebar.header("Fractal Noise")
+noise_intensity = st.sidebar.slider("Noise Intensity", 1, 10, 3)
+noise_blur = st.sidebar.slider("Noise Blur Radius", 1, 10, 3)
+noise_opacity = st.sidebar.slider("Noise Opacity", 0, 255, 100)
+
+def generate_placeholder_layer(image_size, color=(0, 0, 0, 0)):
+    return Image.new("RGBA", image_size, color)
+
+# Placeholder layers for demonstration purposes
+star_field_layer = generate_star_field(image_size, num_stars=200)
+other_layer = generate_placeholder_layer(image_size, color=(255, 0, 0, 128))
+
+# Layers to include options for noise application
+layers_dict = {
+    "Star Field": star_field_layer,
+    "Other Layer": other_layer
+}
+
+# Checkbox controls for selecting affected layers
+st.sidebar.header("Select Layers for Noise Application")
+selected_layers = {
+    layer_name: st.sidebar.checkbox(layer_name, False) for layer_name in layers_dict.keys()
+}
+
+# Generate noise image
+fractal_noise_image = generate_fractal_noise(image_size, noise_intensity, noise_blur)
+
+# Apply noise to selected layers
+final_image = generate_placeholder_layer(image_size)
+
+for layer_name, layer_image in layers_dict.items():
+    if selected_layers[layer_name]:
+        layer_image = apply_noise_to_layer(layer_image, fractal_noise_image, noise_opacity)
+    final_image = Image.alpha_composite(final_image, layer_image)
+
+# Display the final image
+st.image(final_image, caption="Nebula Simulation with Noise Control", use_column_width=True)
