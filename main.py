@@ -528,32 +528,57 @@ from PIL import Image, ImageDraw
 from scipy.ndimage import map_coordinates
 import streamlit as st
 
+
 import numpy as np
-from PIL import Image, ImageDraw
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
+from scipy.ndimage import map_coordinates  # Importar map_coordinates para interpolación
+
+import numpy as np
+from PIL import Image
 from scipy.ndimage import map_coordinates
 import streamlit as st
 
 
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
+    """
+    Apply weak gravitational lensing effect to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
+
+    Returns:
+        PIL.Image: Deformed image with weak lensing effect.
+    """
     img_array = np.array(image)
     height, width, channels = img_array.shape
 
+    # Generate coordinate grids
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
 
+    # Calculate distances to black hole center
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
+
+    # Avoid division by zero at the center
     r = np.maximum(r, 1e-5)
 
+    # Weak lensing: Small deflection proportional to Schwarzschild radius
     deflection = schwarzschild_radius / r**2
 
+    # Map new coordinates
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
 
+    # Ensure new coordinates are within image bounds
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
 
+    # Create deformed image
     deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
@@ -564,25 +589,44 @@ def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
 
 
 def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
+    """
+    Apply strong gravitational lensing effect to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
+
+    Returns:
+        PIL.Image: Deformed image with strong lensing effect.
+    """
     img_array = np.array(image)
     height, width, channels = img_array.shape
 
+    # Generate coordinate grids
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
 
+    # Calculate distances to black hole center
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
+
+    # Avoid division by zero at the center
     r = np.maximum(r, 1e-5)
 
+    # Strong lensing: Larger deflection, nonlinear effects
     deflection = schwarzschild_radius**2 / r
 
+    # Map new coordinates
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
 
+    # Ensure new coordinates are within image bounds
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
 
+    # Create deformed image
     deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
@@ -592,79 +636,28 @@ def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
     return Image.fromarray(deformed_img_array)
 
 
-def generate_einstein_ring(image_size, black_hole_center, schwarzschild_radius, intensity_factor=1.0):
-    """
-    Create a synthetic Einstein ring based on a gravitational lensing model.
-
-    Parameters:
-        image_size (tuple): (width, height) of the image.
-        black_hole_center (tuple): (x, y) coordinates of the black hole center.
-        schwarzschild_radius (int): Schwarzschild radius in pixels.
-        intensity_factor (float): Intensity multiplier for the ring.
-
-    Returns:
-        PIL.Image: Einstein ring image.
-    """
-    width, height = image_size
-    x_center, y_center = black_hole_center
-
-    # Create a blank image
-    einstein_ring = np.zeros((height, width), dtype=np.float32)
-
-    # Create coordinate grids
-    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
-    dx = x - x_center
-    dy = y - y_center
-    r = np.sqrt(dx**2 + dy**2)
-
-    # Generate the ring based on intensity
-    ring_intensity = np.exp(-((r - schwarzschild_radius) ** 2) / (2 * (0.05 * schwarzschild_radius) ** 2))
-    einstein_ring += intensity_factor * ring_intensity
-
-    # Normalize and convert to RGBA
-    einstein_ring = np.clip(einstein_ring * 255, 0, 255).astype(np.uint8)
-    einstein_ring_image = Image.fromarray(einstein_ring).convert("RGBA")
-
-    # Add transparency to the background
-    transparent_ring = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    for y in range(height):
-        for x in range(width):
-            alpha = einstein_ring_image.getpixel((x, y))[0]
-            transparent_ring.putpixel((x, y), (255, 255, 255, alpha))
-
-    return transparent_ring
-
-
 # Streamlit UI
-st.title("Gravitational Lensing with Einstein Ring")
+st.title("Gravitational Lensing Simulation")
 
-# Lensing type selection
+# Select lensing type
 lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing"])
 
-# Lens parameters
+# Parameters for the lens
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 100)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 1000, 50)
 
-# Intensity for Einstein ring
-ring_intensity = st.sidebar.slider("Einstein Ring Intensity", 0.1, 5.0, 1.0)
+# Example image generation (Replace this with your nebula image)
+#image_width, image_height = 800, 800
+original_image = final_image  # Use the nebula image you created earlier
 
-# Load the nebula image
-image_width, image_height = 800, 800
-original_image = Image.new("RGBA", (image_width, image_height), (10, 10, 30, 255))
-
-# Apply lensing
+# Apply lensing effect
 if lensing_type == "Weak Lensing":
-    deformed_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
 elif lensing_type == "Strong Lensing":
-    deformed_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
-
-# Generate Einstein ring
-einstein_ring_layer = generate_einstein_ring((image_width, image_height), (black_hole_x, black_hole_y), schwarzschild_radius, ring_intensity)
-
-# Combine deformed image and Einstein ring
-final_image = Image.alpha_composite(deformed_image.convert("RGBA"), einstein_ring_layer)
+    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
 
 # Display the final result
-st.image(final_image, caption=f"{lensing_type} with Einstein Ring", use_column_width=True)
+st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
+
 
