@@ -413,7 +413,6 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
 ############################################################
-
 def generate_gaseous_shells(image_size, center, inner_radius, outer_radius, start_color, end_color, deformity, blur_radius):
     """
     Generate gaseous shells with deformities for a realistic nebula look.
@@ -496,5 +495,3 @@ final_image = Image.alpha_composite(final_image, gaseous_shells)
 
 # Display the updated image
 st.image(final_image, caption="Nebula Simulation with Gaseous Shells", use_column_width=True)
-
-
