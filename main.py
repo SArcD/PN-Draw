@@ -414,3 +414,87 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 ############################################################
 
+def generate_gaseous_shells(image_size, center, inner_radius, outer_radius, start_color, end_color, deformity, blur_radius):
+    """
+    Generate gaseous shells with deformities for a realistic nebula look.
+
+    Parameters:
+        image_size: Tuple[int, int] - Size of the image (width, height).
+        center: Tuple[int, int] - Center of the shell (x, y).
+        inner_radius: int - Inner radius of the shell.
+        outer_radius: int - Outer radius of the shell.
+        start_color: Tuple[int, int, int] - RGB color at the inner edge.
+        end_color: Tuple[int, int, int] - RGB color at the outer edge.
+        deformity: float - Degree of irregularity in the shell shape.
+        blur_radius: int - Gaussian blur radius for smoothing.
+
+    Returns:
+        PIL.Image: Image with the generated shell.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for r in range(inner_radius, outer_radius):
+        t = (r - inner_radius) / (outer_radius - inner_radius)  # Normalized radius
+        alpha = int(255 * (1 - t))  # Fade as we move outward
+
+        # Gradual color transition
+        r_color = int(start_color[0] + t * (end_color[0] - start_color[0]))
+        g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
+        b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
+
+        # Add deformity (irregularity) to the shell
+        points = []
+        for angle in np.linspace(0, 2 * np.pi, 100):  # 100 points for smooth shell
+            noise = deformity * np.random.uniform(-1, 1)  # Random noise for deformity
+            radius = r + noise
+            x = int(center[0] + radius * np.cos(angle))
+            y = int(center[1] + radius * np.sin(angle))
+            points.append((x, y))
+
+        draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
+
+    # Apply Gaussian blur to smooth out edges
+    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
+
+# Streamlit: Gaseous Shell Parameters
+st.sidebar.header("Gaseous Shells")
+num_shells = st.sidebar.slider("Number of Shells", 1, 5, 3)
+
+shells = []
+for i in range(num_shells):
+    st.sidebar.subheader(f"Shell {i + 1}")
+    inner_radius = st.sidebar.slider(f"Inner Radius (Shell {i + 1})", 10, 400, 100)
+    outer_radius = st.sidebar.slider(f"Outer Radius (Shell {i + 1})", inner_radius, 500, inner_radius + 50)
+    deformity = st.sidebar.slider(f"Deformity (Shell {i + 1})", 0.0, 20.0, 5.0)
+    blur_radius = st.sidebar.slider(f"Blur Radius (Shell {i + 1})", 1, 50, 10)
+    start_color = st.sidebar.color_picker(f"Start Color (Shell {i + 1})", "#FF4500")
+    end_color = st.sidebar.color_picker(f"End Color (Shell {i + 1})", "#0000FF")
+
+    shells.append({
+        "inner_radius": inner_radius,
+        "outer_radius": outer_radius,
+        "deformity": deformity,
+        "blur_radius": blur_radius,
+        "start_color": tuple(int(start_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)),
+        "end_color": tuple(int(end_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
+    })
+
+# Generate gaseous shells and combine with the final image
+gaseous_shells = Image.new("RGBA", image_size, (0, 0, 0, 0))
+for shell in shells:
+    shell_image = generate_gaseous_shells(
+        image_size, center, shell["inner_radius"], shell["outer_radius"],
+        shell["start_color"], shell["end_color"], shell["deformity"], shell["blur_radius"]
+    )
+    gaseous_shells = Image.alpha_composite(gaseous_shells, shell_image)
+
+# Combine with other layers
+final_image = Image.alpha_composite(final_image, gaseous_shells)
+
+# Display the updated image
+st.image(final_image, caption="Nebula Simulation with Gaseous Shells", use_column_width=True)
+
+
