@@ -717,7 +717,7 @@ ring_color = tuple(int(ring_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)
 fade_out = st.sidebar.checkbox("Fade Outwards", True)
 
 # Generate Einstein Ring as a Layer
-image_size = (imasge_width, imasge_height)
+image_size = (image_width, image_height)
 einstein_ring_layer = generate_einstein_ring(
     image_size, (lens_x, lens_y), ring_radius, ring_thickness, ring_color, fade_out
 )
