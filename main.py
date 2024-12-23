@@ -617,17 +617,60 @@ def apply_microlensing(image, lens_center, einstein_radius):
     return Image.fromarray(img_array)
 
 
+def apply_caustic_crossing(image, caustic_position, source_path, lens_strength, source_radius):
+    """
+    Simulate caustic crossing, where a source crosses a caustic line.
+    """
+    img_array = np.array(image, dtype=np.float32)
+    height, width, channels = img_array.shape
+
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    x_caustic, y_caustic = caustic_position
+
+    # Simulate the source path across the caustic
+    source_center_x = np.linspace(source_path[0][0], source_path[1][0], num=50)
+    source_center_y = np.linspace(source_path[0][1], source_path[1][1], num=50)
+
+    for t in range(len(source_center_x)):
+        dx = x - source_center_x[t]
+        dy = y - source_center_y[t]
+        r = np.sqrt(dx**2 + dy**2)
+        r = np.maximum(r, 1e-5)
+
+        # Amplification due to crossing the caustic
+        amplification = lens_strength / (r + source_radius)
+        amplification = np.clip(amplification, 1, 10)
+
+        for channel in range(channels):
+            img_array[..., channel] *= amplification
+
+    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+    return Image.fromarray(img_array)
+
+
 # Streamlit UI
 st.title("Gravitational Lensing Simulation")
 
 # Select lensing type
-lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Microlensing"])
+lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing"])
 
 # Parameters for the lens
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
+
+# Parameters for Microlensing
 einstein_radius = st.sidebar.slider("Einstein Radius (pixels) for Microlensing", 10, 200, 50)
+
+# Parameters for Caustic Crossing
+caustic_x = st.sidebar.slider("Caustic X Position", 0, 800, 400)
+caustic_y = st.sidebar.slider("Caustic Y Position", 0, 800, 400)
+lens_strength = st.sidebar.slider("Lens Strength", 1, 10, 5)
+source_start_x = st.sidebar.slider("Source Start X", 0, 800, 200)
+source_start_y = st.sidebar.slider("Source Start Y", 0, 800, 300)
+source_end_x = st.sidebar.slider("Source End X", 0, 800, 600)
+source_end_y = st.sidebar.slider("Source End Y", 0, 800, 500)
+source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
 
 # Example image generation (Replace this with your nebula image)
 original_image = final_image  # Use the nebula image you created earlier
@@ -639,6 +682,14 @@ elif lensing_type == "Strong Lensing":
     final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
 elif lensing_type == "Microlensing":
     final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius)
+elif lensing_type == "Caustic Crossing":
+    final_image = apply_caustic_crossing(
+        original_image,
+        (caustic_x, caustic_y),
+        [(source_start_x, source_start_y), (source_end_x, source_end_y)],
+        lens_strength,
+        source_radius
+    )
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
