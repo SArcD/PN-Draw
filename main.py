@@ -528,7 +528,6 @@ from PIL import Image, ImageDraw
 from scipy.ndimage import map_coordinates
 import streamlit as st
 
-
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import map_coordinates
@@ -593,26 +592,47 @@ def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
     return Image.fromarray(deformed_img_array)
 
 
-def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness, ring_color):
+def generate_einstein_ring(image_size, black_hole_center, schwarzschild_radius, intensity_factor=1.0):
+    """
+    Create a synthetic Einstein ring based on a gravitational lensing model.
+
+    Parameters:
+        image_size (tuple): (width, height) of the image.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
+        intensity_factor (float): Intensity multiplier for the ring.
+
+    Returns:
+        PIL.Image: Einstein ring image.
+    """
     width, height = image_size
-    ring = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(ring)
+    x_center, y_center = black_hole_center
 
-    for i in range(ring_thickness):
-        alpha = 255 - int(255 * (i / ring_thickness))
-        current_radius = ring_radius + i
-        draw.ellipse(
-            [
-                lens_center[0] - current_radius,
-                lens_center[1] - current_radius,
-                lens_center[0] + current_radius,
-                lens_center[1] + current_radius,
-            ],
-            outline=ring_color + (alpha,),
-            width=1,
-        )
+    # Create a blank image
+    einstein_ring = np.zeros((height, width), dtype=np.float32)
 
-    return ring
+    # Create coordinate grids
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    dx = x - x_center
+    dy = y - y_center
+    r = np.sqrt(dx**2 + dy**2)
+
+    # Generate the ring based on intensity
+    ring_intensity = np.exp(-((r - schwarzschild_radius) ** 2) / (2 * (0.05 * schwarzschild_radius) ** 2))
+    einstein_ring += intensity_factor * ring_intensity
+
+    # Normalize and convert to RGBA
+    einstein_ring = np.clip(einstein_ring * 255, 0, 255).astype(np.uint8)
+    einstein_ring_image = Image.fromarray(einstein_ring).convert("RGBA")
+
+    # Add transparency to the background
+    transparent_ring = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    for y in range(height):
+        for x in range(width):
+            alpha = einstein_ring_image.getpixel((x, y))[0]
+            transparent_ring.putpixel((x, y), (255, 255, 255, alpha))
+
+    return transparent_ring
 
 
 # Streamlit UI
@@ -624,13 +644,10 @@ lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Str
 # Lens parameters
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 1000, 50)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 100)
 
-# Einstein Ring parameters
-ring_radius = st.sidebar.slider("Einstein Ring Radius", 10, 500, 150)
-ring_thickness = st.sidebar.slider("Einstein Ring Thickness", 1, 50, 10)
-ring_color_hex = st.sidebar.color_picker("Einstein Ring Color", "#FFFFFF")
-ring_color = tuple(int(ring_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+# Intensity for Einstein ring
+ring_intensity = st.sidebar.slider("Einstein Ring Intensity", 0.1, 5.0, 1.0)
 
 # Load the nebula image
 image_width, image_height = 800, 800
@@ -643,10 +660,11 @@ elif lensing_type == "Strong Lensing":
     deformed_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
 
 # Generate Einstein ring
-einstein_ring_layer = generate_einstein_ring((image_width, image_height), (black_hole_x, black_hole_y), ring_radius, ring_thickness, ring_color)
+einstein_ring_layer = generate_einstein_ring((image_width, image_height), (black_hole_x, black_hole_y), schwarzschild_radius, ring_intensity)
 
 # Combine deformed image and Einstein ring
 final_image = Image.alpha_composite(deformed_image.convert("RGBA"), einstein_ring_layer)
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} with Einstein Ring", use_column_width=True)
+
