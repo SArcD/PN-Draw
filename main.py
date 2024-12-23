@@ -472,9 +472,9 @@ def draw_textured_gaseous_shells(image_size, shells):
 # Streamlit UI
 st.title("Nebula Simulation with Circular and Elliptical Layers")
 
-image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
-image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
-image_size = (image_width, image_height)
+#image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+#image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+#image_size = (image_width, image_height)
 
 # Shell Parameters
 st.sidebar.markdown("### Textured Gaseous Shells")
