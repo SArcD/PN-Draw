@@ -618,18 +618,21 @@ def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness,
 # Streamlit UI
 st.title("Gravitational Lensing with Einstein Ring")
 
+# Lensing type selection
 lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing"])
 
+# Lens parameters
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 1000, 50)
 
+# Einstein Ring parameters
 ring_radius = st.sidebar.slider("Einstein Ring Radius", 10, 500, 150)
 ring_thickness = st.sidebar.slider("Einstein Ring Thickness", 1, 50, 10)
 ring_color_hex = st.sidebar.color_picker("Einstein Ring Color", "#FFFFFF")
 ring_color = tuple(int(ring_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 
-# Nebula image (replace this with your real nebula image)
+# Load the nebula image
 image_width, image_height = 800, 800
 original_image = Image.new("RGBA", (image_width, image_height), (10, 10, 30, 255))
 
@@ -642,8 +645,8 @@ elif lensing_type == "Strong Lensing":
 # Generate Einstein ring
 einstein_ring_layer = generate_einstein_ring((image_width, image_height), (black_hole_x, black_hole_y), ring_radius, ring_thickness, ring_color)
 
-# Combine lensing with Einstein ring
+# Combine deformed image and Einstein ring
 final_image = Image.alpha_composite(deformed_image.convert("RGBA"), einstein_ring_layer)
 
 # Display the final result
-st.image(final_image, caption="Lensing with Einstein Ring", use_column_width=True)
+st.image(final_image, caption=f"{lensing_type} with Einstein Ring", use_column_width=True)
