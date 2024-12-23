@@ -750,19 +750,6 @@ lensing_type = st.sidebar.selectbox(
     ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
 )
 
-# Parámetros para Kerr Lensing
-if lensing_type == "Kerr Lensing":
-    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
-
-# Aplicar el efecto según la selección
-if lensing_type == "Kerr Lensing":
-    final_image = apply_kerr_lensing(
-        final_image,
-        (black_hole_x, black_hole_y),
-        schwarzschild_radius,
-        spin_parameter
-    )
-
 
 
 # Parameters for the lens
@@ -786,6 +773,8 @@ source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
 # Example image generation (Replace this with your nebula image)
 original_image = final_image  # Use the nebula image you created earlier
 
+
+
 # Apply lensing effect
 if lensing_type == "Weak Lensing":
     final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
@@ -801,6 +790,22 @@ elif lensing_type == "Caustic Crossing":
         lens_strength,
         source_radius
     )
+
+# Parámetros para Kerr Lensing
+if lensing_type == "Kerr Lensing":
+    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+
+# Aplicar el efecto según la selección
+if lensing_type == "Kerr Lensing":
+    final_image = apply_kerr_lensing(
+        original_image,
+        (black_hole_x, black_hole_y),
+        schwarzschild_radius,
+        spin_parameter
+    )
+
+
+
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
