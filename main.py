@@ -576,7 +576,7 @@ st.sidebar.header("Gravitational Lensing")
 apply_lens = st.sidebar.checkbox("Apply Gravitational Lensing", False)
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, image_width, image_width // 2)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, image_height, image_height // 2)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 100, 30)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 1000, 30)
 
 # Apply lensing if enabled
 if apply_lens:
