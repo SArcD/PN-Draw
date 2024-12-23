@@ -587,7 +587,7 @@ def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
 
     return Image.fromarray(deformed_img_array)
 
-def apply_strong_lensing_with_ring(image, black_hole_center, schwarzschild_radius):
+def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
     """
     Apply strong gravitational lensing with Einstein ring simulation.
     """
