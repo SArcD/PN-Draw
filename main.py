@@ -527,62 +527,130 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 from scipy.ndimage import map_coordinates  # Importar map_coordinates para interpolación
 
-def apply_gravitational_lens(image, black_hole_position, schwarzschild_radius):
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+
+
+def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
     """
-    Apply gravitational lensing effect to an image.
+    Apply weak gravitational lensing effect to an image.
 
     Parameters:
-        image: PIL.Image - Input image.
-        black_hole_position: Tuple[int, int] - Position of the black hole (x, y).
-        schwarzschild_radius: float - Radius of Schwarzschild in pixels.
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
 
     Returns:
-        PIL.Image: Image with lensing effect applied.
+        PIL.Image: Deformed image with weak lensing effect.
     """
-    width, height = image.size
     img_array = np.array(image)
+    height, width, channels = img_array.shape
 
-    # Create meshgrid for pixel positions
+    # Generate coordinate grids
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
-    dx = x - black_hole_position[0]
-    dy = y - black_hole_position[1]
+    x_center, y_center = black_hole_center
+
+    # Calculate distances to black hole center
+    dx = x - x_center
+    dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
 
-    # Avoid division by zero at the black hole center
-    r[r == 0] = 1e-6
+    # Avoid division by zero at the center
+    r = np.maximum(r, 1e-5)
 
-    # Calculate deflection angle
-    deflection = schwarzschild_radius / r
+    # Weak lensing: Small deflection proportional to Schwarzschild radius
+    deflection = schwarzschild_radius / r**2
 
-    # New positions after deflection
-    new_x = x - deflection * dx / r
-    new_y = y - deflection * dy / r
+    # Map new coordinates
+    new_x = x + deflection * dx / r
+    new_y = y + deflection * dy / r
 
-    # Ensure the new coordinates are within bounds
+    # Ensure new coordinates are within image bounds
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
 
-    # Map coordinates to create the deformed image
+    # Create deformed image
     deformed_img_array = np.zeros_like(img_array)
-    for channel in range(img_array.shape[2]):  # Process each channel independently
+    for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
-            img_array[..., channel], [new_y, new_x], order=1, mode='reflect'
-        )
+            img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
+        ).reshape((height, width))
 
     return Image.fromarray(deformed_img_array)
 
-# Streamlit UI for gravitational lensing
-st.sidebar.header("Gravitational Lensing")
-apply_lens = st.sidebar.checkbox("Apply Gravitational Lensing", False)
-black_hole_x = st.sidebar.slider("Black Hole X Position", 0, image_width, image_width // 2)
-black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, image_height, image_height // 2)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 1000, 30)
 
-# Apply lensing if enabled
-if apply_lens:
-    final_image = apply_gravitational_lens(final_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
+    """
+    Apply strong gravitational lensing effect to an image.
 
-# Display the final image with or without lensing
-st.image(final_image, caption="Nebula Simulation with Gravitational Lensing", use_column_width=True)
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
+
+    Returns:
+        PIL.Image: Deformed image with strong lensing effect.
+    """
+    img_array = np.array(image)
+    height, width, channels = img_array.shape
+
+    # Generate coordinate grids
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    x_center, y_center = black_hole_center
+
+    # Calculate distances to black hole center
+    dx = x - x_center
+    dy = y - y_center
+    r = np.sqrt(dx**2 + dy**2)
+
+    # Avoid division by zero at the center
+    r = np.maximum(r, 1e-5)
+
+    # Strong lensing: Larger deflection, nonlinear effects
+    deflection = schwarzschild_radius**2 / r
+
+    # Map new coordinates
+    new_x = x + deflection * dx / r
+    new_y = y + deflection * dy / r
+
+    # Ensure new coordinates are within image bounds
+    new_x = np.clip(new_x, 0, width - 1)
+    new_y = np.clip(new_y, 0, height - 1)
+
+    # Create deformed image
+    deformed_img_array = np.zeros_like(img_array)
+    for channel in range(channels):
+        deformed_img_array[..., channel] = map_coordinates(
+            img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
+        ).reshape((height, width))
+
+    return Image.fromarray(deformed_img_array)
+
+
+# Streamlit UI
+st.title("Gravitational Lensing Simulation")
+
+# Select lensing type
+lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing"])
+
+# Parameters for the lens
+black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
+black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 500, 50)
+
+# Example image generation (Replace this with your nebula image)
+image_width, image_height = 800, 800
+original_image = final_image  # Use the nebula image you created earlier
+
+# Apply lensing effect
+if lensing_type == "Weak Lensing":
+    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+elif lensing_type == "Strong Lensing":
+    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+
+# Display the final result
+st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 
