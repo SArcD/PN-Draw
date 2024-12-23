@@ -417,10 +417,6 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter, ImageColor
 
-import numpy as np
-import streamlit as st
-from PIL import Image, ImageDraw, ImageFilter, ImageColor
-
 # Function to draw textured gaseous shells with deformities and various profiles
 def draw_textured_gaseous_shells(image_size, shells):
     """
@@ -435,7 +431,6 @@ def draw_textured_gaseous_shells(image_size, shells):
             - "spiral_turns": int - Number of turns (for spiral).
             - "spiral_amplitude": float - Amplitude of the spiral (for spiral).
             - "deformity": float - Degree of deformity (0 = perfect shape).
-            - "angle": float - Rotation angle of the shell in degrees (optional).
             - "color_start": str - Start color (e.g., "#FF0000").
             - "color_end": str - End color (e.g., "#000000").
             - "blur": int - Gaussian blur radius.
