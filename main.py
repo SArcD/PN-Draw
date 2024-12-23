@@ -700,16 +700,16 @@ def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness,
 st.title("Einstein Ring Simulation")
 
 # Parameters for the main image
-imasge_width = st.sidebar.slider("Image Width", 400, 1600, 800)
-imasge_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+#imasge_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+#imasge_height = st.sidebar.slider("Image Height", 400, 1600, 800)
 
 # Generate a dummy background image (or replace with your nebulosa image)
 background_image = Image.new("RGBA", (image_width, image_height), (10, 10, 30, 255))
 
 # Einstein Ring Parameters
 st.sidebar.header("Einstein Ring Parameters")
-lens_x = st.sidebar.slider("Lens Center X", 0, imasge_width, imasge_width // 2)
-lens_y = st.sidebar.slider("Lens Center Y", 0, imasge_height, imasge_height // 2)
+lens_x = st.sidebar.slider("Lens Center X", 0, image_width, image_width // 2)
+lens_y = st.sidebar.slider("Lens Center Y", 0, image_height, image_height // 2)
 ring_radius = st.sidebar.slider("Ring Radius", 10, 400, 150)
 ring_thickness = st.sidebar.slider("Ring Thickness", 1, 50, 10)
 ring_color_hex = st.sidebar.color_picker("Ring Color", "#FFFFFF")
