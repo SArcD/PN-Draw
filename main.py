@@ -655,13 +655,13 @@ st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 import streamlit as st
 
 
 def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness, ring_color, fade):
     """
-    Generate an Einstein ring.
+    Generate an Einstein ring as a transparent layer.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
@@ -672,10 +672,10 @@ def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness,
         fade (bool): Whether the ring fades outwards.
 
     Returns:
-        PIL.Image: Image with the Einstein ring.
+        PIL.Image: Transparent image with the Einstein ring.
     """
     width, height = image_size
-    img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))  # Transparent background
     draw = ImageDraw.Draw(img)
 
     # Generate the ring
@@ -699,9 +699,15 @@ def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness,
 # Streamlit UI
 st.title("Einstein Ring Simulation")
 
-# Parameters
-#image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
-#image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+# Parameters for the main image
+image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+
+# Generate a dummy background image (or replace with your nebulosa image)
+background_image = Image.new("RGBA", (image_width, image_height), (10, 10, 30, 255))
+
+# Einstein Ring Parameters
+st.sidebar.header("Einstein Ring Parameters")
 lens_x = st.sidebar.slider("Lens Center X", 0, image_width, image_width // 2)
 lens_y = st.sidebar.slider("Lens Center Y", 0, image_height, image_height // 2)
 ring_radius = st.sidebar.slider("Ring Radius", 10, 400, 150)
@@ -710,11 +716,14 @@ ring_color_hex = st.sidebar.color_picker("Ring Color", "#FFFFFF")
 ring_color = tuple(int(ring_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
 fade_out = st.sidebar.checkbox("Fade Outwards", True)
 
-# Generate the Einstein ring
+# Generate Einstein Ring as a Layer
 image_size = (image_width, image_height)
-einstein_ring = generate_einstein_ring(
+einstein_ring_layer = generate_einstein_ring(
     image_size, (lens_x, lens_y), ring_radius, ring_thickness, ring_color, fade_out
 )
 
-# Display the Einstein ring
-st.image(einstein_ring, caption="Einstein Ring", use_column_width=True)
+# Combine Einstein Ring Layer with the Background
+final_image = Image.alpha_composite(background_image.convert("RGBA"), einstein_ring_layer)
+
+# Display the Final Image with Einstein Ring
+st.image(final_image, caption="Image with Einstein Ring", use_column_width=True)
