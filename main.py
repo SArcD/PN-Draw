@@ -592,55 +592,42 @@ def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
     return Image.fromarray(deformed_img_array)
 
 
-def apply_multi_lensing(image, black_hole_center, schwarzschild_radius, source_offset):
+def apply_microlensing(image, lens_center, einstein_radius):
     """
-    Simulate strong lensing with multiple images due to source offset.
+    Apply microlensing effect to an image.
     """
-    img_array = np.array(image)
+    img_array = np.array(image, dtype=np.float32)
     height, width, channels = img_array.shape
 
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
-    x_center, y_center = black_hole_center
-
-    x_center += source_offset[0]
-    y_center += source_offset[1]
-
-    dx = x - x_center
-    dy = y - y_center
+    dx = x - lens_center[0]
+    dy = y - lens_center[1]
     r = np.sqrt(dx**2 + dy**2)
     r = np.maximum(r, 1e-5)
 
-    deflection = schwarzschild_radius**2 / r
+    # Microlensing amplification
+    u = r / einstein_radius
+    amplification = (u**2 + 2) / (u * np.sqrt(u**2 + 4))
+    amplification = np.clip(amplification, 1, 5)
 
-    new_x = x + deflection * dx / r
-    new_y = y + deflection * dy / r
-
-    new_x = np.clip(new_x, 0, width - 1)
-    new_y = np.clip(new_y, 0, height - 1)
-
-    deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
-        deformed_img_array[..., channel] = map_coordinates(
-            img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
-        ).reshape((height, width))
+        img_array[..., channel] *= amplification
 
-    return Image.fromarray(deformed_img_array)
+    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+    return Image.fromarray(img_array)
 
 
 # Streamlit UI
 st.title("Gravitational Lensing Simulation")
 
 # Select lensing type
-lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Multi-Image Lensing"])
+lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Microlensing"])
 
 # Parameters for the lens
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
-
-# Offset for multi-image lensing
-source_x_offset = st.sidebar.slider("Source X Offset", -200, 200, 0)
-source_y_offset = st.sidebar.slider("Source Y Offset", -200, 200, 0)
+einstein_radius = st.sidebar.slider("Einstein Radius (pixels) for Microlensing", 10, 200, 50)
 
 # Example image generation (Replace this with your nebula image)
 original_image = final_image  # Use the nebula image you created earlier
@@ -650,10 +637,8 @@ if lensing_type == "Weak Lensing":
     final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
 elif lensing_type == "Strong Lensing":
     final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
-elif lensing_type == "Multi-Image Lensing":
-    final_image = apply_multi_lensing(
-        original_image, (black_hole_x, black_hole_y), schwarzschild_radius, (source_x_offset, source_y_offset)
-    )
+elif lensing_type == "Microlensing":
+    final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius)
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
