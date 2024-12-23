@@ -412,17 +412,26 @@ final_image = Image.alpha_composite(final_image, central_star_image)
 st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
-############################################################import numpy as np
-import numpy as np
-import streamlit as st
-from PIL import Image, ImageDraw, ImageFilter, ImageColor
+############################################################
 
-# Function to convert hexadecimal to RGB
-def hex_to_rgb(hex_color):
-    return tuple(int(hex_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-
-# Function to generate textured gaseous shells
 def draw_textured_gaseous_shells(image_size, shells):
+    """
+    Draws diffuse, textured gaseous shells with deformities and various profiles on an image.
+
+    Parameters:
+        image_size: Tuple[int, int] - Dimensions of the image.
+        shells: List[Dict] - List of dictionaries defining shell properties:
+            - "center": Tuple[int, int] - Center of the shell.
+            - "lobule_positive": int - Size of the positive lobe (for bipolar).
+            - "lobule_negative": int - Size of the negative lobe (for bipolar).
+            - "spiral_turns": int - Number of turns (for spiral).
+            - "spiral_amplitude": float - Amplitude of the spiral (for spiral).
+            - "deformity": float - Degree of deformity (0 = perfect shape).
+            - "color_start": str - Start color (e.g., "#FF0000").
+            - "color_end": str - End color (e.g., "#000000").
+            - "blur": int - Gaussian blur radius.
+            - "profile": str - Shape profile ("circular", "elliptical", "bipolar", "spiral", "irregular").
+    """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
 
     for shell in shells:
@@ -439,10 +448,11 @@ def draw_textured_gaseous_shells(image_size, shells):
         if profile == "circular":
             radius = shell["radius"]
             for t in np.linspace(0, 1, 200):
-                alpha = max(50, int(255 * (1 - t)))
+                alpha = int(255 * (1 - t))
                 r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
                 g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
                 b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
+
                 current_radius = radius + deformity * np.random.uniform(-1, 1)
                 shell_draw.ellipse(
                     [
@@ -454,78 +464,51 @@ def draw_textured_gaseous_shells(image_size, shells):
                     outline=(r_color, g_color, b_color, alpha),
                 )
 
-        elif profile == "elliptical":
-            semi_major = shell["semi_major"]
-            semi_minor = shell["semi_minor"]
-            for t in np.linspace(0, 1, 200):
-                alpha = max(50, int(255 * (1 - t)))
-                r_color = int(color_start[0] + t * (color_end[0] - color_start[0]))
-                g_color = int(color_start[1] + t * (color_end[1] - color_start[1]))
-                b_color = int(color_start[2] + t * (color_end[2] - color_start[2]))
-                shell_draw.ellipse(
-                    [
-                        center[0] - semi_major,
-                        center[1] - semi_minor,
-                        center[0] + semi_major,
-                        center[1] + semi_minor,
-                    ],
-                    outline=(r_color, g_color, b_color, alpha),
-                )
-
         shell_img = shell_img.filter(ImageFilter.GaussianBlur(blur_radius))
         img = Image.alpha_composite(img, shell_img)
 
     return img
 
 # Streamlit UI
-st.title("Nebula Simulation with Textured Gaseous Shells")
+st.title("Nebula Simulation with Circular and Elliptical Layers")
 
-image_width = st.sidebar.slider("Imaage Width", 400, 1600, 800)
-image_height = st.sidebar.slider("Imsage Height", 400, 1600, 800)
+image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
 image_size = (image_width, image_height)
 
+# Shell Parameters
+st.sidebar.markdown("### Textured Gaseous Shells")
 num_shells = st.sidebar.slider("Number of Shells", 1, 5, 2)
 shells = []
 
 for i in range(num_shells):
-    st.sidebar.markdown(f"### Shell {i+1}")
-    profile = st.sidebar.selectbox(f"Shell {i+1} Profile", ["circular", "elliptical"], index=0)
-    center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_size[0], image_size[0] // 2)
-    center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_size[1], image_size[1] // 2)
+    st.sidebar.markdown(f"#### Shell {i+1}")
+    profile = st.sidebar.selectbox(f"Shell {i+1} Profile", ["circular"], index=0)
+    center_x = st.sidebar.slider(f"Shell {i+1} Center X", 0, image_width, image_width // 2)
+    center_y = st.sidebar.slider(f"Shell {i+1} Center Y", 0, image_height, image_height // 2)
+    radius = st.sidebar.slider(f"Shell {i+1} Radius", 10, 400, 200)
     deformity = st.sidebar.slider(f"Shell {i+1} Deformity", 0.0, 10.0, 1.0)
     color_start = st.sidebar.color_picker(f"Shell {i+1} Start Color", "#FF4500")
     color_end = st.sidebar.color_picker(f"Shell {i+1} End Color", "#0000FF")
     blur_radius = st.sidebar.slider(f"Shell {i+1} Blur Radius", 1, 50, 10)
 
-    if profile == "circular":
-        radius = st.sidebar.slider(f"Shell {i+1} Radius", 10, 400, 200)
-        shells.append({
-            "center": (center_x, center_y),
-            "radius": radius,
-            "deformity": deformity,
-            "color_start": color_start,
-            "color_end": color_end,
-            "blur": blur_radius,
-            "profile": profile,
-        })
+    shells.append({
+        "center": (center_x, center_y),
+        "radius": radius,
+        "deformity": deformity,
+        "color_start": color_start,
+        "color_end": color_end,
+        "blur": blur_radius,
+        "profile": profile
+    })
 
-    elif profile == "elliptical":
-        semi_major = st.sidebar.slider(f"Shell {i+1} Semi-Major Axis", 10, 400, 200)
-        semi_minor = st.sidebar.slider(f"Shell {i+1} Semi-Minor Axis", 10, 400, 150)
-        shells.append({
-            "center": (center_x, center_y),
-            "semi_major": semi_major,
-            "semi_minor": semi_minor,
-            "deformity": deformity,
-            "color_start": color_start,
-            "color_end": color_end,
-            "blur": blur_radius,
-            "profile": profile,
-        })
-
-# Generate textured shells
+# Generate layers
+star_field_image = generate_star_field(image_size, num_stars=200)
 textured_shells = draw_textured_gaseous_shells(image_size, shells)
 
-# Display the final image with shells
-st.image(textured_shells, caption="Textured Gaseous Shells Simulation", use_column_width=True)
+# Combine layers
+final_image = Image.alpha_composite(star_field_image.convert("RGBA"), textured_shells.convert("RGBA"))
+
+# Display the final image
+st.image(final_image, caption="Nebula Simulation with Textured Gaseous Shells", use_column_width=True)
 
