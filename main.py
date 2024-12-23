@@ -638,10 +638,10 @@ lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Str
 # Parameters for the lens
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 500, 50)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 1000, 50)
 
 # Example image generation (Replace this with your nebula image)
-image_width, image_height = 800, 800
+#image_width, image_height = 800, 800
 original_image = final_image  # Use the nebula image you created earlier
 
 # Apply lensing effect
