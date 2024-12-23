@@ -413,13 +413,16 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
 ############################################################
-def generate_gaseous_shells(image_size, center, inner_radius, outer_radius, start_color, end_color, deformity, blur_radius):
+def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, inner_radius, outer_radius, start_color, end_color, deformity, blur_radius):
     """
-    Generate gaseous shells with deformities for a realistic nebula look.
+    Generate gaseous shells with elliptical profiles, deformities, and sinusoidal variations.
 
     Parameters:
         image_size: Tuple[int, int] - Size of the image (width, height).
         center: Tuple[int, int] - Center of the shell (x, y).
+        semi_major: int - Semi-major axis for the elliptical profile.
+        semi_minor: int - Semi-minor axis for the elliptical profile.
+        angle: float - Rotation angle of the ellipse in degrees.
         inner_radius: int - Inner radius of the shell.
         outer_radius: int - Outer radius of the shell.
         start_color: Tuple[int, int, int] - RGB color at the inner edge.
@@ -434,6 +437,11 @@ def generate_gaseous_shells(image_size, center, inner_radius, outer_radius, star
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
+    # Precompute rotation matrix for the angle
+    angle_rad = np.radians(angle)
+    cos_theta = np.cos(angle_rad)
+    sin_theta = np.sin(angle_rad)
+
     for r in range(inner_radius, outer_radius):
         t = (r - inner_radius) / (outer_radius - inner_radius)  # Normalized radius
         alpha = int(255 * (1 - t))  # Fade as we move outward
@@ -443,20 +451,27 @@ def generate_gaseous_shells(image_size, center, inner_radius, outer_radius, star
         g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
         b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
 
-        # Add deformity (irregularity) to the shell
+        # Generate points for the elliptical profile with sinusoidal deformity
         points = []
-        for angle in np.linspace(0, 2 * np.pi, 100):  # 100 points for smooth shell
-            noise = deformity * np.random.uniform(-1, 1)  # Random noise for deformity
+        for theta in np.linspace(0, 2 * np.pi, 200):  # 200 points for smooth shell
+            noise = deformity * np.sin(3 * theta + t * np.pi)  # Sinusoidal deformity
             radius = r + noise
-            x = int(center[0] + radius * np.cos(angle))
-            y = int(center[1] + radius * np.sin(angle))
+            x_ellipse = radius * semi_major * np.cos(theta) / outer_radius
+            y_ellipse = radius * semi_minor * np.sin(theta) / outer_radius
+
+            # Rotate the points by the specified angle
+            x_rotated = cos_theta * x_ellipse - sin_theta * y_ellipse
+            y_rotated = sin_theta * x_ellipse + cos_theta * y_ellipse
+
+            # Translate to the center
+            x = int(center[0] + x_rotated)
+            y = int(center[1] + y_rotated)
             points.append((x, y))
 
         draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
 
     # Apply Gaussian blur to smooth out edges
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
-
 
 # Streamlit: Gaseous Shell Parameters
 st.sidebar.header("Gaseous Shells")
@@ -465,6 +480,9 @@ num_shells = st.sidebar.slider("Number of Shells", 1, 5, 3)
 shells = []
 for i in range(num_shells):
     st.sidebar.subheader(f"Shell {i + 1}")
+    semi_major = st.sidebar.slider(f"Semi-Major Axis (Shell {i + 1})", 10, 400, 200)
+    semi_minor = st.sidebar.slider(f"Semi-Minor Axis (Shell {i + 1})", 10, 400, 150)
+    angle = st.sidebar.slider(f"Inclination Angle (Shell {i + 1})", 0, 360, 45)
     inner_radius = st.sidebar.slider(f"Inner Radius (Shell {i + 1})", 10, 400, 100)
     outer_radius = st.sidebar.slider(f"Outer Radius (Shell {i + 1})", inner_radius, 500, inner_radius + 50)
     deformity = st.sidebar.slider(f"Deformity (Shell {i + 1})", 0.0, 20.0, 5.0)
@@ -473,6 +491,9 @@ for i in range(num_shells):
     end_color = st.sidebar.color_picker(f"End Color (Shell {i + 1})", "#0000FF")
 
     shells.append({
+        "semi_major": semi_major,
+        "semi_minor": semi_minor,
+        "angle": angle,
         "inner_radius": inner_radius,
         "outer_radius": outer_radius,
         "deformity": deformity,
@@ -485,7 +506,8 @@ for i in range(num_shells):
 gaseous_shells = Image.new("RGBA", image_size, (0, 0, 0, 0))
 for shell in shells:
     shell_image = generate_gaseous_shells(
-        image_size, center, shell["inner_radius"], shell["outer_radius"],
+        image_size, center, shell["semi_major"], shell["semi_minor"], shell["angle"],
+        shell["inner_radius"], shell["outer_radius"],
         shell["start_color"], shell["end_color"], shell["deformity"], shell["blur_radius"]
     )
     gaseous_shells = Image.alpha_composite(gaseous_shells, shell_image)
@@ -494,4 +516,5 @@ for shell in shells:
 final_image = Image.alpha_composite(final_image, gaseous_shells)
 
 # Display the updated image
-st.image(final_image, caption="Nebula Simulation with Gaseous Shells", use_column_width=True)
+st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells", use_column_width=True)
+
