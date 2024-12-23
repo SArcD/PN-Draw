@@ -523,9 +523,6 @@ st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells"
 ##############################################################################3
 
 
-import numpy as np
-from scipy.ndimage import map_coordinates
-
 def apply_gravitational_lens(image, black_hole_position, schwarzschild_radius):
     """
     Apply gravitational lensing effect to an image.
@@ -557,11 +554,18 @@ def apply_gravitational_lens(image, black_hole_position, schwarzschild_radius):
     new_x = x - deflection * dx / r
     new_y = y - deflection * dy / r
 
-    # Map coordinates to create the deformed image
-    deformed_img_array = map_coordinates(img_array, [new_y.ravel(), new_x.ravel()], order=1, mode='constant', cval=0)
-    deformed_img_array = deformed_img_array.reshape((height, width, -1))
+    # Ensure the new coordinates are within bounds
+    new_x = np.clip(new_x, 0, width - 1)
+    new_y = np.clip(new_y, 0, height - 1)
 
-    return Image.fromarray(np.uint8(deformed_img_array))
+    # Map coordinates to create the deformed image
+    deformed_img_array = np.zeros_like(img_array)
+    for channel in range(img_array.shape[2]):  # Process each channel independently
+        deformed_img_array[..., channel] = map_coordinates(
+            img_array[..., channel], [new_y, new_x], order=1, mode='reflect'
+        )
+
+    return Image.fromarray(deformed_img_array)
 
 # Streamlit UI for gravitational lensing
 st.sidebar.header("Gravitational Lensing")
