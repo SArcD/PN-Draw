@@ -793,7 +793,7 @@ elif lensing_type == "Caustic Crossing":
 
 # Parámetros para Kerr Lensing
 if lensing_type == "Kerr Lensing":
-    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 2.0, 0.5)
 
 # Aplicar el efecto según la selección
 if lensing_type == "Kerr Lensing":
