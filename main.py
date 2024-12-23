@@ -587,53 +587,54 @@ def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
 
     return Image.fromarray(deformed_img_array)
 
-
-def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
+def apply_strong_lensing_with_ring(image, black_hole_center, schwarzschild_radius):
     """
-    Apply strong gravitational lensing effect to an image.
-
-    Parameters:
-        image (PIL.Image): Input image to distort.
-        black_hole_center (tuple): (x, y) coordinates of the black hole center.
-        schwarzschild_radius (int): Schwarzschild radius in pixels.
-
-    Returns:
-        PIL.Image: Deformed image with strong lensing effect.
+    Apply strong gravitational lensing with Einstein ring simulation.
     """
     img_array = np.array(image)
     height, width, channels = img_array.shape
 
-    # Generate coordinate grids
+    # Create coordinate grids
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
 
-    # Calculate distances to black hole center
+    # Calculate distance to black hole center
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
+    r = np.maximum(r, 1e-5)  # Prevent division by zero
 
-    # Avoid division by zero at the center
-    r = np.maximum(r, 1e-5)
-
-    # Strong lensing: Larger deflection, nonlinear effects
+    # Strong lensing effect with circular symmetry
     deflection = schwarzschild_radius**2 / r
-
-    # Map new coordinates
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
 
-    # Ensure new coordinates are within image bounds
+    # Clip coordinates to image boundaries
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
 
-    # Create deformed image
+    # Generate deformed image
     deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
             img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
         ).reshape((height, width))
 
+    # Overlay Einstein ring
+    ring_radius = int(schwarzschild_radius * 1.5)  # Scaled for visibility
+    draw = ImageDraw.Draw(image)
+    draw.ellipse(
+        [
+            black_hole_center[0] - ring_radius,
+            black_hole_center[1] - ring_radius,
+            black_hole_center[0] + ring_radius,
+            black_hole_center[1] + ring_radius,
+        ],
+        outline="white", width=3
+    )
+
     return Image.fromarray(deformed_img_array)
+
 
 
 # Streamlit UI
