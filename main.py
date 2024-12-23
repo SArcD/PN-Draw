@@ -522,6 +522,10 @@ st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells"
 
 ##############################################################################3
 
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFilter, ImageColor
+from scipy.ndimage import map_coordinates  # Importar map_coordinates para interpolación
 
 def apply_gravitational_lens(image, black_hole_position, schwarzschild_radius):
     """
@@ -580,4 +584,5 @@ if apply_lens:
 
 # Display the final image with or without lensing
 st.image(final_image, caption="Nebula Simulation with Gravitational Lensing", use_column_width=True)
+
 
