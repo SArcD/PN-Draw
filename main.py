@@ -654,3 +654,67 @@ elif lensing_type == "Strong Lensing":
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 
+import numpy as np
+from PIL import Image, ImageDraw
+import streamlit as st
+
+
+def generate_einstein_ring(image_size, lens_center, ring_radius, ring_thickness, ring_color, fade):
+    """
+    Generate an Einstein ring.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        lens_center (tuple): Coordinates of the lens center (x, y).
+        ring_radius (int): Radius of the Einstein ring.
+        ring_thickness (int): Thickness of the ring.
+        ring_color (tuple): RGB color of the ring.
+        fade (bool): Whether the ring fades outwards.
+
+    Returns:
+        PIL.Image: Image with the Einstein ring.
+    """
+    width, height = image_size
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+    draw = ImageDraw.Draw(img)
+
+    # Generate the ring
+    for i in range(ring_thickness):
+        alpha = 255 - int(255 * (i / ring_thickness)) if fade else 255
+        current_radius = ring_radius + i
+        draw.ellipse(
+            [
+                lens_center[0] - current_radius,
+                lens_center[1] - current_radius,
+                lens_center[0] + current_radius,
+                lens_center[1] + current_radius,
+            ],
+            outline=ring_color + (alpha,),
+            width=1,
+        )
+
+    return img
+
+
+# Streamlit UI
+st.title("Einstein Ring Simulation")
+
+# Parameters
+#image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
+#image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
+lens_x = st.sidebar.slider("Lens Center X", 0, image_width, image_width // 2)
+lens_y = st.sidebar.slider("Lens Center Y", 0, image_height, image_height // 2)
+ring_radius = st.sidebar.slider("Ring Radius", 10, 400, 150)
+ring_thickness = st.sidebar.slider("Ring Thickness", 1, 50, 10)
+ring_color_hex = st.sidebar.color_picker("Ring Color", "#FFFFFF")
+ring_color = tuple(int(ring_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+fade_out = st.sidebar.checkbox("Fade Outwards", True)
+
+# Generate the Einstein ring
+image_size = (image_width, image_height)
+einstein_ring = generate_einstein_ring(
+    image_size, (lens_x, lens_y), ring_radius, ring_thickness, ring_color, fade_out
+)
+
+# Display the Einstein ring
+st.image(einstein_ring, caption="Einstein Ring", use_column_width=True)
