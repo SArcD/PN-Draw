@@ -757,7 +757,7 @@ if lensing_type == "Kerr Lensing":
 # Aplicar el efecto según la selección
 if lensing_type == "Kerr Lensing":
     final_image = apply_kerr_lensing(
-        original_image,
+        final_image,
         (black_hole_x, black_hole_y),
         schwarzschild_radius,
         spin_parameter
