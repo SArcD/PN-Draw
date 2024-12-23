@@ -518,3 +518,62 @@ final_image = Image.alpha_composite(final_image, gaseous_shells)
 # Display the updated image
 st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells", use_column_width=True)
 
+
+
+##############################################################################3
+
+
+import numpy as np
+from scipy.ndimage import map_coordinates
+
+def apply_gravitational_lens(image, black_hole_position, schwarzschild_radius):
+    """
+    Apply gravitational lensing effect to an image.
+
+    Parameters:
+        image: PIL.Image - Input image.
+        black_hole_position: Tuple[int, int] - Position of the black hole (x, y).
+        schwarzschild_radius: float - Radius of Schwarzschild in pixels.
+
+    Returns:
+        PIL.Image: Image with lensing effect applied.
+    """
+    width, height = image.size
+    img_array = np.array(image)
+
+    # Create meshgrid for pixel positions
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    dx = x - black_hole_position[0]
+    dy = y - black_hole_position[1]
+    r = np.sqrt(dx**2 + dy**2)
+
+    # Avoid division by zero at the black hole center
+    r[r == 0] = 1e-6
+
+    # Calculate deflection angle
+    deflection = schwarzschild_radius / r
+
+    # New positions after deflection
+    new_x = x - deflection * dx / r
+    new_y = y - deflection * dy / r
+
+    # Map coordinates to create the deformed image
+    deformed_img_array = map_coordinates(img_array, [new_y.ravel(), new_x.ravel()], order=1, mode='constant', cval=0)
+    deformed_img_array = deformed_img_array.reshape((height, width, -1))
+
+    return Image.fromarray(np.uint8(deformed_img_array))
+
+# Streamlit UI for gravitational lensing
+st.sidebar.header("Gravitational Lensing")
+apply_lens = st.sidebar.checkbox("Apply Gravitational Lensing", False)
+black_hole_x = st.sidebar.slider("Black Hole X Position", 0, image_width, image_width // 2)
+black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, image_height, image_height // 2)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 100, 30)
+
+# Apply lensing if enabled
+if apply_lens:
+    final_image = apply_gravitational_lens(final_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+
+# Display the final image with or without lensing
+st.image(final_image, caption="Nebula Simulation with Gravitational Lensing", use_column_width=True)
+
