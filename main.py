@@ -647,12 +647,123 @@ def apply_caustic_crossing(image, caustic_position, source_path, lens_strength, 
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
     return Image.fromarray(img_array)
 
+def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_parameter):
+    """
+    Apply Kerr lensing effect (rotating black hole) to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
+        spin_parameter (float): Spin parameter of the black hole (dimensionless, 0 to 1).
+
+    Returns:
+        PIL.Image: Deformed image with Kerr lensing effect.
+    """
+    img_array = np.array(image)
+    height, width, channels = img_array.shape
+
+    # Generate coordinate grids
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    x_center, y_center = black_hole_center
+
+    dx = x - x_center
+    dy = y - y_center
+    r = np.sqrt(dx**2 + dy**2)
+    r = np.maximum(r, 1e-5)
+
+    # Add spin effect: Frame-dragging introduces azimuthal deflection
+    phi = np.arctan2(dy, dx) + spin_parameter * schwarzschild_radius / r
+    deflection = schwarzschild_radius**2 / r
+
+    new_x = x_center + r * np.cos(phi) + deflection * dx / r
+    new_y = y_center + r * np.sin(phi) + deflection * dy / r
+
+    # Ensure new coordinates are within image bounds
+    new_x = np.clip(new_x, 0, width - 1)
+    new_y = np.clip(new_y, 0, height - 1)
+
+    deformed_img_array = np.zeros_like(img_array)
+    for channel in range(channels):
+        deformed_img_array[..., channel] = map_coordinates(
+            img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
+        ).reshape((height, width))
+
+    return Image.fromarray(deformed_img_array)
+
+
 
 # Streamlit UI
-st.title("Gravitational Lensing Simulation")
+#st.title("Gravitational Lensing Simulation")
 
 # Select lensing type
-lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing"])
+#lensing_type = st.sidebar.selectbox("Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing"])
+
+
+def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_parameter):
+    """
+    Apply Kerr lensing effect (rotating black hole) to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (int): Schwarzschild radius in pixels.
+        spin_parameter (float): Spin parameter of the black hole (dimensionless, 0 to 1).
+
+    Returns:
+        PIL.Image: Deformed image with Kerr lensing effect.
+    """
+    img_array = np.array(image)
+    height, width, channels = img_array.shape
+
+    # Generate coordinate grids
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    x_center, y_center = black_hole_center
+
+    dx = x - x_center
+    dy = y - y_center
+    r = np.sqrt(dx**2 + dy**2)
+    r = np.maximum(r, 1e-5)
+
+    # Add spin effect: Frame-dragging introduces azimuthal deflection
+    phi = np.arctan2(dy, dx) + spin_parameter * schwarzschild_radius / r
+    deflection = schwarzschild_radius**2 / r
+
+    new_x = x_center + r * np.cos(phi) + deflection * dx / r
+    new_y = y_center + r * np.sin(phi) + deflection * dy / r
+
+    # Ensure new coordinates are within image bounds
+    new_x = np.clip(new_x, 0, width - 1)
+    new_y = np.clip(new_y, 0, height - 1)
+
+    deformed_img_array = np.zeros_like(img_array)
+    for channel in range(channels):
+        deformed_img_array[..., channel] = map_coordinates(
+            img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
+        ).reshape((height, width))
+
+    return Image.fromarray(deformed_img_array)
+
+# Agregar Kerr Lensing en el menú desplegable
+lensing_type = st.sidebar.selectbox(
+    "Select Lensing Type",
+    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
+)
+
+# Parámetros para Kerr Lensing
+if lensing_type == "Kerr Lensing":
+    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+
+# Aplicar el efecto según la selección
+if lensing_type == "Kerr Lensing":
+    final_image = apply_kerr_lensing(
+        original_image,
+        (black_hole_x, black_hole_y),
+        schwarzschild_radius,
+        spin_parameter
+    )
+
+
 
 # Parameters for the lens
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
@@ -693,5 +804,7 @@ elif lensing_type == "Caustic Crossing":
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
+
+
 
 
