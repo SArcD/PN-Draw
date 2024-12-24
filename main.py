@@ -867,10 +867,10 @@ def generate_animation(image, lensing_type, animation_range, schwarzschild_radiu
 st.title("Gravitational Lensing Animation")
 
 # Select lensing type
-lensing_type = st.sidebar.selectbox(
-    "Select Lensing Type",
-    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
-)
+#lensing_type = st.sidebar.selectbox(
+#    "Select Lensing Type",
+#    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
+#)
 
 # Base image upload
 uploaded_file = st.file_uploader("Upload your base nebula image", type=["png", "jpg", "jpeg"])
