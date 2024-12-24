@@ -815,10 +815,10 @@ st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 st.title("Kerr Lensing Animation")
 
 # Parameters for the black hole
-image_size = (800, 800)
+#image_size = (800, 800)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
-spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+#schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
+#spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
 
 # Animation parameters
 start_x = st.sidebar.slider("Start X Position", 0, 800, 100)
