@@ -811,25 +811,25 @@ if lensing_type == "Kerr Lensing":
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 ##############################
 
-import numpy as np
-from PIL import Image
-import cv2
+from moviepy.editor import ImageSequenceClip
 import streamlit as st
-from io import BytesIO
 
-def save_video(frames, output_path, fps):
+def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
     """
-    Save frames as a video file.
+    Save frames as a video file using MoviePy.
+
+    Parameters:
+        frames: List of PIL images.
+        fps: Frames per second.
+        output_path: Path to save the video.
     """
-    height, width = frames[0].size
-    video = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
-    
-    for frame in frames:
-        # Convert PIL image to numpy array and BGR format (OpenCV uses BGR)
-        frame_array = np.array(frame.convert("RGB"))[:, :, ::-1]
-        video.write(frame_array)
-    
-    video.release()
+    # Convert PIL images to numpy arrays
+    frames_array = [np.array(frame) for frame in frames]
+    # Create video clip
+    clip = ImageSequenceClip(frames_array, fps=fps)
+    # Write video to file
+    clip.write_videofile(output_path, codec="libx264")
+    return output_path
 
 # Streamlit UI for Animation
 st.title("Black Hole Animation")
@@ -851,9 +851,8 @@ for spin_value in spin_range:
     )
     frames.append(frame_image)
 
-# Save the video
-video_path = "black_hole_animation.mp4"
-save_video(frames, video_path, fps)
+# Save the video using MoviePy
+video_path = save_video_with_moviepy(frames, fps)
 
 # Display video in Streamlit
 st.video(video_path)
@@ -866,7 +865,6 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
-
 
 ###########################3333
 
