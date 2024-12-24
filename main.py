@@ -812,7 +812,10 @@ st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 ##############################
 
 from moviepy.editor import ImageSequenceClip
+import numpy as np
+from PIL import Image
 import streamlit as st
+
 
 def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
     """
@@ -828,27 +831,33 @@ def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
     # Create video clip
     clip = ImageSequenceClip(frames_array, fps=fps)
     # Write video to file
-    clip.write_videofile(output_path, codec="libx264")
+    clip.write_videofile(output_path, codec="libx264", audio=False)
     return output_path
 
-# Streamlit UI for Animation
-st.title("Black Hole Animation")
 
-# Parameters
+# Streamlit UI for Animation
+st.title("Gravitational Lensing Animation")
+
+# Animation parameters
 num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
 fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
-spin_range = np.linspace(0, 1.0, num_frames)
 
-# Generate frames
+# Initial and final positions for the black hole
+x_start = st.sidebar.slider("Black Hole Start X Position", 0, 800, 200)
+y_start = st.sidebar.slider("Black Hole Start Y Position", 0, 800, 400)
+x_end = st.sidebar.slider("Black Hole End X Position", 0, 800, 600)
+y_end = st.sidebar.slider("Black Hole End Y Position", 0, 800, 400)
+
+# Generate intermediate positions for the animation
+x_positions = np.linspace(x_start, x_end, num_frames)
+y_positions = np.linspace(y_start, y_end, num_frames)
+
+# Generate frames based on the selected lensing
 frames = []
-for spin_value in spin_range:
-    # Generate a frame using Kerr lensing (or any other lensing effect)
-    frame_image = apply_kerr_lensing(
-        original_image,
-        (black_hole_x, black_hole_y),
-        schwarzschild_radius,
-        spin_value
-    )
+for i in range(num_frames):
+    current_position = (x_positions[i], y_positions[i])
+    # Use the pre-defined final_image to apply the selected lensing
+    frame_image = final_image.copy()  # Assuming `final_image` is already the output of a lensing effect
     frames.append(frame_image)
 
 # Save the video using MoviePy
@@ -865,6 +874,7 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
+
 
 ###########################3333
 
