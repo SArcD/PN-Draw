@@ -535,6 +535,12 @@ from scipy.ndimage import map_coordinates
 import streamlit as st
 from moviepy.editor import ImageSequenceClip
 
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+from moviepy.editor import ImageSequenceClip
+
 # Functions for gravitational lensing effects
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     img_array = np.array(image)
@@ -624,18 +630,6 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
         ).reshape((height, width))
     return Image.fromarray(deformed_img_array)
 
-# General lensing application function
-def apply_lensing_effect(image, lensing_type, current_position, schwarzschild_radius, lens_type="point", einstein_radius=None, source_type="point", source_radius=0, spin_parameter=0.0):
-    if lensing_type == "Weak Lensing":
-        return apply_weak_lensing(image, current_position, schwarzschild_radius, lens_type=lens_type)
-    elif lensing_type == "Strong Lensing":
-        return apply_strong_lensing(image, current_position, schwarzschild_radius, lens_type=lens_type)
-    elif lensing_type == "Microlensing":
-        return apply_microlensing(image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
-    elif lensing_type == "Kerr Lensing":
-        return apply_kerr_lensing(image, current_position, schwarzschild_radius, spin_parameter)
-    return image
-
 # Modify brightness and apply red/blue shift
 def adjust_brightness(img_array, magnification):
     return np.clip(img_array * magnification[..., None], 0, 255)
@@ -679,74 +673,74 @@ if lensing_type == "Kerr Lensing":
 else:
     spin_parameter = 0.0
 
-# Load an example image
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
-if uploaded_file:
-    original_image = Image.open(uploaded_file)
-    st.image(original_image, caption="Original Image", use_column_width=True)
+# Example image generation
+def create_example_image(width, height):
+    """Create a synthetic image with stars and nebula-like patterns."""
+    img = np.zeros((height, width, 3), dtype=np.uint8)
+    np.random.seed(42)
+    for _ in range(500):
+        x, y = np.random.randint(0, width), np.random.randint(0, height)
+        brightness = np.random.randint(150, 255)
+        img[y, x] = [brightness] * 3
+    return Image.fromarray(img)
 
-    # Apply lensing effect
-    final_image = apply_lensing_effect(
-        original_image,
-        lensing_type,
-        (black_hole_x, black_hole_y),
-        schwarzschild_radius,
-        lens_type=lens_type,
-        einstein_radius=einstein_radius if lensing_type == "Microlensing" else None,
-        source_type=source_type if lensing_type == "Microlensing" else "point",
-        source_radius=source_radius if lensing_type == "Microlensing" else 0,
-        spin_parameter=spin_parameter
+original_image = create_example_image(800, 800)
+st.image(original_image, caption="Original Image", use_column_width=True)
+
+# Apply lensing effect
+r = np.sqrt((np.arange(original_image.size[0]) - black_hole_x)**2 + (np.arange(original_image.size[1])[:, None] - black_hole_y)**2)
+r = np.maximum(r, 1e-5)
+magnification = 1 + (schwarzschild_radius / r)
+magnification = np.clip(magnification, 1, 10)
+
+if lensing_type == "Weak Lensing":
+    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
+elif lensing_type == "Strong Lensing":
+    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
+elif lensing_type == "Microlensing":
+    final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius, source_type=source_type, source_radius=source_radius)
+elif lensing_type == "Kerr Lensing":
+    final_image = apply_kerr_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, spin_parameter)
+
+final_image_array = np.array(final_image)
+final_image_array = adjust_brightness(final_image_array, magnification)
+final_image_array = apply_red_blue_shift(final_image_array, schwarzschild_radius, r)
+final_image = Image.fromarray(final_image_array.astype(np.uint8))
+
+st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
+
+# Animation parameters
+num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
+fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
+
+# Generate animation
+frames = []
+for i in range(num_frames):
+    current_position = (
+        black_hole_x + i * (800 - black_hole_x) / num_frames,
+        black_hole_y + i * (800 - black_hole_y) / num_frames
+    )
+    frame_image = np.array(
+        apply_kerr_lensing(original_image, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
+        apply_weak_lensing(original_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
+        apply_strong_lensing(original_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Strong Lensing" else
+        apply_microlensing(original_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+    )
+    frame_image = adjust_brightness(frame_image, magnification)
+    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r)
+    frames.append(Image.fromarray(frame_image.astype(np.uint8)))
+
+video_path = save_video_with_moviepy(frames, fps)
+st.video(video_path)
+
+with open(video_path, "rb") as video_file:
+    st.download_button(
+        label="Download Video",
+        data=video_file,
+        file_name="black_hole_animation.mp4",
+        mime="video/mp4"
     )
 
-    # Display final image
-    st.image(final_image, caption="Lensed Image", use_column_width=True)
-
-    # Animation parameters
-    num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
-    fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
-
-    # Generate animation
-    frames = []
-    for i in range(num_frames):
-        current_position = (
-            black_hole_x + i * (800 - black_hole_x) / num_frames,
-            black_hole_y + i * (800 - black_hole_y) / num_frames
-        )
-        frame_image = apply_lensing_effect(
-            original_image,             lensing_type,
-            current_position,
-            schwarzschild_radius,
-            lens_type=lens_type,
-            einstein_radius=einstein_radius if lensing_type == "Microlensing" else None,
-            source_type=source_type if lensing_type == "Microlensing" else "point",
-            source_radius=source_radius if lensing_type == "Microlensing" else 0,
-            spin_parameter=spin_parameter
-        )
-
-        # Convert to array and apply red/blue shift
-        frame_array = np.array(frame_image)
-        r = np.sqrt((np.arange(original_image.size[0]) - current_position[0])**2 +
-                    (np.arange(original_image.size[1])[:, None] - current_position[1])**2)
-        r = np.maximum(r, 1e-5)
-        frame_array = apply_red_blue_shift(frame_array, schwarzschild_radius, r)
-        frame_image = Image.fromarray(frame_array.astype(np.uint8))
-
-        frames.append(frame_image)
-
-    # Save video
-    video_path = save_video_with_moviepy(frames, fps)
-
-    # Display video
-    st.video(video_path)
-
-    # Add download button
-    with open(video_path, "rb") as video_file:
-        st.download_button(
-            label="Download Video",
-            data=video_file,
-            file_name="black_hole_animation.mp4",
-            mime="video/mp4"
-        )
 
 
 
