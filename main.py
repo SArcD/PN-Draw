@@ -905,19 +905,22 @@ if st.button("Generate Animation"):
     # Preview the first frame
     st.image(frames[0], caption="First Frame of Animation", use_column_width=True)
 
+    
+    # Convert frames to RGB mode (if not already)
+    frames_rgb = [frame.convert("RGB") for frame in frames]
+
     # Save animation as GIF
     gif_path = "/tmp/lensing_animation.gif"
-    frames[0].save(
+    frames_rgb[0].save(
         gif_path,
         save_all=True,
-        append_images=frames[1:],
+        append_images=frames_rgb[1:],
         duration=100,
         loop=0,
-        optimize=True,
-        palette="RGBA"
+        optimize=True
     )
 
-    # Download the animation
+    # Provide download button for the GIF
     with open(gif_path, "rb") as f:
         st.download_button(
             label="Download Animation (GIF)",
