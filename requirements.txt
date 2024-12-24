@@ -5,4 +5,4 @@ plotly
 pillow
 noise
 scipy
-opencv-python
+moviepy
