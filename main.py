@@ -811,5 +811,70 @@ if lensing_type == "Kerr Lensing":
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+import streamlit as st
+
+def simulate_black_hole_shadow(image_size, schwarzschild_radius, photon_ring_width):
+    """
+    Simulate the shadow of a black hole and the photon ring.
+
+    Parameters:
+        image_size (int): Size of the image (image_size x image_size).
+        schwarzschild_radius (float): Schwarzschild radius in pixels.
+        photon_ring_width (float): Width of the photon ring in pixels.
+
+    Returns:
+        numpy.ndarray: Image array of the black hole shadow.
+    """
+    # Create a grid of pixels
+    y, x = np.meshgrid(
+        np.linspace(-image_size // 2, image_size // 2, image_size),
+        np.linspace(-image_size // 2, image_size // 2, image_size)
+    )
+    r = np.sqrt(x**2 + y**2)
+
+    # Shadow: All rays within Schwarzschild radius
+    shadow_mask = r < schwarzschild_radius
+
+    # Photon ring: High intensity near Schwarzschild radius
+    photon_ring_mask = np.logical_and(
+        r >= schwarzschild_radius,
+        r <= schwarzschild_radius + photon_ring_width
+    )
+    intensity = np.zeros((image_size, image_size))
+
+    # Assign intensities
+    intensity[shadow_mask] = 0  # Shadow is completely dark
+    intensity[photon_ring_mask] = 1 - np.abs(r[photon_ring_mask] - schwarzschild_radius) / photon_ring_width
+
+    # Apply radial fade for the rest of the image
+    intensity[~shadow_mask & ~photon_ring_mask] = 0.2 / (1 + (r[~shadow_mask & ~photon_ring_mask] - (schwarzschild_radius + photon_ring_width))**2)
+
+    return intensity
+
+
+# Streamlit UI
+st.title("Black Hole Shadow and Photon Ring Simulation")
+
+# Sidebar for parameters
+st.sidebar.header("Simulation Parameters")
+image_size = st.sidebar.slider("Image Size", 200, 1000, 800)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius", 10, 300, 100)
+photon_ring_width = st.sidebar.slider("Photon Ring Width", 5, 100, 20)
+
+# Generate the shadow image
+shadow_image = simulate_black_hole_shadow(image_size, schwarzschild_radius, photon_ring_width)
+
+# Display the result
+st.pyplot(plt.figure(figsize=(8, 8)))
+plt.imshow(shadow_image, cmap='inferno', extent=(-image_size // 2, image_size // 2, -image_size // 2, image_size // 2))
+plt.colorbar(label="Intensity")
+plt.title("Black Hole Shadow and Photon Ring")
+plt.xlabel("X (pixels)")
+plt.ylabel("Y (pixels)")
+plt.axis("off")
+st.pyplot(plt.gcf())
+
 
 
