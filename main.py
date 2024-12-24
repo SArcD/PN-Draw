@@ -817,7 +817,7 @@ import streamlit as st
 
 
 # Función de animación genérica
-def generate_animation(final_image, lensing_type, animation_range, schwarzschild_radius, einstein_radius, spin_parameter, lens_strength, source_radius, inclination_angle):
+def generate_animation(final_image, lensing_type, animation_range, num_frames, schwarzschild_radius, einstein_radius, spin_parameter, lens_strength, source_radius, inclination_angle):
     """
     Generate an animation by varying black hole X position.
 
@@ -825,6 +825,7 @@ def generate_animation(final_image, lensing_type, animation_range, schwarzschild
         final_image (PIL.Image): Base image to apply lensing on.
         lensing_type (str): Type of lensing effect.
         animation_range (tuple): Start and end X positions for the black hole.
+        num_frames (int): Number of frames in the animation.
         schwarzschild_radius (int): Schwarzschild radius (for applicable lensing types).
         einstein_radius (int): Einstein radius (for microlensing).
         spin_parameter (float): Black hole spin parameter (for Kerr lensing).
@@ -836,7 +837,6 @@ def generate_animation(final_image, lensing_type, animation_range, schwarzschild
         list: Frames of the animation as PIL.Image objects.
     """
     start_x, end_x = animation_range
-    num_frames = 30  # Fixed number of frames
     frames = []
 
     for x_position in np.linspace(start_x, end_x, num_frames):
@@ -857,6 +857,8 @@ def generate_animation(final_image, lensing_type, animation_range, schwarzschild
         else:
             raise ValueError(f"Unsupported lensing type: {lensing_type}")
 
+        # Ensure frames retain the correct mode and colors
+        frame = frame.convert("RGBA")
         frames.append(frame)
 
     return frames
@@ -871,24 +873,27 @@ st.title("Gravitational Lensing Animation")
 #    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
 #)
 
-# Parámetros de animación
+# Parameters for the lens
 #schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
 #einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
 #spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
 #lens_strength = st.sidebar.slider("Lens Strength", 1, 10, 5)
 #source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
 
-# Animación
-start_x = st.sidebar.slider("Start X Position", 0, final_image.width, 100)
-end_x = st.sidebar.slider("End X Position", 0, final_image.width, 700)
+# Animation parameters
+start_x = st.sidebar.slider("Start X Position", 0, 800, 100)
+end_x = st.sidebar.slider("End X Position", 0, 800, 700)
 inclination_angle = st.sidebar.slider("Inclination Angle (degrees)", -45, 45, 0)
+num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
 
+# Generate animation button
 if st.button("Generate Animation"):
-    # Genera los cuadros de animación
+    # Generate animation frames
     frames = generate_animation(
         final_image,
         lensing_type,
         (start_x, end_x),
+        num_frames,
         schwarzschild_radius,
         einstein_radius,
         spin_parameter,
@@ -897,10 +902,10 @@ if st.button("Generate Animation"):
         inclination_angle
     )
 
-    # Previsualiza el primer cuadro
+    # Preview the first frame
     st.image(frames[0], caption="First Frame of Animation", use_column_width=True)
 
-    # Guarda la animación como GIF
+    # Save animation as GIF
     gif_path = "/tmp/lensing_animation.gif"
     frames[0].save(
         gif_path,
@@ -910,7 +915,7 @@ if st.button("Generate Animation"):
         loop=0
     )
 
-    # Descarga la animación
+    # Download the animation
     with open(gif_path, "rb") as f:
         st.download_button(
             label="Download Animation (GIF)",
@@ -918,6 +923,8 @@ if st.button("Generate Animation"):
             file_name="lensing_animation.gif",
             mime="image/gif",
         )
+
+
 
 ###########################3333
 
