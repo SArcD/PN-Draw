@@ -528,9 +528,23 @@ from scipy.ndimage import map_coordinates
 import streamlit as st
 
 
-def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+
+def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     """
     Apply weak gravitational lensing effect to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (float): Schwarzschild radius in pixels.
+        lens_type (str): "point" or "extended" lens type.
+
+    Returns:
+        PIL.Image: Distorted image with weak lensing effect.
     """
     img_array = np.array(image)
     height, width, channels = img_array.shape
@@ -541,9 +555,14 @@ def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)
+    r = np.maximum(r, 1e-5)  # Avoid division by zero
 
-    deflection = schwarzschild_radius / r**2
+    if lens_type == "point":
+        deflection = schwarzschild_radius / r**2
+    elif lens_type == "extended":
+        deflection = schwarzschild_radius / (r + schwarzschild_radius)**2
+    else:
+        raise ValueError("Invalid lens_type. Choose 'point' or 'extended'.")
 
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
@@ -559,10 +578,18 @@ def apply_weak_lensing(image, black_hole_center, schwarzschild_radius):
 
     return Image.fromarray(deformed_img_array)
 
-
-def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
+def apply_strong_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     """
     Apply strong gravitational lensing effect to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        black_hole_center (tuple): (x, y) coordinates of the black hole center.
+        schwarzschild_radius (float): Schwarzschild radius in pixels.
+        lens_type (str): "point" or "extended" lens type.
+
+    Returns:
+        PIL.Image: Distorted image with strong lensing effect.
     """
     img_array = np.array(image)
     height, width, channels = img_array.shape
@@ -573,9 +600,14 @@ def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)
+    r = np.maximum(r, 1e-5)  # Avoid division by zero
 
-    deflection = schwarzschild_radius**2 / r
+    if lens_type == "point":
+        deflection = schwarzschild_radius**2 / r
+    elif lens_type == "extended":
+        deflection = (schwarzschild_radius / (r + schwarzschild_radius))**2
+    else:
+        raise ValueError("Invalid lens_type. Choose 'point' or 'extended'.")
 
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
@@ -591,10 +623,19 @@ def apply_strong_lensing(image, black_hole_center, schwarzschild_radius):
 
     return Image.fromarray(deformed_img_array)
 
-
-def apply_microlensing(image, lens_center, einstein_radius):
+def apply_microlensing(image, lens_center, einstein_radius, source_type="point", source_radius=1):
     """
     Apply microlensing effect to an image.
+
+    Parameters:
+        image (PIL.Image): Input image to distort.
+        lens_center (tuple): (x, y) coordinates of the lens center.
+        einstein_radius (float): Einstein radius in pixels.
+        source_type (str): "point" or "extended" source.
+        source_radius (float): Radius of the extended source (ignored for "point").
+
+    Returns:
+        PIL.Image: Modified image with microlensing effect.
     """
     img_array = np.array(image, dtype=np.float32)
     height, width, channels = img_array.shape
@@ -603,46 +644,21 @@ def apply_microlensing(image, lens_center, einstein_radius):
     dx = x - lens_center[0]
     dy = y - lens_center[1]
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)
+    r = np.maximum(r, 1e-5)  # Avoid division by zero
 
-    # Microlensing amplification
     u = r / einstein_radius
-    amplification = (u**2 + 2) / (u * np.sqrt(u**2 + 4))
-    amplification = np.clip(amplification, 1, 5)
+
+    if source_type == "point":
+        amplification = (u**2 + 2) / (u * np.sqrt(u**2 + 4))
+    elif source_type == "extended":
+        amplification = ((u + source_radius)**2 + 2) / ((u + source_radius) * np.sqrt((u + source_radius)**2 + 4))
+    else:
+        raise ValueError("Invalid source_type. Choose 'point' or 'extended'.")
+
+    amplification = np.clip(amplification, 1, 10)  # Prevent overflows
 
     for channel in range(channels):
         img_array[..., channel] *= amplification
-
-    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
-    return Image.fromarray(img_array)
-
-
-def apply_caustic_crossing(image, caustic_position, source_path, lens_strength, source_radius):
-    """
-    Simulate caustic crossing, where a source crosses a caustic line.
-    """
-    img_array = np.array(image, dtype=np.float32)
-    height, width, channels = img_array.shape
-
-    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
-    x_caustic, y_caustic = caustic_position
-
-    # Simulate the source path across the caustic
-    source_center_x = np.linspace(source_path[0][0], source_path[1][0], num=50)
-    source_center_y = np.linspace(source_path[0][1], source_path[1][1], num=50)
-
-    for t in range(len(source_center_x)):
-        dx = x - source_center_x[t]
-        dy = y - source_center_y[t]
-        r = np.sqrt(dx**2 + dy**2)
-        r = np.maximum(r, 1e-5)
-
-        # Amplification due to crossing the caustic
-        amplification = lens_strength / (r + source_radius)
-        amplification = np.clip(amplification, 1, 10)
-
-        for channel in range(channels):
-            img_array[..., channel] *= amplification
 
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
     return Image.fromarray(img_array)
@@ -654,7 +670,7 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
     Parameters:
         image (PIL.Image): Input image to distort.
         black_hole_center (tuple): (x, y) coordinates of the black hole center.
-        schwarzschild_radius (int): Schwarzschild radius in pixels.
+        schwarzschild_radius (float): Schwarzschild radius in pixels.
         spin_parameter (float): Spin parameter of the black hole (dimensionless, 0 to 1).
 
     Returns:
@@ -663,23 +679,20 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
     img_array = np.array(image)
     height, width, channels = img_array.shape
 
-    # Generate coordinate grids
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
 
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)
+    r = np.maximum(r, 1e-5)  # Avoid division by zero
 
-    # Add spin effect: Frame-dragging introduces azimuthal deflection
     phi = np.arctan2(dy, dx) + spin_parameter * schwarzschild_radius / r
     deflection = schwarzschild_radius**2 / r
 
     new_x = x_center + r * np.cos(phi) + deflection * dx / r
     new_y = y_center + r * np.sin(phi) + deflection * dy / r
 
-    # Ensure new coordinates are within image bounds
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
 
@@ -690,6 +703,8 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
         ).reshape((height, width))
 
     return Image.fromarray(deformed_img_array)
+
+# Las funciones ahora incluyen opciones para fuentes puntuales o extendidas y correcciones físicas relevantes.
 
 
 
