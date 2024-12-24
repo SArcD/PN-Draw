@@ -912,7 +912,9 @@ if st.button("Generate Animation"):
         save_all=True,
         append_images=frames[1:],
         duration=100,
-        loop=0
+        loop=0,
+        optimize=True,
+        palette="RGBA"
     )
 
     # Download the animation
