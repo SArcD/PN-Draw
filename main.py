@@ -907,17 +907,20 @@ if st.button("Generate Animation"):
 
     
     # Convert frames to RGB mode (if not already)
-    frames_rgb = [frame.convert("RGB") for frame in frames]
+    #frames_rgb = [frame.convert("RGB") for frame in frames]
+
+    # Convert frames to mode "P" (paletted) with adaptive palette
+    frames_paletted = [frame.convert("P", palette=Image.ADAPTIVE) for frame in frames]
 
     # Save animation as GIF
     gif_path = "/tmp/lensing_animation.gif"
-    frames_rgb[0].save(
+    frames_paletted[0].save(
         gif_path,
         save_all=True,
-        append_images=frames_rgb[1:],
+        append_images=frames_paletted[1:],
         duration=100,
         loop=0,
-        optimize=True
+        optimize=False  # Turn off optimization to ensure consistent palette
     )
 
     # Provide download button for the GIF
