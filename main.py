@@ -873,7 +873,7 @@ for i in range(num_frames):
     elif lensing_type == "Strong Lensing":
         frame_image = apply_strong_lensing(final_image.copy(), current_position, schwarzschild_radius)
     elif lensing_type == "Microlensing":
-        einstein_radius = st.sidebar.slider("Einstein Rad (pixels)", 10, 200, 50)
+        einstein_radius = st.sidebar.slider("Einstein Rad (pix)", 10, 200, 50)
         frame_image = apply_microlensing(final_image.copy(), current_position, einstein_radius)
     elif lensing_type == "Kerr Lensing":
         frame_image = apply_kerr_lensing(final_image.copy(), current_position, schwarzschild_radius, spin_parameter)
