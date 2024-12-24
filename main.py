@@ -518,41 +518,11 @@ final_image = Image.alpha_composite(final_image, gaseous_shells)
 # Display the updated image
 st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells", use_column_width=True)
 O_image = final_image.copy()
+static_image = final_image.copy()  # Use a separate copy for animation
+animation_image = final_image.copy()  # Use a separate copy for animation
 
 
 ##############################################################################3
-
-
-import numpy as np
-from PIL import Image
-from scipy.ndimage import map_coordinates
-import streamlit as st
-from moviepy.editor import ImageSequenceClip
-
-import numpy as np
-from PIL import Image
-from scipy.ndimage import map_coordinates
-import streamlit as st
-from moviepy.editor import ImageSequenceClip
-
-import numpy as np
-from PIL import Image
-from scipy.ndimage import map_coordinates
-import streamlit as st
-from moviepy.editor import ImageSequenceClip
-
-
-import numpy as np
-from PIL import Image
-from scipy.ndimage import map_coordinates
-import streamlit as st
-from moviepy.editor import ImageSequenceClip
-
-import numpy as np
-from PIL import Image
-from scipy.ndimage import map_coordinates
-import streamlit as st
-from moviepy.editor import ImageSequenceClip
 
 import numpy as np
 from PIL import Image
@@ -702,7 +672,7 @@ y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 st.image(final_image, caption="Original Image", use_column_width=True)
 
 # Apply lensing effect for static image
-static_image = final_image.copy()
+#static_image = final_image.copy()
 r = np.sqrt((np.arange(static_image.size[0]) - black_hole_x_fixed)**2 + (np.arange(static_image.size[1])[:, None] - black_hole_y_fixed)**2)
 r = np.maximum(r, 1e-5)
 magnification = 1 + (schwarzschild_radius / r)
@@ -733,7 +703,7 @@ frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
-animation_image = final_image.copy()  # Use a separate copy for animation
+#animation_image = final_image.copy()  # Use a separate copy for animation
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
     frame_image = np.array(
