@@ -763,10 +763,15 @@ for i in range(num_frames):
 video_path = save_video_with_moviepy(frames, fps)
 st.video(video_path)
 
+# Add a download button for the video
 with open(video_path, "rb") as video_file:
     st.download_button(
         label="Download Video",
-
+        data=video_file,
+        file_name="black_hole_animation.mp4",
+        mime="video/mp4"
+    )
+        
 
 ################################
 
