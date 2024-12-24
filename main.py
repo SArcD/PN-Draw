@@ -809,6 +809,66 @@ if lensing_type == "Kerr Lensing":
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
+##############################
+
+# Streamlit UI
+st.title("Kerr Lensing Animation")
+
+# Parameters for the black hole
+image_size = (800, 800)
+black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
+spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+
+# Animation parameters
+start_x = st.sidebar.slider("Start X Position", 0, 800, 100)
+end_x = st.sidebar.slider("End X Position", 0, 800, 700)
+num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
+inclination_angle = st.sidebar.slider("Inclination Angle (degrees)", -45, 45, 0)
+
+# Generate the original image
+final_image = Image.new("RGBA", image_size, (0, 0, 0, 255))  # Replace this with your nebula image
+
+# Animation loop
+frames = []
+for i, x_position in enumerate(np.linspace(start_x, end_x, num_frames)):
+    # Apply the Kerr Lensing effect for each frame
+    y_position = black_hole_y + int((x_position - start_x) * np.tan(np.radians(inclination_angle)))
+    frame = apply_kerr_lensing(final_image, (int(x_position), int(y_position)), schwarzschild_radius, spin_parameter)
+    frames.append(frame)
+
+# Display the animation
+st.image(frames[0], caption="Animation Frame 1", use_column_width=True)
+
+# Download animation as GIF
+if st.button("Generate Animation (GIF)"):
+    gif_path = "/tmp/kerr_lensing_animation.gif"
+    frames[0].save(
+        gif_path,
+        save_all=True,
+        append_images=frames[1:],
+        duration=100,
+        loop=0,
+    )
+    with open(gif_path, "rb") as f:
+        st.download_button(
+            label="Download Animation (GIF)",
+            data=f,
+            file_name="kerr_lensing_animation.gif",
+            mime="image/gif",
+        )
+
+
+###########################3333
+
+
+
+
+
+
+
+
+
 
 
 import numpy as np
