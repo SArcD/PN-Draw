@@ -554,6 +554,12 @@ from scipy.ndimage import map_coordinates
 import streamlit as st
 from moviepy.editor import ImageSequenceClip
 
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+from moviepy.editor import ImageSequenceClip
+
 # Functions for gravitational lensing effects
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     img_array = np.array(image)
@@ -703,31 +709,34 @@ def create_example_image(width, height):
         img[y, x] = [brightness] * 3
     return Image.fromarray(img)
 
-original_image = create_example_image(800, 800)
-st.image(original_image, caption="Original Image", use_column_width=True)
+# Load or create the original image
+final_image = create_example_image(800, 800)
+
+# Display the original image
+st.image(final_image, caption="Original Image", use_column_width=True)
 
 # Apply lensing effect for static image
-static_image = original_image.copy()
+static_image = final_image.copy()
 r = np.sqrt((np.arange(static_image.size[0]) - black_hole_x_fixed)**2 + (np.arange(static_image.size[1])[:, None] - black_hole_y_fixed)**2)
 r = np.maximum(r, 1e-5)
 magnification = 1 + (schwarzschild_radius / r)
 magnification = np.clip(magnification, 1, 10)
 
 if lensing_type == "Weak Lensing":
-    final_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
+    processed_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
-    final_image = apply_strong_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
+    processed_image = apply_strong_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Microlensing":
-    final_image = apply_microlensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
+    processed_image = apply_microlensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
 elif lensing_type == "Kerr Lensing":
-    final_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
+    processed_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
-final_image_array = np.array(final_image)
-final_image_array = adjust_brightness(final_image_array, magnification)
-final_image_array = apply_red_blue_shift(final_image_array, schwarzschild_radius, r)
-final_image = Image.fromarray(final_image_array.astype(np.uint8))
+processed_image_array = np.array(processed_image)
+processed_image_array = adjust_brightness(processed_image_array, magnification)
+processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r)
+processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
-st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
+st.image(processed_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 # Animation parameters
 num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
@@ -738,7 +747,7 @@ frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
-animation_image = original_image.copy()  # Use a separate copy for animation
+animation_image = final_image.copy()  # Use a separate copy for animation
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
     frame_image = np.array(
@@ -757,12 +766,6 @@ st.video(video_path)
 with open(video_path, "rb") as video_file:
     st.download_button(
         label="Download Video",
-        data=video_file,
-        file_name="black_hole_animation.mp4",
-        mime="video/mp4"
-    )
-
-
 
 
 ################################
