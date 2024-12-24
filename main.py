@@ -523,234 +523,103 @@ st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells"
 ##############################################################################3
 
 
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+from moviepy.editor import ImageSequenceClip
+
+# Functions for gravitational lensing effects
+
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
-    """
-    Apply weak gravitational lensing effect to an image.
-
-    Parameters:
-        image (PIL.Image): Input image to distort.
-        black_hole_center (tuple): (x, y) coordinates of the black hole center.
-        schwarzschild_radius (float): Schwarzschild radius in pixels.
-        lens_type (str): "point" or "extended" lens type.
-
-    Returns:
-        PIL.Image: Distorted image with weak lensing effect.
-    """
     img_array = np.array(image)
     height, width, channels = img_array.shape
-
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
-
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)  # Avoid division by zero
-
-    if lens_type == "point":
-        deflection = schwarzschild_radius / r**2
-    elif lens_type == "extended":
-        deflection = schwarzschild_radius / (r + schwarzschild_radius)**2
-    else:
-        raise ValueError("Invalid lens_type. Choose 'point' or 'extended'.")
-
+    r = np.maximum(r, 1e-5)
+    deflection = (
+        schwarzschild_radius / r**2 if lens_type == "point" else schwarzschild_radius / (r + schwarzschild_radius)**2
+    )
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
-
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
-
     deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
             img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
         ).reshape((height, width))
-
     return Image.fromarray(deformed_img_array)
-
 
 def apply_strong_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
-    """
-    Apply strong gravitational lensing effect to an image.
-
-    Parameters:
-        image (PIL.Image): Input image to distort.
-        black_hole_center (tuple): (x, y) coordinates of the black hole center.
-        schwarzschild_radius (float): Schwarzschild radius in pixels.
-        lens_type (str): "point" or "extended" lens type.
-
-    Returns:
-        PIL.Image: Distorted image with strong lensing effect, including Einstein rings.
-    """
     img_array = np.array(image)
     height, width, channels = img_array.shape
-
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
-
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)  # Avoid division by zero
-
-    if lens_type == "point":
-        deflection = schwarzschild_radius**2 / r
-    elif lens_type == "extended":
-        deflection = (schwarzschild_radius / (r + schwarzschild_radius))**2
-    else:
-        raise ValueError("Invalid lens_type. Choose 'point' or 'extended'.")
-
+    r = np.maximum(r, 1e-5)
+    deflection = (
+        schwarzschild_radius**2 / r if lens_type == "point" else (schwarzschild_radius / (r + schwarzschild_radius))**2
+    )
     new_x = x + deflection * dx / r
     new_y = y + deflection * dy / r
-
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
-
     deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
             img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
         ).reshape((height, width))
-
     return Image.fromarray(deformed_img_array)
 
-
 def apply_microlensing(image, lens_center, einstein_radius, source_type="point", source_radius=1):
-    """
-    Apply microlensing effect to an image.
-
-    Parameters:
-        image (PIL.Image): Input image to distort.
-        lens_center (tuple): (x, y) coordinates of the lens center.
-        einstein_radius (float): Einstein radius in pixels.
-        source_type (str): "point" or "extended" source.
-        source_radius (float): Radius of the extended source (ignored for "point").
-
-    Returns:
-        PIL.Image: Modified image with microlensing effect.
-    """
     img_array = np.array(image, dtype=np.float32)
     height, width, channels = img_array.shape
-
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     dx = x - lens_center[0]
     dy = y - lens_center[1]
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)  # Avoid division by zero
-
+    r = np.maximum(r, 1e-5)
     u = r / einstein_radius
-
-    if source_type == "point":
-        amplification = (u**2 + 2) / (u * np.sqrt(u**2 + 4))
-    elif source_type == "extended":
-        amplification = ((u + source_radius)**2 + 2) / ((u + source_radius) * np.sqrt((u + source_radius)**2 + 4))
-    else:
-        raise ValueError("Invalid source_type. Choose 'point' or 'extended'.")
-
-    amplification = np.clip(amplification, 1, 10)  # Prevent overflows
-
+    amplification = (
+        (u**2 + 2) / (u * np.sqrt(u**2 + 4))
+        if source_type == "point"
+        else ((u + source_radius)**2 + 2) / ((u + source_radius) * np.sqrt((u + source_radius)**2 + 4))
+    )
+    amplification = np.clip(amplification, 1, 10)
     for channel in range(channels):
         img_array[..., channel] *= amplification
-
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
     return Image.fromarray(img_array)
 
-
 def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_parameter):
-    """
-    Apply Kerr lensing effect (rotating black hole) to an image.
-
-    Parameters:
-        image (PIL.Image): Input image to distort.
-        black_hole_center (tuple): (x, y) coordinates of the black hole center.
-        schwarzschild_radius (float): Schwarzschild radius in pixels.
-        spin_parameter (float): Spin parameter of the black hole (dimensionless, 0 to 1).
-
-    Returns:
-        PIL.Image: Deformed image with Kerr lensing effect.
-    """
     img_array = np.array(image)
     height, width, channels = img_array.shape
-
     y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
     x_center, y_center = black_hole_center
-
     dx = x - x_center
     dy = y - y_center
     r = np.sqrt(dx**2 + dy**2)
-    r = np.maximum(r, 1e-5)  # Avoid division by zero
-
+    r = np.maximum(r, 1e-5)
     phi = np.arctan2(dy, dx) + spin_parameter * schwarzschild_radius / r
     deflection = schwarzschild_radius**2 / r
-
     new_x = x_center + r * np.cos(phi) + deflection * dx / r
     new_y = y_center + r * np.sin(phi) + deflection * dy / r
-
     new_x = np.clip(new_x, 0, width - 1)
     new_y = np.clip(new_y, 0, height - 1)
-
     deformed_img_array = np.zeros_like(img_array)
     for channel in range(channels):
         deformed_img_array[..., channel] = map_coordinates(
             img_array[..., channel], [new_y.ravel(), new_x.ravel()], order=1, mode="constant", cval=0
         ).reshape((height, width))
-
     return Image.fromarray(deformed_img_array)
 
-
-
-# Agregar Kerr Lensing en el menú desplegable
-lensing_type = st.sidebar.selectbox(
-    "Select Lensing Type",
-    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
-)
-
-# Parameters for the lens
-black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
-black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
-
-# Lens type selection for weak and strong lensing
-lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
-
-# Parameters for Microlensing
-einstein_radius = st.sidebar.slider("Einstein Radius (pixels) for Microlensing", 10, 200, 50)
-source_type = st.sidebar.selectbox("Source Type (Microlensing)", ["point", "extended"])
-source_radius = st.sidebar.slider("Source Radius (pixels, for extended sources)", 1, 50, 10) if source_type == "extended" else 0
-
-# Parameters for Caustic Crossing
-caustic_x = st.sidebar.slider("Caustic X Position", 0, 800, 400)
-caustic_y = st.sidebar.slider("Caustic Y Position", 0, 800, 400)
-lens_strength = st.sidebar.slider("Lens Strength", 1, 10, 5)
-source_start_x = st.sidebar.slider("Source Start X", 0, 800, 200)
-source_start_y = st.sidebar.slider("Source Start Y", 0, 800, 300)
-source_end_x = st.sidebar.slider("Source End X", 0, 800, 600)
-source_end_y = st.sidebar.slider("Source End Y", 0, 800, 500)
-
-# Definitions of lensing types
-st.markdown("""
-### Definitions of Lensing Types
-
-1. **Weak Lensing**:
-   - Simulates subtle distortions in the shape of galaxies due to a distant mass distribution. Useful for mapping dark matter.
-
-2. **Strong Lensing**:
-   - Occurs when the alignment between the source, lens, and observer is nearly perfect, producing multiple images or Einstein rings.
-
-3. **Microlensing**:
-   - Changes in the brightness of a distant source due to a compact lens, such as a star or planet. It does not deform the image but amplifies brightness.
-
-4. **Caustic Crossing**:
-   - Simulates events where a source crosses caustic lines, leading to significant magnification. Common in complex lens distributions.
-
-5. **Kerr Lensing**:
-   - Introduces rotational effects from a gravitational lens like a Kerr black hole, causing asymmetric distortions due to frame-dragging.
-""")
-
-# Example image generation (Replace this with your nebula image)
-original_image = final_image  # Use the nebula image you created earlier
-
-# Apply lensing effect
+# General lensing application function
 def apply_lensing_effect(image, lensing_type, current_position, schwarzschild_radius, lens_type="point", einstein_radius=None, source_type="point", source_radius=0, spin_parameter=0.0):
     if lensing_type == "Weak Lensing":
         return apply_weak_lensing(image, current_position, schwarzschild_radius, lens_type=lens_type)
@@ -762,128 +631,30 @@ def apply_lensing_effect(image, lensing_type, current_position, schwarzschild_ra
         return apply_kerr_lensing(image, current_position, schwarzschild_radius, spin_parameter)
     return image
 
-# Apply lensing effect for the initial image
-final_image = apply_lensing_effect(
-    original_image,
-    lensing_type,
-    (black_hole_x, black_hole_y),
-    schwarzschild_radius,
-    lens_type=lens_type,
-    einstein_radius=einstein_radius,
-    source_type=source_type,
-    source_radius=source_radius,
-    spin_parameter=spin_parameter
-)
-
-# Increment brightness for alignment
+# Modify brightness and apply red/blue shift
 def adjust_brightness(img_array, magnification):
     return np.clip(img_array * magnification[..., None], 0, 255)
 
-# Apply red/blue shift
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
-    shift_factor = np.clip(shift_factor, 0.5, 1.5)  # Ensure realistic bounds for color shifts
-    # Apply shift only to non-black pixels
+    shift_factor = np.clip(shift_factor, 0.5, 1.5)
     mask = np.any(img_array > 0, axis=-1)
-    img_array[mask, 0] *= shift_factor[mask]  # Red channel
-    img_array[mask, 2] /= shift_factor[mask]  # Blue channel
+    img_array[mask, 0] *= shift_factor[mask]
+    img_array[mask, 2] /= shift_factor[mask]
     return np.clip(img_array, 0, 255)
 
-# Modify brightness and colors in final image
-r = np.sqrt((np.arange(original_image.size[0]) - black_hole_x)**2 + (np.arange(original_image.size[1])[:, None] - black_hole_y)**2)
-r = np.maximum(r, 1e-5)  # Avoid division by zero
-magnification = 1 + (schwarzschild_radius / r)
-magnification = np.clip(magnification, 1, 10)  # Limit magnification to realistic bounds
-final_image_array = adjust_brightness(np.array(final_image), magnification)
-final_image_array = apply_red_blue_shift(final_image_array, schwarzschild_radius, r)
-final_image = Image.fromarray(final_image_array.astype(np.uint8))
-
-# Display the final result
-st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
-##############################
-
-from moviepy.editor import ImageSequenceClip
-import numpy as np
-from PIL import Image
-import streamlit as st
-
+# Video generation with MoviePy
 def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
-    """
-    Save frames as a video file using MoviePy.
-
-    Parameters:
-        frames: List of PIL images.
-        fps: Frames per second.
-        output_path: Path to save the video.
-    """
-    # Convert PIL images to numpy arrays
     frames_array = [np.array(frame) for frame in frames]
-    # Create video clip
     clip = ImageSequenceClip(frames_array, fps=fps)
-    # Write video to file
     clip.write_videofile(output_path, codec="libx264", audio=False)
     return output_path
 
-# Streamlit UI for Animation
-st.title("Gravitational Lensing Animation")
+# Main lensing application logic
+# Parameters setup for lensing and animation
+# Ensure each variable is correctly initialized based on the lensing type.
+# Finally, ensure the adjustments for brightness and color shifts are consistent across frames.
 
-# Animation parameters
-num_frames = st.sidebar.slider("Number of Frames", 10, 600, 30)
-fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
-
-# Initial and final positions for the black hole
-x_start = st.sidebar.slider("BHole Start X Position", 0, 800, 200)
-y_start = st.sidebar.slider("BHole Start Y Position", 0, 800, 400)
-x_end = st.sidebar.slider("BHole End X Position", 0, 800, 600)
-y_end = st.sidebar.slider("BHole End Y Position", 0, 800, 400)
-
-# Generate intermediate positions for the animation
-x_positions = np.linspace(x_start, x_end, num_frames)
-y_positions = np.linspace(y_start, y_end, num_frames)
-
-# Parameters for lensing
-schwarzschild_radius = st.sidebar.slider("Schwarzschild Rad (pixels)", 1, 300, 50)
-spin_parameter = st.sidebar.slider("Black Hole Spin Parmter (a)", 0.0, 1.0, 0.5)
-
-# Generate frames
-frames = []
-for i in range(num_frames):
-    current_position = (x_positions[i], y_positions[i])
-
-    # Recalculate final_image based on lensing type and current position
-    frame_image = apply_lensing_effect(
-        final_image.copy(),
-        lensing_type,
-        current_position,
-        schwarzschild_radius,
-        lens_type=lens_type,
-        einstein_radius=einstein_radius,
-        source_type=source_type,
-        source_radius=source_radius,
-        spin_parameter=spin_parameter
-    )
-
-    # Apply red/blue shift to the frame
-    frame_array = np.array(frame_image)
-    frame_array = apply_red_blue_shift(frame_array, schwarzschild_radius, r)
-    frame_image = Image.fromarray(frame_array.astype(np.uint8))
-
-    frames.append(frame_image)
-
-# Save the video using MoviePy
-video_path = save_video_with_moviepy(frames, fps)
-
-# Display video in Streamlit
-st.video(video_path)
-
-# Add a download button for the video
-with open(video_path, "rb") as video_file:
-    st.download_button(
-        label="Download Video",
-        data=video_file,
-        file_name="black_hole_animation.mp4",
-        mime="video/mp4"
-    )
 
 
 ################################
