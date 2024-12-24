@@ -843,10 +843,10 @@ num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
 fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
 
 # Initial and final positions for the black hole
-x_start = st.sidebar.slider("Black Hole Start X Position", 0, 800, 200)
-y_start = st.sidebar.slider("Black Hole Start Y Position", 0, 800, 400)
-x_end = st.sidebar.slider("Black Hole End X Position", 0, 800, 600)
-y_end = st.sidebar.slider("Black Hole End Y Position", 0, 800, 400)
+x_start = st.sidebar.slider("Black Hole Start X Position", 0, 1600, 200)
+y_start = st.sidebar.slider("Black Hole Start Y Position", 0, 160, 400)
+x_end = st.sidebar.slider("Black Hole End X Position", 0, 1600, 600)
+y_end = st.sidebar.slider("Black Hole End Y Position", 0, 1600, 400)
 
 # Generate intermediate positions for the animation
 x_positions = np.linspace(x_start, x_end, num_frames)
