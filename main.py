@@ -517,7 +517,7 @@ final_image = Image.alpha_composite(final_image, gaseous_shells)
 
 # Display the updated image
 st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells", use_column_width=True)
-O_image = final_image
+O_image = final_image.copy()
 
 
 ##############################################################################3
