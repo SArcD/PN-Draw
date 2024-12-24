@@ -480,8 +480,8 @@ num_shells = st.sidebar.slider("Number of Shells", 1, 5, 3)
 shells = []
 for i in range(num_shells):
     st.sidebar.subheader(f"Shell {i + 1}")
-    semi_major = st.sidebar.slider(f"Semi-Major Axis (Shell {i + 1})", 10, 400, 200)
-    semi_minor = st.sidebar.slider(f"Semi-Minor Axis (Shell {i + 1})", 10, 400, 150)
+    semi_major = st.sidebar.slider(f"Semi-Major Axis (Shell {i + 1})", 10, 800, 200)
+    semi_minor = st.sidebar.slider(f"Semi-Minor Axis (Shell {i + 1})", 10, 800, 150)
     angle = st.sidebar.slider(f"Inclination Angle (Shell {i + 1})", 0, 360, 45)
     inner_radius = st.sidebar.slider(f"Inner Radius (Shell {i + 1})", 10, 400, 100)
     outer_radius = st.sidebar.slider(f"Outer Radius (Shell {i + 1})", inner_radius, 500, inner_radius + 50)
