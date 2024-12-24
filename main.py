@@ -533,6 +533,7 @@ from PIL import Image
 from scipy.ndimage import map_coordinates
 import streamlit as st
 
+
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     """
     Apply weak gravitational lensing effect to an image.
@@ -899,7 +900,6 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
-
 
 
 
