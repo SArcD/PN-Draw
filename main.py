@@ -759,21 +759,26 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
 
     return Image.fromarray(deformed_img_array)
 
+
+###########################3333
 # Agregar Kerr Lensing en el menú desplegable
 lensing_type = st.sidebar.selectbox(
     "Select Lensing Type",
     ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
 )
 
-
-
 # Parameters for the lens
 black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
 black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
 
+# Lens type selection for weak and strong lensing
+lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
+
 # Parameters for Microlensing
 einstein_radius = st.sidebar.slider("Einstein Radius (pixels) for Microlensing", 10, 200, 50)
+source_type = st.sidebar.selectbox("Source Type (Microlensing)", ["point", "extended"])
+source_radius = st.sidebar.slider("Source Radius (pixels, for extended sources)", 1, 50, 10) if source_type == "extended" else 0
 
 # Parameters for Caustic Crossing
 caustic_x = st.sidebar.slider("Caustic X Position", 0, 800, 400)
@@ -783,20 +788,17 @@ source_start_x = st.sidebar.slider("Source Start X", 0, 800, 200)
 source_start_y = st.sidebar.slider("Source Start Y", 0, 800, 300)
 source_end_x = st.sidebar.slider("Source End X", 0, 800, 600)
 source_end_y = st.sidebar.slider("Source End Y", 0, 800, 500)
-source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
 
 # Example image generation (Replace this with your nebula image)
 original_image = final_image  # Use the nebula image you created earlier
 
-
-
 # Apply lensing effect
 if lensing_type == "Weak Lensing":
-    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
-    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius)
+    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Microlensing":
-    final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius)
+    final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius, source_type=source_type, source_radius=source_radius)
 elif lensing_type == "Caustic Crossing":
     final_image = apply_caustic_crossing(
         original_image,
@@ -819,9 +821,6 @@ if lensing_type == "Kerr Lensing":
         spin_parameter
     )
 
-
-
-
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 ##############################
@@ -830,7 +829,6 @@ from moviepy.editor import ImageSequenceClip
 import numpy as np
 from PIL import Image
 import streamlit as st
-
 
 def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
     """
@@ -848,7 +846,6 @@ def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
     # Write video to file
     clip.write_videofile(output_path, codec="libx264", audio=False)
     return output_path
-
 
 # Streamlit UI for Animation
 st.title("Gravitational Lensing Animation")
@@ -871,12 +868,6 @@ y_positions = np.linspace(y_start, y_end, num_frames)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Rad (pixels)", 1, 300, 50)
 spin_parameter = st.sidebar.slider("Black Hole Spin Parmter (a)", 0.0, 1.0, 0.5)
 
-# Select lensing type
-#lensing_type = st.sidebar.selectbox(
-#    "Select Lensing Type",
-#    ["Weak Lensing", "Strong Lensing", "Microlensing", "Kerr Lensing"]
-#)
-
 # Generate frames
 frames = []
 for i in range(num_frames):
@@ -884,12 +875,11 @@ for i in range(num_frames):
 
     # Recalculate final_image based on lensing type and current position
     if lensing_type == "Weak Lensing":
-        frame_image = apply_weak_lensing(final_image.copy(), current_position, schwarzschild_radius)
+        frame_image = apply_weak_lensing(final_image.copy(), current_position, schwarzschild_radius, lens_type=lens_type)
     elif lensing_type == "Strong Lensing":
-        frame_image = apply_strong_lensing(final_image.copy(), current_position, schwarzschild_radius)
+        frame_image = apply_strong_lensing(final_image.copy(), current_position, schwarzschild_radius, lens_type=lens_type)
     elif lensing_type == "Microlensing":
-        #einstein_radius = st.sidebar.slider("Einstein Rad (pix)", 10, 200, 50)
-        frame_image = apply_microlensing(final_image.copy(), current_position, einstein_radius)
+        frame_image = apply_microlensing(final_image.copy(), current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
     elif lensing_type == "Kerr Lensing":
         frame_image = apply_kerr_lensing(final_image.copy(), current_position, schwarzschild_radius, spin_parameter)
 
@@ -911,9 +901,9 @@ with open(video_path, "rb") as video_file:
     )
 
 
-###########################3333
 
 
+################################
 
 
 
