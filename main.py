@@ -839,25 +839,45 @@ def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
 st.title("Gravitational Lensing Animation")
 
 # Animation parameters
-num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
+num_frames = st.sidebar.slider("Number of Frames", 10, 600, 30)
 fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
 
 # Initial and final positions for the black hole
-x_start = st.sidebar.slider("Black Hole Start X Position", 0, 1600, 200)
-y_start = st.sidebar.slider("Black Hole Start Y Position", 0, 160, 400)
-x_end = st.sidebar.slider("Black Hole End X Position", 0, 1600, 600)
-y_end = st.sidebar.slider("Black Hole End Y Position", 0, 1600, 400)
+x_start = st.sidebar.slider("BHole Start X Position", 0, 800, 200)
+y_start = st.sidebar.slider("BHole Start Y Position", 0, 800, 400)
+x_end = st.sidebar.slider("BHole End X Position", 0, 800, 600)
+y_end = st.sidebar.slider("BHole End Y Position", 0, 800, 400)
 
 # Generate intermediate positions for the animation
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
-# Generate frames based on the selected lensing
+# Parameters for lensing
+#schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
+#spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+
+# Select lensing type
+#lensing_type = st.sidebar.selectbox(
+#    "Select Lensing Type",
+#    ["Weak Lensing", "Strong Lensing", "Microlensing", "Kerr Lensing"]
+#)
+
+# Generate frames
 frames = []
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
-    # Use the pre-defined final_image to apply the selected lensing
-    frame_image = final_image.copy()  # Assuming `final_image` is already the output of a lensing effect
+
+    # Recalculate final_image based on lensing type and current position
+    if lensing_type == "Weak Lensing":
+        frame_image = apply_weak_lensing(final_image.copy(), current_position, schwarzschild_radius)
+    elif lensing_type == "Strong Lensing":
+        frame_image = apply_strong_lensing(final_image.copy(), current_position, schwarzschild_radius)
+    elif lensing_type == "Microlensing":
+        einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
+        frame_image = apply_microlensing(final_image.copy(), current_position, einstein_radius)
+    elif lensing_type == "Kerr Lensing":
+        frame_image = apply_kerr_lensing(final_image.copy(), current_position, schwarzschild_radius, spin_parameter)
+
     frames.append(frame_image)
 
 # Save the video using MoviePy
