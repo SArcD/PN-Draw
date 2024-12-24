@@ -762,6 +762,9 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
 
 
 ###########################3333
+
+
+
 # Agregar Kerr Lensing en el menú desplegable
 lensing_type = st.sidebar.selectbox(
     "Select Lensing Type",
@@ -849,13 +852,16 @@ def adjust_brightness(img_array, magnification):
 # Apply red/blue shift
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
+    shift_factor = np.clip(shift_factor, 0.5, 1.5)  # Ensure realistic bounds for color shifts
     img_array[:, :, 0] *= shift_factor  # Red channel
     img_array[:, :, 2] /= shift_factor  # Blue channel
     return np.clip(img_array, 0, 255)
 
 # Modify brightness and colors in final image
-r = np.sqrt((black_hole_x - np.arange(original_image.size[0]))**2 + (black_hole_y - np.arange(original_image.size[1]))[:, None])
-magnification = 1 + (schwarzschild_radius / np.maximum(r, 1e-5))
+r = np.sqrt((np.arange(original_image.size[0]) - black_hole_x)**2 + (np.arange(original_image.size[1])[:, None] - black_hole_y)**2)
+r = np.maximum(r, 1e-5)  # Avoid division by zero
+magnification = 1 + (schwarzschild_radius / r)
+magnification = np.clip(magnification, 1, 10)  # Limit magnification to realistic bounds
 final_image_array = adjust_brightness(np.array(final_image), magnification)
 final_image_array = apply_red_blue_shift(final_image_array, schwarzschild_radius, r)
 final_image = Image.fromarray(final_image_array.astype(np.uint8))
@@ -938,6 +944,7 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
+
 
 ################################
 
