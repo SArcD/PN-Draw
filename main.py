@@ -699,8 +699,6 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
 
 
 
-
-
 # Agregar Kerr Lensing en el menú desplegable
 lensing_type = st.sidebar.selectbox(
     "Select Lensing Type",
@@ -753,33 +751,29 @@ st.markdown("""
 original_image = final_image  # Use the nebula image you created earlier
 
 # Apply lensing effect
-if lensing_type == "Weak Lensing":
-    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
-elif lensing_type == "Strong Lensing":
-    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
-elif lensing_type == "Microlensing":
-    final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius, source_type=source_type, source_radius=source_radius)
-elif lensing_type == "Caustic Crossing":
-    final_image = apply_caustic_crossing(
-        original_image,
-        (caustic_x, caustic_y),
-        [(source_start_x, source_start_y), (source_end_x, source_end_y)],
-        lens_strength,
-        source_radius
-    )
+def apply_lensing_effect(image, lensing_type, current_position, schwarzschild_radius, lens_type="point", einstein_radius=None, source_type="point", source_radius=0, spin_parameter=0.0):
+    if lensing_type == "Weak Lensing":
+        return apply_weak_lensing(image, current_position, schwarzschild_radius, lens_type=lens_type)
+    elif lensing_type == "Strong Lensing":
+        return apply_strong_lensing(image, current_position, schwarzschild_radius, lens_type=lens_type)
+    elif lensing_type == "Microlensing":
+        return apply_microlensing(image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+    elif lensing_type == "Kerr Lensing":
+        return apply_kerr_lensing(image, current_position, schwarzschild_radius, spin_parameter)
+    return image
 
-# Parámetros para Kerr Lensing
-if lensing_type == "Kerr Lensing":
-    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 2.0, 0.5)
-
-# Aplicar el efecto según la selección
-if lensing_type == "Kerr Lensing":
-    final_image = apply_kerr_lensing(
-        original_image,
-        (black_hole_x, black_hole_y),
-        schwarzschild_radius,
-        spin_parameter
-    )
+# Apply lensing effect for the initial image
+final_image = apply_lensing_effect(
+    original_image,
+    lensing_type,
+    (black_hole_x, black_hole_y),
+    schwarzschild_radius,
+    lens_type=lens_type,
+    einstein_radius=einstein_radius,
+    source_type=source_type,
+    source_radius=source_radius,
+    spin_parameter=spin_parameter
+)
 
 # Increment brightness for alignment
 def adjust_brightness(img_array, magnification):
@@ -857,14 +851,17 @@ for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
 
     # Recalculate final_image based on lensing type and current position
-    if lensing_type == "Weak Lensing":
-        frame_image = apply_weak_lensing(final_image.copy(), current_position, schwarzschild_radius, lens_type=lens_type)
-    elif lensing_type == "Strong Lensing":
-        frame_image = apply_strong_lensing(final_image.copy(), current_position, schwarzschild_radius, lens_type=lens_type)
-    elif lensing_type == "Microlensing":
-        frame_image = apply_microlensing(final_image.copy(), current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
-    elif lensing_type == "Kerr Lensing":
-        frame_image = apply_kerr_lensing(final_image.copy(), current_position, schwarzschild_radius, spin_parameter)
+    frame_image = apply_lensing_effect(
+        final_image.copy(),
+        lensing_type,
+        current_position,
+        schwarzschild_radius,
+        lens_type=lens_type,
+        einstein_radius=einstein_radius,
+        source_type=source_type,
+        source_radius=source_radius,
+        spin_parameter=spin_parameter
+    )
 
     # Apply red/blue shift to the frame
     frame_array = np.array(frame_image)
