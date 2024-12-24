@@ -698,20 +698,6 @@ y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
 x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
-# Example image generation
-def create_example_image(width, height):
-    """Create a synthetic image with stars and nebula-like patterns."""
-    img = np.zeros((height, width, 3), dtype=np.uint8)
-    np.random.seed(42)
-    for _ in range(500):
-        x, y = np.random.randint(0, width), np.random.randint(0, height)
-        brightness = np.random.randint(150, 255)
-        img[y, x] = [brightness] * 3
-    return Image.fromarray(img)
-
-# Load or create the original image
-final_image = create_example_image(800, 800)
-
 # Display the original image
 st.image(final_image, caption="Original Image", use_column_width=True)
 
