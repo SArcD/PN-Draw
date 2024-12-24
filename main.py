@@ -881,8 +881,8 @@ st.title("Gravitational Lensing Animation")
 #source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
 
 # Animation parameters
-start_x = st.sidebar.slider("Start X Position", 0, 800, 100)
-end_x = st.sidebar.slider("End X Position", 0, 800, 700)
+start_x = st.sidebar.slider("Start X Position", 0, 1600, 100)
+end_x = st.sidebar.slider("End X Position", 0, 1600, 700)
 inclination_angle = st.sidebar.slider("Inclination Angle (degrees)", -45, 45, 0)
 num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
 
