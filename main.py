@@ -813,125 +813,59 @@ st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 import numpy as np
 from PIL import Image
+import cv2
 import streamlit as st
+from io import BytesIO
 
-
-# Función de animación genérica
-def generate_animation(final_image, lensing_type, animation_range, num_frames, schwarzschild_radius, einstein_radius, spin_parameter, lens_strength, source_radius, inclination_angle):
+def save_video(frames, output_path, fps):
     """
-    Generate an animation by varying black hole X position.
-
-    Parameters:
-        final_image (PIL.Image): Base image to apply lensing on.
-        lensing_type (str): Type of lensing effect.
-        animation_range (tuple): Start and end X positions for the black hole.
-        num_frames (int): Number of frames in the animation.
-        schwarzschild_radius (int): Schwarzschild radius (for applicable lensing types).
-        einstein_radius (int): Einstein radius (for microlensing).
-        spin_parameter (float): Black hole spin parameter (for Kerr lensing).
-        lens_strength (int): Lens strength (for caustic crossing).
-        source_radius (int): Source radius (for caustic crossing).
-        inclination_angle (float): Inclination angle in degrees.
-
-    Returns:
-        list: Frames of the animation as PIL.Image objects.
+    Save frames as a video file.
     """
-    start_x, end_x = animation_range
-    frames = []
-
-    for x_position in np.linspace(start_x, end_x, num_frames):
-        y_position = int(final_image.height / 2 + (x_position - start_x) * np.tan(np.radians(inclination_angle)))
-        black_hole_center = (int(x_position), y_position)
-
-        if lensing_type == "Weak Lensing":
-            frame = apply_weak_lensing(final_image, black_hole_center, schwarzschild_radius)
-        elif lensing_type == "Strong Lensing":
-            frame = apply_strong_lensing(final_image, black_hole_center, schwarzschild_radius)
-        elif lensing_type == "Microlensing":
-            frame = apply_microlensing(final_image, black_hole_center, einstein_radius)
-        elif lensing_type == "Caustic Crossing":
-            source_path = [(start_x, y_position), (end_x, y_position)]
-            frame = apply_caustic_crossing(final_image, black_hole_center, source_path, lens_strength, source_radius)
-        elif lensing_type == "Kerr Lensing":
-            frame = apply_kerr_lensing(final_image, black_hole_center, schwarzschild_radius, spin_parameter)
-        else:
-            raise ValueError(f"Unsupported lensing type: {lensing_type}")
-
-        # Ensure frames retain the correct mode and colors
-        frame = frame.convert("RGBA")
-        frames.append(frame)
-
-    return frames
-
-
-# Streamlit UI
-st.title("Gravitational Lensing Animation")
-
-# Select lensing type
-#lensing_type = st.sidebar.selectbox(
-#    "Select Lensing Type",
-#    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
-#)
-
-# Parameters for the lens
-#schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
-#einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
-#spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
-#lens_strength = st.sidebar.slider("Lens Strength", 1, 10, 5)
-#source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
-
-# Animation parameters
-start_x = st.sidebar.slider("Start X Position", 0, 1600, 100)
-end_x = st.sidebar.slider("End X Position", 0, 1600, 700)
-inclination_angle = st.sidebar.slider("Inclination Angle (degrees)", -45, 45, 0)
-num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
-
-# Generate animation button
-if st.button("Generate Animation"):
-    # Generate animation frames
-    frames = generate_animation(
-        final_image,
-        lensing_type,
-        (start_x, end_x),
-        num_frames,
-        schwarzschild_radius,
-        einstein_radius,
-        spin_parameter,
-        lens_strength,
-        source_radius,
-        inclination_angle
-    )
-
-    # Preview the first frame
-    st.image(frames[0], caption="First Frame of Animation", use_column_width=True)
-
+    height, width = frames[0].size
+    video = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
     
-    # Convert frames to RGB mode (if not already)
-    #frames_rgb = [frame.convert("RGB") for frame in frames]
+    for frame in frames:
+        # Convert PIL image to numpy array and BGR format (OpenCV uses BGR)
+        frame_array = np.array(frame.convert("RGB"))[:, :, ::-1]
+        video.write(frame_array)
+    
+    video.release()
 
-    # Convert frames to mode "P" (paletted) with adaptive palette
-    frames_paletted = [frame.convert("P", palette=Image.ADAPTIVE) for frame in frames]
+# Streamlit UI for Animation
+st.title("Black Hole Animation")
 
-    # Save animation as GIF
-    gif_path = "/tmp/lensing_animation.gif"
-    frames_paletted[0].save(
-        gif_path,
-        save_all=True,
-        append_images=frames_paletted[1:],
-        duration=100,
-        loop=0,
-        optimize=False  # Turn off optimization to ensure consistent palette
+# Parameters
+num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
+fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
+spin_range = np.linspace(0, 1.0, num_frames)
+
+# Generate frames
+frames = []
+for spin_value in spin_range:
+    # Generate a frame using Kerr lensing (or any other lensing effect)
+    frame_image = apply_kerr_lensing(
+        original_image,
+        (black_hole_x, black_hole_y),
+        schwarzschild_radius,
+        spin_value
     )
+    frames.append(frame_image)
 
-    # Provide download button for the GIF
-    with open(gif_path, "rb") as f:
-        st.download_button(
-            label="Download Animation (GIF)",
-            data=f,
-            file_name="lensing_animation.gif",
-            mime="image/gif",
-        )
+# Save the video
+video_path = "black_hole_animation.mp4"
+save_video(frames, video_path, fps)
 
+# Display video in Streamlit
+st.video(video_path)
+
+# Add a download button for the video
+with open(video_path, "rb") as video_file:
+    st.download_button(
+        label="Download Video",
+        data=video_file,
+        file_name="black_hole_animation.mp4",
+        mime="video/mp4"
+    )
 
 
 ###########################3333
