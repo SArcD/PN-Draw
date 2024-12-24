@@ -813,17 +813,16 @@ st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
 import numpy as np
 from PIL import Image
-from scipy.ndimage import map_coordinates
 import streamlit as st
 
 
 # Función de animación genérica
-def generate_animation(image, lensing_type, animation_range, schwarzschild_radius, einstein_radius, spin_parameter, lens_strength, source_radius, inclination_angle):
+def generate_animation(final_image, lensing_type, animation_range, schwarzschild_radius, einstein_radius, spin_parameter, lens_strength, source_radius, inclination_angle):
     """
     Generate an animation by varying black hole X position.
 
     Parameters:
-        image (PIL.Image): Base image to apply lensing on.
+        final_image (PIL.Image): Base image to apply lensing on.
         lensing_type (str): Type of lensing effect.
         animation_range (tuple): Start and end X positions for the black hole.
         schwarzschild_radius (int): Schwarzschild radius (for applicable lensing types).
@@ -841,20 +840,20 @@ def generate_animation(image, lensing_type, animation_range, schwarzschild_radiu
     frames = []
 
     for x_position in np.linspace(start_x, end_x, num_frames):
-        y_position = int(image.height / 2 + (x_position - start_x) * np.tan(np.radians(inclination_angle)))
+        y_position = int(final_image.height / 2 + (x_position - start_x) * np.tan(np.radians(inclination_angle)))
         black_hole_center = (int(x_position), y_position)
 
         if lensing_type == "Weak Lensing":
-            frame = apply_weak_lensing(image, black_hole_center, schwarzschild_radius)
+            frame = apply_weak_lensing(final_image, black_hole_center, schwarzschild_radius)
         elif lensing_type == "Strong Lensing":
-            frame = apply_strong_lensing(image, black_hole_center, schwarzschild_radius)
+            frame = apply_strong_lensing(final_image, black_hole_center, schwarzschild_radius)
         elif lensing_type == "Microlensing":
-            frame = apply_microlensing(image, black_hole_center, einstein_radius)
+            frame = apply_microlensing(final_image, black_hole_center, einstein_radius)
         elif lensing_type == "Caustic Crossing":
             source_path = [(start_x, y_position), (end_x, y_position)]
-            frame = apply_caustic_crossing(image, black_hole_center, source_path, lens_strength, source_radius)
+            frame = apply_caustic_crossing(final_image, black_hole_center, source_path, lens_strength, source_radius)
         elif lensing_type == "Kerr Lensing":
-            frame = apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_parameter)
+            frame = apply_kerr_lensing(final_image, black_hole_center, schwarzschild_radius, spin_parameter)
         else:
             raise ValueError(f"Unsupported lensing type: {lensing_type}")
 
@@ -872,61 +871,53 @@ st.title("Gravitational Lensing Animation")
 #    ["Weak Lensing", "Strong Lensing", "Microlensing", "Caustic Crossing", "Kerr Lensing"]
 #)
 
-# Base image upload
-uploaded_file = st.file_uploader("Upload your base nebula image", type=["png", "jpg", "jpeg"])
-if uploaded_file:
-    base_image = Image.open(uploaded_file).convert("RGBA")
+# Parámetros de animación
+#schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
+#einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
+#spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+#lens_strength = st.sidebar.slider("Lens Strength", 1, 10, 5)
+#source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
 
-    # Lensing parameters
-    #schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 10, 300, 50)
-    #einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
-    #spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
-    #lens_strength = st.sidebar.slider("Lens Strength", 1, 10, 5)
-    #source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10)
+# Animación
+start_x = st.sidebar.slider("Start X Position", 0, final_image.width, 100)
+end_x = st.sidebar.slider("End X Position", 0, final_image.width, 700)
+inclination_angle = st.sidebar.slider("Inclination Angle (degrees)", -45, 45, 0)
 
-    # Animation parameters
-    start_x = st.sidebar.slider("Start X Position", 0, base_image.width, 100)
-    end_x = st.sidebar.slider("End X Position", 0, base_image.width, 700)
-    inclination_angle = st.sidebar.slider("Inclination Angle (degrees)", -45, 45, 0)
+if st.button("Generate Animation"):
+    # Genera los cuadros de animación
+    frames = generate_animation(
+        final_image,
+        lensing_type,
+        (start_x, end_x),
+        schwarzschild_radius,
+        einstein_radius,
+        spin_parameter,
+        lens_strength,
+        source_radius,
+        inclination_angle
+    )
 
-    # Generate animation frames
-    if st.button("Generate Animation"):
-        frames = generate_animation(
-            base_image,
-            lensing_type,
-            (start_x, end_x),
-            schwarzschild_radius,
-            einstein_radius,
-            spin_parameter,
-            lens_strength,
-            source_radius,
-            inclination_angle
+    # Previsualiza el primer cuadro
+    st.image(frames[0], caption="First Frame of Animation", use_column_width=True)
+
+    # Guarda la animación como GIF
+    gif_path = "/tmp/lensing_animation.gif"
+    frames[0].save(
+        gif_path,
+        save_all=True,
+        append_images=frames[1:],
+        duration=100,
+        loop=0
+    )
+
+    # Descarga la animación
+    with open(gif_path, "rb") as f:
+        st.download_button(
+            label="Download Animation (GIF)",
+            data=f,
+            file_name="lensing_animation.gif",
+            mime="image/gif",
         )
-
-        # Display the first frame as preview
-        st.image(frames[0], caption="First Frame of Animation", use_column_width=True)
-
-        # Save animation as GIF
-        gif_path = "/tmp/lensing_animation.gif"
-        frames[0].save(
-            gif_path,
-            save_all=True,
-            append_images=frames[1:],
-            duration=100,
-            loop=0
-        )
-
-        # Allow user to download the GIF
-        with open(gif_path, "rb") as f:
-            st.download_button(
-                label="Download Animation (GIF)",
-                data=f,
-                file_name="lensing_animation.gif",
-                mime="image/gif",
-            )
-
-
-
 
 ###########################3333
 
