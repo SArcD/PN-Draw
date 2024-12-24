@@ -541,6 +541,13 @@ from scipy.ndimage import map_coordinates
 import streamlit as st
 from moviepy.editor import ImageSequenceClip
 
+
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+from moviepy.editor import ImageSequenceClip
+
 # Functions for gravitational lensing effects
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     img_array = np.array(image)
@@ -657,8 +664,8 @@ lensing_type = st.sidebar.selectbox(
     "Select Lensing Type",
     ["Weak Lensing", "Strong Lensing", "Microlensing", "Kerr Lensing"]
 )
-black_hole_x = st.sidebar.slider("Black Hole X Position", 0, 800, 400)
-black_hole_y = st.sidebar.slider("Black Hole Y Position", 0, 800, 400)
+black_hole_x_fixed = st.sidebar.slider("Black Hole X Position (Static Image)", 0, 800, 400)
+black_hole_y_fixed = st.sidebar.slider("Black Hole Y Position (Static Image)", 0, 800, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
 
 lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
@@ -673,6 +680,12 @@ if lensing_type == "Kerr Lensing":
 else:
     spin_parameter = 0.0
 
+# Independent animation controls
+x_start = st.sidebar.slider("Animation Start X Position", 0, 800, 200)
+y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
+x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
+y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
+
 # Example image generation
 def create_example_image(width, height):
     """Create a synthetic image with stars and nebula-like patterns."""
@@ -684,26 +697,23 @@ def create_example_image(width, height):
         img[y, x] = [brightness] * 3
     return Image.fromarray(img)
 
-
-# Example image generation (Replace this with your nebula image)
-original_image = final_image  # Use the nebula image you created earlier
-
+original_image = create_example_image(800, 800)
 st.image(original_image, caption="Original Image", use_column_width=True)
 
-# Apply lensing effect
-r = np.sqrt((np.arange(original_image.size[0]) - black_hole_x)**2 + (np.arange(original_image.size[1])[:, None] - black_hole_y)**2)
+# Apply lensing effect for static image
+r = np.sqrt((np.arange(original_image.size[0]) - black_hole_x_fixed)**2 + (np.arange(original_image.size[1])[:, None] - black_hole_y_fixed)**2)
 r = np.maximum(r, 1e-5)
 magnification = 1 + (schwarzschild_radius / r)
 magnification = np.clip(magnification, 1, 10)
 
 if lensing_type == "Weak Lensing":
-    final_image = apply_weak_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
+    final_image = apply_weak_lensing(original_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
-    final_image = apply_strong_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, lens_type=lens_type)
+    final_image = apply_strong_lensing(original_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Microlensing":
-    final_image = apply_microlensing(original_image, (black_hole_x, black_hole_y), einstein_radius, source_type=source_type, source_radius=source_radius)
+    final_image = apply_microlensing(original_image, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
 elif lensing_type == "Kerr Lensing":
-    final_image = apply_kerr_lensing(original_image, (black_hole_x, black_hole_y), schwarzschild_radius, spin_parameter)
+    final_image = apply_kerr_lensing(original_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
 final_image_array = np.array(final_image)
 final_image_array = adjust_brightness(final_image_array, magnification)
@@ -718,11 +728,11 @@ fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
 
 # Generate animation
 frames = []
+x_positions = np.linspace(x_start, x_end, num_frames)
+y_positions = np.linspace(y_start, y_end, num_frames)
+
 for i in range(num_frames):
-    current_position = (
-        black_hole_x + i * (800 - black_hole_x) / num_frames,
-        black_hole_y + i * (800 - black_hole_y) / num_frames
-    )
+    current_position = (x_positions[i], y_positions[i])
     frame_image = np.array(
         apply_kerr_lensing(original_image, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
         apply_weak_lensing(original_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
@@ -743,8 +753,6 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
-
-
 
 
 
