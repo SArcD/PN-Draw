@@ -853,8 +853,8 @@ x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
 # Parameters for lensing
-#schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
-#spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
+schwarzschild_radius = st.sidebar.slider("Schwarzschild Rad (pixels)", 1, 300, 50)
+spin_parameter = st.sidebar.slider("Black Hole Spin Parmter (a)", 0.0, 1.0, 0.5)
 
 # Select lensing type
 #lensing_type = st.sidebar.selectbox(
@@ -873,7 +873,7 @@ for i in range(num_frames):
     elif lensing_type == "Strong Lensing":
         frame_image = apply_strong_lensing(final_image.copy(), current_position, schwarzschild_radius)
     elif lensing_type == "Microlensing":
-        einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
+        einstein_radius = st.sidebar.slider("Einstein Rad (pixels)", 10, 200, 50)
         frame_image = apply_microlensing(final_image.copy(), current_position, einstein_radius)
     elif lensing_type == "Kerr Lensing":
         frame_image = apply_kerr_lensing(final_image.copy(), current_position, schwarzschild_radius, spin_parameter)
