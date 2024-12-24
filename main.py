@@ -697,7 +697,8 @@ def create_example_image(width, height):
         img[y, x] = [brightness] * 3
     return Image.fromarray(img)
 
-original_image = create_example_image(800, 800)
+original_image = final_image  # Use the nebula image you created earlier
+
 st.image(original_image, caption="Original Image", use_column_width=True)
 
 # Apply lensing effect for static image
