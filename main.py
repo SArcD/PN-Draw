@@ -790,6 +790,26 @@ source_start_y = st.sidebar.slider("Source Start Y", 0, 800, 300)
 source_end_x = st.sidebar.slider("Source End X", 0, 800, 600)
 source_end_y = st.sidebar.slider("Source End Y", 0, 800, 500)
 
+# Definitions of lensing types
+st.markdown("""
+### Definitions of Lensing Types
+
+1. **Weak Lensing**:
+   - Simulates subtle distortions in the shape of galaxies due to a distant mass distribution. Useful for mapping dark matter.
+
+2. **Strong Lensing**:
+   - Occurs when the alignment between the source, lens, and observer is nearly perfect, producing multiple images or Einstein rings.
+
+3. **Microlensing**:
+   - Changes in the brightness of a distant source due to a compact lens, such as a star or planet. It does not deform the image but amplifies brightness.
+
+4. **Caustic Crossing**:
+   - Simulates events where a source crosses caustic lines, leading to significant magnification. Common in complex lens distributions.
+
+5. **Kerr Lensing**:
+   - Introduces rotational effects from a gravitational lens like a Kerr black hole, causing asymmetric distortions due to frame-dragging.
+""")
+
 # Example image generation (Replace this with your nebula image)
 original_image = final_image  # Use the nebula image you created earlier
 
@@ -821,6 +841,24 @@ if lensing_type == "Kerr Lensing":
         schwarzschild_radius,
         spin_parameter
     )
+
+# Increment brightness for alignment
+def adjust_brightness(img_array, magnification):
+    return np.clip(img_array * magnification[..., None], 0, 255)
+
+# Apply red/blue shift
+def apply_red_blue_shift(img_array, schwarzschild_radius, r):
+    shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
+    img_array[:, :, 0] *= shift_factor  # Red channel
+    img_array[:, :, 2] /= shift_factor  # Blue channel
+    return np.clip(img_array, 0, 255)
+
+# Modify brightness and colors in final image
+r = np.sqrt((black_hole_x - np.arange(original_image.size[0]))**2 + (black_hole_y - np.arange(original_image.size[1]))[:, None])
+magnification = 1 + (schwarzschild_radius / np.maximum(r, 1e-5))
+final_image_array = adjust_brightness(np.array(final_image), magnification)
+final_image_array = apply_red_blue_shift(final_image_array, schwarzschild_radius, r)
+final_image = Image.fromarray(final_image_array.astype(np.uint8))
 
 # Display the final result
 st.image(final_image, caption=f"{lensing_type} Applied", use_column_width=True)
@@ -900,8 +938,6 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
-
-
 
 ################################
 
