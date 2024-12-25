@@ -669,7 +669,7 @@ for i in range(num_cstars):
 #    tuple(int(arc_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
 #    tuple(int(arc_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
 #    arc_turbulence, arc_blur, arc_elliptical
-)
+#)
 
 # Generate layers
 filaments_image = generate_filaments(image_size, centers, num_filaments, filament_radius, filament_length, hex_to_rgb(filament_start_color), hex_to_rgb(filament_end_color), filament_blur, filament_elliptical)
