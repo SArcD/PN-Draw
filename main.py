@@ -532,12 +532,6 @@ from scipy.ndimage import map_coordinates
 import streamlit as st
 from moviepy.editor import ImageSequenceClip
 
-import numpy as np
-from PIL import Image
-from scipy.ndimage import map_coordinates
-import streamlit as st
-from moviepy.editor import ImageSequenceClip
-
 # Functions for gravitational lensing effects
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     img_array = np.array(image)
@@ -728,8 +722,8 @@ lensing_type = st.sidebar.selectbox(
     "Select Lensing Type",
     ["Weak Lensing", "Strong Lensing", "Microlensing", "Kerr Lensing"]
 )
-black_hole_x_fixed = st.sidebar.slider("Black Hole X Position (Static Image)", 0, 800, 400)
-black_hole_y_fixed = st.sidebar.slider("Black Hole Y Position (Static Image)", 0, 800, 400)
+black_hole_x_fixed = st.sidebar.slider("Black Hole X Position (Static Image)", 0, image_width, 400)
+black_hole_y_fixed = st.sidebar.slider("Black Hole Y Position (Static Image)", 0, image_height, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
 
 lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
