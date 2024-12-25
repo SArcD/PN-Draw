@@ -403,11 +403,11 @@ star_colors = ["#FFFFFF", "#FFD700", "#87CEEB"]
 st.sidebar.header("Star Configuration")
 
 # Number of stars
-num_stars = st.sidebar.slider("Number of Stars", 1, 10, 3)
+num_cstars = st.sidebar.slider("Number of Stars", 1, 10, 3)
 
 # Create a list of star configurations
 star_configs = []
-for i in range(num_stars):
+for i in range(num_cstars):
     st.sidebar.subheader(f"Star {i + 1} Parameters")
     position_x = st.sidebar.slider(f"Position X (Star {i + 1})", 0, 800, 400)
     position_y = st.sidebar.slider(f"Position Y (Star {i + 1})", 0, 800, 400)
