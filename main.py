@@ -683,7 +683,8 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
         numpy.ndarray: Imagen modificada con corrimiento al rojo y azul.
     """
     # Calcular el factor de corrimiento
-    shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
+    shift_factor = 1 + (schwarzschild_radius / r**2)
+    #shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
     shift_factor = np.clip(shift_factor, 0.9, 1.1)  # Reducir la intensidad del cambio
 
     # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
