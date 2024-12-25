@@ -532,6 +532,12 @@ from scipy.ndimage import map_coordinates
 import streamlit as st
 from moviepy.editor import ImageSequenceClip
 
+import numpy as np
+from PIL import Image
+from scipy.ndimage import map_coordinates
+import streamlit as st
+from moviepy.editor import ImageSequenceClip
+
 # Functions for gravitational lensing effects
 def apply_weak_lensing(image, black_hole_center, schwarzschild_radius, lens_type="point"):
     img_array = np.array(image)
@@ -579,6 +585,26 @@ def apply_strong_lensing(image, black_hole_center, schwarzschild_radius, lens_ty
         ).reshape((height, width))
     return Image.fromarray(deformed_img_array)
 
+def apply_microlensing(image, lens_center, einstein_radius, source_type="point", source_radius=1):
+    img_array = np.array(image, dtype=np.float32)
+    height, width, channels = img_array.shape
+    y, x = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
+    dx = x - lens_center[0]
+    dy = y - lens_center[1]
+    r = np.sqrt(dx**2 + dy**2)
+    r = np.maximum(r, 1e-5)
+    u = r / einstein_radius
+    amplification = (
+        (u**2 + 2) / (u * np.sqrt(u**2 + 4))
+        if source_type == "point"
+        else ((u + source_radius)**2 + 2) / ((u + source_radius) * np.sqrt((u + source_radius)**2 + 4))
+    )
+    amplification = np.clip(amplification, 1, 10)
+    for channel in range(channels):
+        img_array[..., channel] *= amplification
+    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+    return Image.fromarray(img_array)
+
 def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_parameter):
     img_array = np.array(image)
     height, width, channels = img_array.shape
@@ -605,6 +631,14 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
 def adjust_brightness(img_array, magnification):
     return np.clip(img_array * magnification[..., None], 0, 255)
 
+#def apply_red_blue_shift(img_array, schwarzschild_radius, r):
+#    shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
+#    shift_factor = np.clip(shift_factor, 0.5, 1.5)
+#    mask = np.any(img_array > 0, axis=-1)
+#    img_array[mask, 0] *= shift_factor[mask]
+#    img_array[mask, 2] /= shift_factor[mask]
+#    return np.clip(img_array, 0, 255)
+
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     """
     Aplica un corrimiento al rojo y azul a los píxeles según la distancia al centro.
@@ -624,20 +658,18 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
     mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles completamente negros
 
-    # Convertir img_array a float temporalmente para evitar problemas de casting
-    img_array = img_array.astype(np.float32)
-
     # Aplicar corrimientos de color
-    img_array[mask, 0] *= shift_factor[mask]  # Corrimiento al rojo
-    img_array[mask, 2] /= shift_factor[mask]  # Corrimiento al azul
+    img_array[mask, 0] = img_array[mask, 0] * shift_factor[mask]  # Corrimiento al rojo
+    img_array[mask, 2] = img_array[mask, 2] / shift_factor[mask]  # Corrimiento al azul
 
     # Ajustar el canal verde para mantener balance cromático
-    img_array[mask, 1] *= (0.5 + 0.5 * shift_factor[mask])
+    img_array[mask, 1] = img_array[mask, 1] * (0.5 + 0.5 * shift_factor[mask])
 
-    # Limitar los valores dentro del rango válido [0, 255] y convertir de vuelta a uint8
+    # Limitar los valores dentro del rango válido [0, 255]
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
 
     return img_array
+
 
 # Video generation with MoviePy
 def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
@@ -646,50 +678,49 @@ def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
     clip.write_videofile(output_path, codec="libx264", audio=False)
     return output_path
 
-
-def apply_light_magnification(img_array, schwarzschild_radius, r):
-    """
-    Aumenta la intensidad de la luz (amplificación) si hay alineación significativa con la lente gravitacional.
-    """
-    magnification_factor = 1 + (schwarzschild_radius / r**2)
-    magnification_factor = np.clip(magnification_factor, 1, 5)
-    img_array = img_array * magnification_factor[..., None]
-    return np.clip(img_array, 0, 255).astype(np.uint8)
-
 # Streamlit interface
 st.title("Gravitational Lensing Simulation")
 
-# Sidebar parameters
+# Sidebar for lensing parameters
 lensing_type = st.sidebar.selectbox(
-    "Select Lensing Type", ["Weak Lensing", "Strong Lensing", "Kerr Lensing"]
+    "Select Lensing Type",
+    ["Weak Lensing", "Strong Lensing", "Microlensing", "Kerr Lensing"]
 )
 black_hole_x_fixed = st.sidebar.slider("Black Hole X Position (Static Image)", 0, 800, 400)
 black_hole_y_fixed = st.sidebar.slider("Black Hole Y Position (Static Image)", 0, 800, 400)
 schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300, 50)
-spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5) if lensing_type == "Kerr Lensing" else 0.0
 
-# Define static image
-r_static = np.sqrt(
-    (np.arange(800) - black_hole_x_fixed)**2 +
-    (np.arange(800)[:, None] - black_hole_y_fixed)**2
-)
+lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
+
+
+# Aplicar efectos de lensing a la imagen fija
+r_static = np.sqrt((np.arange(static_image.size[0]) - black_hole_x_fixed)**2 +
+                    (np.arange(static_image.size[1])[:, None] - black_hole_y_fixed)**2)
 r_static = np.maximum(r_static, 1e-5)
-#static_image = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)  # Replace with actual static image
+magnification_static = 1 + (schwarzschild_radius / r_static)
+magnification_static = np.clip(magnification_static, 1, 10)
 
-# Apply lensing to static image
 if lensing_type == "Weak Lensing":
-    static_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius)
+    processed_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
-    static_image = apply_strong_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius)
+    processed_image = apply_strong_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
+elif lensing_type == "Microlensing":
+    processed_image = apply_microlensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
 elif lensing_type == "Kerr Lensing":
-    static_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
+    # Parámetros para Kerr Lensing
+    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 2.0, 0.5)
+    processed_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
-static_image = np.array(static_image)
-static_image = apply_light_magnification(static_image, schwarzschild_radius, r_static)
-static_image = apply_red_blue_shift(static_image, schwarzschild_radius, r_static)
-st.image(static_image, caption=f"{lensing_type} Applied (Static Image)", use_column_width=True)
+processed_image_array = np.array(processed_image)
+processed_image_array = adjust_brightness(processed_image_array, magnification_static)
+#processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
+processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
-# Animation setup
+# Mostrar la imagen fija procesada
+st.image(processed_image, caption=f"{lensing_type} Applied (Static Image)", use_column_width=True)
+
+
+# Definir controles para animación en la barra lateral
 num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
 fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
 x_start = st.sidebar.slider("Animation Start X Position", 0, 800, 200)
@@ -697,44 +728,49 @@ y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
 x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
-# Generate animation frames
+
+# Parámetros de la animación
 frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
 for i in range(num_frames):
+    # Posición actual del agujero negro
     current_position = (x_positions[i], y_positions[i])
+
+    # Calcular r dinámicamente para cada frame
     r_dynamic = np.sqrt(
         (np.arange(animation_image.size[0]) - current_position[0])**2 +
         (np.arange(animation_image.size[1])[:, None] - current_position[1])**2
     )
-    r_dynamic = np.maximum(r_dynamic, 1e-5)
-    #frame_image = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)  # Replace with actual frame image
+    r_dynamic = np.maximum(r_dynamic, 1e-5)  # Evitar divisiones por cero
 
-    # Apply lensing
-    if lensing_type == "Weak Lensing":
-        frame_image = apply_weak_lensing(animation_image, current_position, schwarzschild_radius)
-    elif lensing_type == "Strong Lensing":
-        frame_image = apply_strong_lensing(animation_image, current_position, schwarzschild_radius)
-    elif lensing_type == "Kerr Lensing":
-        frame_image = apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
+    # Aplicar efecto de lensing correspondiente
+    frame_image = np.array(
+        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
+        if lensing_type == "Kerr Lensing"
+        else apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+        if lensing_type == "Weak Lensing"
+        else apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+        if lensing_type == "Strong Lensing"
+        else apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+    )
 
     # Aplicar brillo y corrimiento dinámicos
     magnification_dynamic = 1 + (schwarzschild_radius / r_dynamic)
     magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
 
     frame_image = adjust_brightness(frame_image, magnification_dynamic)
-    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
+    #frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
 
     # Agregar frame procesado a la lista
     frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
-
-# Save and display animation
+# Guardar y mostrar la animación
 video_path = save_video_with_moviepy(frames, fps)
 st.video(video_path)
 
-# Download button
+# Botón para descargar el video
 with open(video_path, "rb") as video_file:
     st.download_button(
         label="Download Video",
@@ -742,7 +778,6 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
-
 
 
 ################################
