@@ -707,6 +707,8 @@ elif lensing_type == "Strong Lensing":
 elif lensing_type == "Microlensing":
     processed_image = apply_microlensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
 elif lensing_type == "Kerr Lensing":
+    # Parámetros para Kerr Lensing
+    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 2.0, 0.5)
     processed_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
 processed_image_array = np.array(processed_image)
