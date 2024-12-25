@@ -712,7 +712,7 @@ for i in range(num_frames):
         apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
     )
     frame_image = adjust_brightness(frame_image, magnification_static)
-    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_static)
+    #frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_static)
     frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
 # Guardar y mostrar la animación
