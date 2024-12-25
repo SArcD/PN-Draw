@@ -653,21 +653,22 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     """
     # Calcular el factor de corrimiento
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
-    shift_factor = np.clip(shift_factor, 0.7, 1.3)  # Limitar rangos realistas para evitar saturación
+    shift_factor = np.clip(shift_factor, 0.8, 1.2)  # Limitar rangos para evitar extremos
 
-    # Crear una máscara para aplicar solo en píxeles relevantes
-    mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles negros completamente
+    # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
+    mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles completamente negros
 
-    # Aplicar corrimiento en los canales de color
-    img_array[mask, 0] *= shift_factor[mask]  # Incrementar o reducir el canal rojo
-    img_array[mask, 2] /= shift_factor[mask]  # Incrementar o reducir el canal azul
+    # Aplicar corrimientos de color
+    img_array[mask, 0] = img_array[mask, 0] * shift_factor[mask]  # Corrimiento al rojo
+    img_array[mask, 2] = img_array[mask, 2] / shift_factor[mask]  # Corrimiento al azul
 
-    # Ajustar el canal verde proporcionalmente para mantener el balance de colores
-    img_array[mask, 1] *= (1 + (shift_factor[mask] - 1) * 0.2)  # Cambio leve en el canal verde
+    # Ajustar el canal verde para mantener balance cromático
+    img_array[mask, 1] = img_array[mask, 1] * (0.5 + 0.5 * shift_factor[mask])
 
-    # Asegurar que los valores de los canales estén dentro del rango válido
-    return np.clip(img_array, 0, 255).astype(np.uint8)
+    # Limitar los valores dentro del rango válido [0, 255]
+    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
 
+    return img_array
 
 
 # Video generation with MoviePy
