@@ -544,6 +544,16 @@ center = (center_x, center_y)
 #arc_blur = st.sidebar.slider("Arc Blur", 0, 30, 5)
 #arc_elliptical = st.sidebar.checkbox("Elliptical Arcs", False)
 
+# Centers for layers
+num_centers = st.sidebar.slider("Number of Centers", 1, 10, 3)
+centers = [
+    (
+        st.sidebar.slider(f"Center X {i+1}", 0, image_width, image_width // 2, key=f"center_x_{i}"),
+        st.sidebar.slider(f"Center Y {i+1}", 0, image_height, image_height // 2, key=f"center_y_{i}")
+    )
+    for i in range(num_centers)
+]
+
 # Sidebar for filament parameters
 st.sidebar.header("Filament Parameters")
 num_filaments = st.sidebar.slider("Number of Filaments", 10, 500, 100)
