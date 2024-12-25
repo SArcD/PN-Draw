@@ -674,7 +674,7 @@ r_static = np.sqrt(
     (np.arange(800)[:, None] - black_hole_y_fixed)**2
 )
 r_static = np.maximum(r_static, 1e-5)
-static_image = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)  # Replace with actual static image
+#static_image = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)  # Replace with actual static image
 
 # Apply lensing to static image
 if lensing_type == "Weak Lensing":
@@ -705,24 +705,30 @@ y_positions = np.linspace(y_start, y_end, num_frames)
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
     r_dynamic = np.sqrt(
-        (np.arange(800) - current_position[0])**2 +
-        (np.arange(800)[:, None] - current_position[1])**2
+        (np.arange(animation_image.size[0]) - current_position[0])**2 +
+        (np.arange(animation_image.size[1])[:, None] - current_position[1])**2
     )
     r_dynamic = np.maximum(r_dynamic, 1e-5)
-    frame_image = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)  # Replace with actual frame image
+    #frame_image = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)  # Replace with actual frame image
 
     # Apply lensing
     if lensing_type == "Weak Lensing":
-        frame_image = apply_weak_lensing(frame_image, current_position, schwarzschild_radius)
+        frame_image = apply_weak_lensing(animation_image, current_position, schwarzschild_radius)
     elif lensing_type == "Strong Lensing":
-        frame_image = apply_strong_lensing(frame_image, current_position, schwarzschild_radius)
+        frame_image = apply_strong_lensing(animation_image, current_position, schwarzschild_radius)
     elif lensing_type == "Kerr Lensing":
-        frame_image = apply_kerr_lensing(frame_image, current_position, schwarzschild_radius, spin_parameter)
+        frame_image = apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
 
-    frame_image = np.array(frame_image)
-    frame_image = apply_light_magnification(frame_image, schwarzschild_radius, r_dynamic)
+    # Aplicar brillo y corrimiento dinámicos
+    magnification_dynamic = 1 + (schwarzschild_radius / r_dynamic)
+    magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
+
+    frame_image = adjust_brightness(frame_image, magnification_dynamic)
     frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
-    frames.append(Image.fromarray(frame_image))
+
+    # Agregar frame procesado a la lista
+    frames.append(Image.fromarray(frame_image.astype(np.uint8)))
+
 
 # Save and display animation
 video_path = save_video_with_moviepy(frames, fps)
