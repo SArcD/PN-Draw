@@ -694,9 +694,6 @@ y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
 x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
-# Generar posiciones para la animación
-x_positions = np.linspace(x_start, x_end, num_frames)
-y_positions = np.linspace(y_start, y_end, num_frames)
 
 # Parámetros de la animación
 frames = []
@@ -704,15 +701,35 @@ x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
 for i in range(num_frames):
+    # Posición actual del agujero negro
     current_position = (x_positions[i], y_positions[i])
-    frame_image = np.array(
-        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
-        apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
-        apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Strong Lensing" else
-        apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+
+    # Calcular r dinámicamente para cada frame
+    r_dynamic = np.sqrt(
+        (np.arange(animation_image.size[0]) - current_position[0])**2 +
+        (np.arange(animation_image.size[1])[:, None] - current_position[1])**2
     )
-    frame_image = adjust_brightness(frame_image, magnification_static)
-    #frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_static)
+    r_dynamic = np.maximum(r_dynamic, 1e-5)  # Evitar divisiones por cero
+
+    # Aplicar efecto de lensing correspondiente
+    frame_image = np.array(
+        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
+        if lensing_type == "Kerr Lensing"
+        else apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+        if lensing_type == "Weak Lensing"
+        else apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+        if lensing_type == "Strong Lensing"
+        else apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+    )
+
+    # Aplicar brillo y corrimiento dinámicos
+    magnification_dynamic = 1 + (schwarzschild_radius / r_dynamic)
+    magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
+
+    frame_image = adjust_brightness(frame_image, magnification_dynamic)
+    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
+
+    # Agregar frame procesado a la lista
     frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
 # Guardar y mostrar la animación
