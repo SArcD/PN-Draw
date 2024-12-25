@@ -639,6 +639,37 @@ def adjust_brightness(img_array, magnification):
 #    img_array[mask, 2] /= shift_factor[mask]
 #    return np.clip(img_array, 0, 255)
 
+#def apply_red_blue_shift(img_array, schwarzschild_radius, r):
+#    """
+#    Aplica un corrimiento al rojo y azul a los píxeles según la distancia al centro.
+
+#    Parameters:
+#        img_array (numpy.ndarray): Imagen en formato array (alto, ancho, canales).
+#        schwarzschild_radius (float): Radio de Schwarzschild.
+#        r (numpy.ndarray): Distancia radial de cada píxel al centro del agujero negro.
+
+#    Returns:
+#        numpy.ndarray: Imagen modificada con corrimiento al rojo y azul.
+#    """
+    # Calcular el factor de corrimiento
+    #shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
+    #shift_factor = np.clip(shift_factor, 0.8, 1.2)  # Limitar rangos para evitar extremos
+
+    # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
+    #mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles completamente negros
+
+    # Aplicar corrimientos de color
+    #img_array[mask, 0] = img_array[mask, 0] * shift_factor[mask]  # Corrimiento al rojo
+    #img_array[mask, 2] = img_array[mask, 2] / shift_factor[mask]  # Corrimiento al azul
+
+    # Ajustar el canal verde para mantener balance cromático
+    #img_array[mask, 1] = img_array[mask, 1] * (0.5 + 0.5 * shift_factor[mask])
+
+    # Limitar los valores dentro del rango válido [0, 255]
+    #img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+
+    #return img_array
+
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     """
     Aplica un corrimiento al rojo y azul a los píxeles según la distancia al centro.
@@ -658,17 +689,21 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
     mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles completamente negros
 
+    # Convertir img_array a float temporalmente para evitar problemas de casting
+    img_array = img_array.astype(np.float32)
+
     # Aplicar corrimientos de color
-    img_array[mask, 0] = img_array[mask, 0] * shift_factor[mask]  # Corrimiento al rojo
-    img_array[mask, 2] = img_array[mask, 2] / shift_factor[mask]  # Corrimiento al azul
+    img_array[mask, 0] *= shift_factor[mask]  # Corrimiento al rojo
+    img_array[mask, 2] /= shift_factor[mask]  # Corrimiento al azul
 
     # Ajustar el canal verde para mantener balance cromático
-    img_array[mask, 1] = img_array[mask, 1] * (0.5 + 0.5 * shift_factor[mask])
+    img_array[mask, 1] *= (0.5 + 0.5 * shift_factor[mask])
 
-    # Limitar los valores dentro del rango válido [0, 255]
+    # Limitar los valores dentro del rango válido [0, 255] y convertir de vuelta a uint8
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
 
     return img_array
+
 
 
 # Video generation with MoviePy
@@ -713,7 +748,7 @@ elif lensing_type == "Kerr Lensing":
 
 processed_image_array = np.array(processed_image)
 processed_image_array = adjust_brightness(processed_image_array, magnification_static)
-#processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
+processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
 processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
 # Mostrar la imagen fija procesada
@@ -761,7 +796,7 @@ for i in range(num_frames):
     magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
 
     frame_image = adjust_brightness(frame_image, magnification_dynamic)
-    #frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
+    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
 
     # Agregar frame procesado a la lista
     frames.append(Image.fromarray(frame_image.astype(np.uint8)))
