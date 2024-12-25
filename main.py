@@ -175,8 +175,68 @@ def generate_gas_arcs(image_size, center, radius, thickness, start_angle, end_an
 
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
-def draw_central_star_with_filaments(image_size, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
-    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+#def draw_central_star_with_filaments(image_size, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
+#    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+#    draw = ImageDraw.Draw(img)
+
+#    # Draw halo
+#    halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
+#    halo_draw = ImageDraw.Draw(halo)
+#    halo_draw.ellipse((0, 0, halo_size * 2, halo_size * 2), fill=color + (50,))
+#    halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
+#    img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
+
+#    # Draw star
+#    draw.ellipse(
+#        (position[0] - star_size, position[1] - star_size, position[0] + star_size, position[1] + star_size),
+#        fill=color + (255,),
+#    )
+
+#    # Draw radial filaments
+#    filament_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+#    filament_draw = ImageDraw.Draw(filament_layer)
+#    for i in range(num_filaments):
+#        angle = 2 * np.pi * i / num_filaments
+#        end_x = position[0] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.cos(angle)
+#        end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
+
+#        filament_draw.line(
+#            [(position[0], position[1]), (end_x, end_y)],
+#            fill=color + (100,),  # Semi-transparent
+#            width=2,
+#        )
+
+#    # Apply Gaussian blur to the filaments for a diffuse effect
+#    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+#    # Combine the filaments with the star image
+#    img = Image.alpha_composite(img, filament_layer)
+
+#    return img
+
+#def draw_central_star(image_size, position, star_size, halo_size, color):
+#    img = Image.new("RGBA", image_size, (0, 0, 0, 0))
+#    draw = ImageDraw.Draw(img)
+
+#    # Draw halo
+#    halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
+#    halo_draw = ImageDraw.Draw(halo)
+#    halo_draw.ellipse((0, 0, halo_size * 2, halo_size * 2), fill=color + (50,))
+#    halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
+#    img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
+
+#    # Draw star
+#    draw.ellipse(
+#        (position[0] - star_size, position[1] - star_size, position[0] + star_size, position[1] + star_size),
+#        fill=color + (255,),
+#    )
+
+#    return img
+
+from PIL import Image, ImageDraw, ImageFilter
+import numpy as np
+
+def draw_star_with_filaments(img, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
     draw = ImageDraw.Draw(img)
 
     # Draw halo
@@ -193,7 +253,7 @@ def draw_central_star_with_filaments(image_size, position, star_size, halo_size,
     )
 
     # Draw radial filaments
-    filament_layer = Image.new("RGBA", image_size, (0, 0, 0, 0))
+    filament_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     filament_draw = ImageDraw.Draw(filament_layer)
     for i in range(num_filaments):
         angle = 2 * np.pi * i / num_filaments
@@ -214,24 +274,32 @@ def draw_central_star_with_filaments(image_size, position, star_size, halo_size,
 
     return img
 
-def draw_central_star(image_size, position, star_size, halo_size, color):
+def draw_multiple_stars(image_size, star_configs):
+    """
+    Draw multiple stars with individual configurations.
+
+    Parameters:
+        image_size (tuple): Size of the image (width, height).
+        star_configs (list): List of dictionaries, each containing the parameters for a star.
+    """
     img = Image.new("RGBA", image_size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
 
-    # Draw halo
-    halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
-    halo_draw = ImageDraw.Draw(halo)
-    halo_draw.ellipse((0, 0, halo_size * 2, halo_size * 2), fill=color + (50,))
-    halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
-    img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
-
-    # Draw star
-    draw.ellipse(
-        (position[0] - star_size, position[1] - star_size, position[0] + star_size, position[1] + star_size),
-        fill=color + (255,),
-    )
+    for config in star_configs:
+        img = draw_star_with_filaments(
+            img,
+            position=config["position"],
+            star_size=config["star_size"],
+            halo_size=config["halo_size"],
+            color=config["color"],
+            num_filaments=config["num_filaments"],
+            dispersion=config["dispersion"],
+            blur_radius=config["blur_radius"],
+        )
 
     return img
+
+
+
 
 def generate_bubble_texture(image_size, center, radius, line_color, line_opacity, num_lines, blur_radius):
     """
@@ -322,14 +390,46 @@ num_stars = st.sidebar.slider("Number of Stars", 50, 1000, 200)
 star_colors = ["#FFFFFF", "#FFD700", "#87CEEB"]
 
 # Central star parameters
-st.sidebar.header("Central Star")
-star_size = st.sidebar.slider("Star Size", 5, 50, 20)
-halo_size = st.sidebar.slider("Halo Size", 10, 100, 50)
-star_color_hex = st.sidebar.color_picker("Star Color", "#FFFF00")
-star_color = tuple(int(star_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-num_star_filaments = st.sidebar.slider("Number of Star Filaments", 5, 100, 30)
-filament_dispersion = st.sidebar.slider("Filament Dispersion", 1, 50, 10)
-star_blur_radius = st.sidebar.slider("Star Blur Radius", 0, 20, 5)
+#st.sidebar.header("Central Star")
+#star_size = st.sidebar.slider("Star Size", 5, 50, 20)
+#halo_size = st.sidebar.slider("Halo Size", 10, 100, 50)
+#star_color_hex = st.sidebar.color_picker("Star Color", "#FFFF00")
+#star_color = tuple(int(star_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+#num_star_filaments = st.sidebar.slider("Number of Star Filaments", 5, 100, 30)
+#filament_dispersion = st.sidebar.slider("Filament Dispersion", 1, 50, 10)
+#star_blur_radius = st.sidebar.slider("Star Blur Radius", 0, 20, 5)
+
+# Central star parameters
+st.sidebar.header("Star Configuration")
+
+# Number of stars
+num_stars = st.sidebar.slider("Number of Stars", 1, 10, 3)
+
+# Create a list of star configurations
+star_configs = []
+for i in range(num_stars):
+    st.sidebar.subheader(f"Star {i + 1} Parameters")
+    position_x = st.sidebar.slider(f"Position X (Star {i + 1})", 0, 800, 400)
+    position_y = st.sidebar.slider(f"Position Y (Star {i + 1})", 0, 800, 400)
+    star_size = st.sidebar.slider(f"Star Size (Star {i + 1})", 5, 50, 20)
+    halo_size = st.sidebar.slider(f"Halo Size (Star {i + 1})", 10, 100, 50)
+    star_color_hex = st.sidebar.color_picker(f"Star Color (Star {i + 1})", "#FFFF00")
+    star_color = tuple(int(star_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+    num_star_filaments = st.sidebar.slider(f"Number of Star Filaments (Star {i + 1})", 5, 100, 30)
+    filament_dispersion = st.sidebar.slider(f"Filament Dispersion (Star {i + 1})", 1, 50, 10)
+    star_blur_radius = st.sidebar.slider(f"Star Blur Radius (Star {i + 1})", 0, 20, 5)
+
+    # Add the star configuration to the list
+    star_configs.append({
+        "position": (position_x, position_y),
+        "star_size": star_size,
+        "halo_size": halo_size,
+        "color": star_color,
+        "num_filaments": num_star_filaments,
+        "dispersion": filament_dispersion,
+        "blur_radius": star_blur_radius,
+    })
+
 
 # Generate layers
 image_size = (image_width, image_height)
