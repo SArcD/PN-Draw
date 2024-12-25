@@ -685,6 +685,19 @@ processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 # Mostrar la imagen fija procesada
 st.image(processed_image, caption=f"{lensing_type} Applied (Static Image)", use_column_width=True)
 
+
+# Definir controles para animación en la barra lateral
+num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
+fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
+x_start = st.sidebar.slider("Animation Start X Position", 0, 800, 200)
+y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
+x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
+y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
+
+# Generar posiciones para la animación
+x_positions = np.linspace(x_start, x_end, num_frames)
+y_positions = np.linspace(y_start, y_end, num_frames)
+
 # Parámetros de la animación
 frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
