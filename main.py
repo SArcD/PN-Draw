@@ -702,8 +702,8 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     img_array[mask, 1] *= 0.5 + 0.5 * shift_factor[mask]
 
     # Normalizar los canales para evitar dominancia de un solo color
-    total_intensity = img_array.sum(axis=-1, keepdims=True)
-    img_array = (img_array / total_intensity) * np.clip(total_intensity, 0, 255)
+    #total_intensity = img_array.sum(axis=-1, keepdims=True)
+    #img_array = (img_array / total_intensity) * np.clip(total_intensity, 0, 255)
 
     # Limitar los valores dentro del rango válido [0, 255] y convertir de vuelta a uint8
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
