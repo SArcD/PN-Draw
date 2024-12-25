@@ -631,13 +631,42 @@ def apply_kerr_lensing(image, black_hole_center, schwarzschild_radius, spin_para
 def adjust_brightness(img_array, magnification):
     return np.clip(img_array * magnification[..., None], 0, 255)
 
+#def apply_red_blue_shift(img_array, schwarzschild_radius, r):
+#    shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
+#    shift_factor = np.clip(shift_factor, 0.5, 1.5)
+#    mask = np.any(img_array > 0, axis=-1)
+#    img_array[mask, 0] *= shift_factor[mask]
+#    img_array[mask, 2] /= shift_factor[mask]
+#    return np.clip(img_array, 0, 255)
+
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
+    """
+    Aplica corrimiento al rojo y azul en la imagen, asegurando balance de colores.
+
+    Parameters:
+        img_array (numpy.ndarray): Imagen en formato array (alto, ancho, canales).
+        schwarzschild_radius (float): Radio de Schwarzschild.
+        r (numpy.ndarray): Distancia radial de cada píxel al centro del agujero negro.
+
+    Returns:
+        numpy.ndarray: Imagen modificada con corrimiento al rojo y azul.
+    """
+    # Calcular el factor de corrimiento
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
-    shift_factor = np.clip(shift_factor, 0.5, 1.5)
-    mask = np.any(img_array > 0, axis=-1)
-    img_array[mask, 0] *= shift_factor[mask]
-    img_array[mask, 2] /= shift_factor[mask]
+    shift_factor = np.clip(shift_factor, 0.8, 1.2)  # Limitar rangos realistas para evitar saturación
+
+    # Crear una máscara para evitar modificar píxeles de fondo (oscuros)
+    mask = np.any(img_array > 10, axis=-1)  # Excluye píxeles muy oscuros (valor menor a 10)
+
+    # Aplicar corrimiento en los canales de color
+    img_array[mask, 0] *= shift_factor[mask]  # Canal rojo
+    img_array[mask, 1] *= (1 + (shift_factor[mask] - 1) * 0.5)  # Ajuste suave del canal verde
+    img_array[mask, 2] /= shift_factor[mask]  # Canal azul
+
+    # Clipping final para mantener valores válidos
     return np.clip(img_array, 0, 255)
+
+
 
 # Video generation with MoviePy
 def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
