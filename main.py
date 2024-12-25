@@ -684,7 +684,7 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     """
     # Calcular el factor de corrimiento
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
-    shift_factor = np.clip(shift_factor, 0.8, 1.2)  # Limitar rangos para evitar extremos
+    shift_factor = np.clip(shift_factor, 0.9, 1.1)  # Reducir la intensidad del cambio
 
     # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
     mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles completamente negros
@@ -693,11 +693,17 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     img_array = img_array.astype(np.float32)
 
     # Aplicar corrimientos de color
-    img_array[mask, 0] *= shift_factor[mask]  # Corrimiento al rojo
-    img_array[mask, 2] /= shift_factor[mask]  # Corrimiento al azul
+    # Corrimiento al rojo: Intensificar ligeramente el canal rojo
+    img_array[mask, 0] *= shift_factor[mask]  # Incrementar rojo proporcionalmente
+    # Corrimiento al azul: Reducir proporcionalmente el azul
+    img_array[mask, 2] /= shift_factor[mask]
 
-    # Ajustar el canal verde para mantener balance cromático
-    img_array[mask, 1] *= (0.5 + 0.5 * shift_factor[mask])
+    # Balancear el canal verde para mantener una transición visual suave
+    img_array[mask, 1] *= 0.5 + 0.5 * shift_factor[mask]
+
+    # Normalizar los canales para evitar dominancia de un solo color
+    total_intensity = img_array.sum(axis=-1, keepdims=True)
+    img_array = (img_array / total_intensity) * np.clip(total_intensity, 0, 255)
 
     # Limitar los valores dentro del rango válido [0, 255] y convertir de vuelta a uint8
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
