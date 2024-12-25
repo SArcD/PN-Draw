@@ -639,6 +639,13 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
 
     return img_array
 
+# Video generation with MoviePy
+def save_video_with_moviepy(frames, fps, output_path="animation.mp4"):
+    frames_array = [np.array(frame) for frame in frames]
+    clip = ImageSequenceClip(frames_array, fps=fps)
+    clip.write_videofile(output_path, codec="libx264", audio=False)
+    return output_path
+
 
 def apply_light_magnification(img_array, schwarzschild_radius, r):
     """
