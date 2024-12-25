@@ -658,37 +658,18 @@ schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300
 
 lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
 
-if lensing_type == "Microlensing":
-    einstein_radius = st.sidebar.slider("Einstein Radius (pixels)", 10, 200, 50)
-    source_type = st.sidebar.selectbox("Source Type", ["point", "extended"])
-    source_radius = st.sidebar.slider("Source Radius (pixels)", 1, 50, 10) if source_type == "extended" else 0
-
-if lensing_type == "Kerr Lensing":
-    spin_parameter = st.sidebar.slider("Black Hole Spin Parameter (a)", 0.0, 1.0, 0.5)
-else:
-    spin_parameter = 0.0
-
-# Independent animation controls
-x_start = st.sidebar.slider("Animation Start X Position", 0, 800, 200)
-y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
-x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
-y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
-
-# Assume final_image is already created elsewhere in the script
-# Create deep copies for static and animated processing
+# Crear copias separadas de final_image para la imagen estática y la animación
 static_image = final_image.copy()
 animation_image = final_image.copy()
 
-# Display the original image
-st.image(final_image, caption="Original Image", use_column_width=True)
-
-# Apply lensing effect for static image
+# Calcular el lensing para la imagen estática
 r_static = np.sqrt((np.arange(static_image.size[0]) - black_hole_x_fixed)**2 +
                     (np.arange(static_image.size[1])[:, None] - black_hole_y_fixed)**2)
 r_static = np.maximum(r_static, 1e-5)
 magnification_static = 1 + (schwarzschild_radius / r_static)
 magnification_static = np.clip(magnification_static, 1, 10)
 
+# Aplicar lensing a static_image
 if lensing_type == "Weak Lensing":
     processed_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
@@ -698,6 +679,7 @@ elif lensing_type == "Microlensing":
 elif lensing_type == "Kerr Lensing":
     processed_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
+# Modificar brillo y corrimientos en la imagen estática
 processed_image_array = np.array(processed_image)
 processed_image_array = adjust_brightness(processed_image_array, magnification_static)
 processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
@@ -705,31 +687,47 @@ processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
 st.image(processed_image, caption=f"{lensing_type} Applied", use_column_width=True)
 
-# Animation parameters
-num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
-fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
-
-# Generate animation
+# Generar animación con frames independientes
 frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
-    frame_image = np.array(
-        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
-        apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
-        apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Strong Lensing" else
-        apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
-    )
-    frame_image = adjust_brightness(frame_image, magnification_static)
-    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_static)
-    frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
+    # Crear una copia limpia del array de animation_image en cada iteración
+    frame_image_array = np.array(animation_image.copy())
+
+    # Calcular r y magnificación para el frame actual
+    r_animation = np.sqrt((np.arange(frame_image_array.shape[1]) - current_position[0])**2 +
+                          (np.arange(frame_image_array.shape[0])[:, None] - current_position[1])**2)
+    r_animation = np.maximum(r_animation, 1e-5)
+    magnification_animation = 1 + (schwarzschild_radius / r_animation)
+    magnification_animation = np.clip(magnification_animation, 1, 10)
+
+    # Aplicar lensing al frame actual
+    if lensing_type == "Weak Lensing":
+        frame_image = apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+    elif lensing_type == "Strong Lensing":
+        frame_image = apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+    elif lensing_type == "Microlensing":
+        frame_image = apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+    elif lensing_type == "Kerr Lensing":
+        frame_image = apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
+
+    # Modificar brillo y corrimientos en el frame actual
+    frame_image_array = np.array(frame_image)
+    frame_image_array = adjust_brightness(frame_image_array, magnification_animation)
+    frame_image_array = apply_red_blue_shift(frame_image_array, schwarzschild_radius, r_animation)
+
+    # Agregar el frame al video
+    frames.append(Image.fromarray(frame_image_array.astype(np.uint8)))
+
+# Guardar el video
 video_path = save_video_with_moviepy(frames, fps)
 st.video(video_path)
 
-# Add a download button for the video
+# Botón para descargar el video
 with open(video_path, "rb") as video_file:
     st.download_button(
         label="Download Video",
@@ -737,6 +735,7 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
+
 
 
 ################################
