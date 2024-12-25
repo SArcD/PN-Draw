@@ -669,7 +669,7 @@ x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
 # Display the original image
-final_image = np.array(create_example_image(800, 800))  # Ensure base is immutable
+#final_image = np.array(create_example_image(800, 800))  # Ensure base is immutable
 original_static = Image.fromarray(final_image.copy())
 st.image(original_static, caption="Original Image", use_column_width=True)
 
