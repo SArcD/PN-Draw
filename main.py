@@ -669,27 +669,30 @@ x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
 # Display the original image
-st.image(final_image, caption="Original Image", use_column_width=True)
+final_image = np.array(create_example_image(800, 800))  # Ensure base is immutable
+original_static = Image.fromarray(final_image.copy())
+st.image(original_static, caption="Original Image", use_column_width=True)
 
 # Apply lensing effect for static image
-#static_image = final_image.copy()
-r = np.sqrt((np.arange(static_image.size[0]) - black_hole_x_fixed)**2 + (np.arange(static_image.size[1])[:, None] - black_hole_y_fixed)**2)
-r = np.maximum(r, 1e-5)
-magnification = 1 + (schwarzschild_radius / r)
-magnification = np.clip(magnification, 1, 10)
+static_image_array = final_image.copy()
+r_static = np.sqrt((np.arange(static_image_array.shape[0]) - black_hole_x_fixed)**2 + 
+                    (np.arange(static_image_array.shape[1])[:, None] - black_hole_y_fixed)**2)
+r_static = np.maximum(r_static, 1e-5)
+magnification_static = 1 + (schwarzschild_radius / r_static)
+magnification_static = np.clip(magnification_static, 1, 10)
 
 if lensing_type == "Weak Lensing":
-    processed_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
+    processed_image = apply_weak_lensing(original_static, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
-    processed_image = apply_strong_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
+    processed_image = apply_strong_lensing(original_static, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Microlensing":
-    processed_image = apply_microlensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
+    processed_image = apply_microlensing(original_static, (black_hole_x_fixed, black_hole_y_fixed), einstein_radius, source_type=source_type, source_radius=source_radius)
 elif lensing_type == "Kerr Lensing":
-    processed_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
+    processed_image = apply_kerr_lensing(original_static, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
 processed_image_array = np.array(processed_image)
-processed_image_array = adjust_brightness(processed_image_array, magnification)
-processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r)
+processed_image_array = adjust_brightness(processed_image_array, magnification_static)
+processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
 processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
 st.image(processed_image, caption=f"{lensing_type} Applied", use_column_width=True)
@@ -703,17 +706,17 @@ frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
-#animation_image = final_image.copy()  # Use a separate copy for animation
+animation_image_array = final_image.copy()
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
     frame_image = np.array(
-        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
-        apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
-        apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Strong Lensing" else
-        apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+        apply_kerr_lensing(animation_image_array, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
+        apply_weak_lensing(animation_image_array, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
+        apply_strong_lensing(animation_image_array, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Strong Lensing" else
+        apply_microlensing(animation_image_array, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
     )
-    frame_image = adjust_brightness(frame_image, magnification)
-    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r)
+    frame_image = adjust_brightness(frame_image, magnification_static)
+    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_static)
     frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
 video_path = save_video_with_moviepy(frames, fps)
@@ -727,7 +730,7 @@ with open(video_path, "rb") as video_file:
         file_name="black_hole_animation.mp4",
         mime="video/mp4"
     )
-        
+
 
 ################################
 
