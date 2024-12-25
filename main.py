@@ -641,7 +641,7 @@ def adjust_brightness(img_array, magnification):
 
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     """
-    Aplica corrimiento al rojo y azul en la imagen, asegurando balance de colores.
+    Aplica un corrimiento al rojo y azul a los píxeles según la distancia al centro.
 
     Parameters:
         img_array (numpy.ndarray): Imagen en formato array (alto, ancho, canales).
@@ -653,18 +653,20 @@ def apply_red_blue_shift(img_array, schwarzschild_radius, r):
     """
     # Calcular el factor de corrimiento
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
-    shift_factor = np.clip(shift_factor, 0.8, 1.2)  # Limitar rangos realistas para evitar saturación
+    shift_factor = np.clip(shift_factor, 0.7, 1.3)  # Limitar rangos realistas para evitar saturación
 
-    # Crear una máscara para evitar modificar píxeles de fondo (oscuros)
-    mask = np.any(img_array > 10, axis=-1)  # Excluye píxeles muy oscuros (valor menor a 10)
+    # Crear una máscara para aplicar solo en píxeles relevantes
+    mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles negros completamente
 
     # Aplicar corrimiento en los canales de color
-    img_array[mask, 0] *= shift_factor[mask]  # Canal rojo
-    img_array[mask, 1] *= (1 + (shift_factor[mask] - 1) * 0.5)  # Ajuste suave del canal verde
-    img_array[mask, 2] /= shift_factor[mask]  # Canal azul
+    img_array[mask, 0] *= shift_factor[mask]  # Incrementar o reducir el canal rojo
+    img_array[mask, 2] /= shift_factor[mask]  # Incrementar o reducir el canal azul
 
-    # Clipping final para mantener valores válidos
-    return np.clip(img_array, 0, 255)
+    # Ajustar el canal verde proporcionalmente para mantener el balance de colores
+    img_array[mask, 1] *= (1 + (shift_factor[mask] - 1) * 0.2)  # Cambio leve en el canal verde
+
+    # Asegurar que los valores de los canales estén dentro del rango válido
+    return np.clip(img_array, 0, 255).astype(np.uint8)
 
 
 
