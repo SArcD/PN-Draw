@@ -606,13 +606,39 @@ def adjust_brightness(img_array, magnification):
     return np.clip(img_array * magnification[..., None], 0, 255)
 
 def apply_red_blue_shift(img_array, schwarzschild_radius, r):
+    """
+    Aplica un corrimiento al rojo y azul a los píxeles según la distancia al centro.
+
+    Parameters:
+        img_array (numpy.ndarray): Imagen en formato array (alto, ancho, canales).
+        schwarzschild_radius (float): Radio de Schwarzschild.
+        r (numpy.ndarray): Distancia radial de cada píxel al centro del agujero negro.
+
+    Returns:
+        numpy.ndarray: Imagen modificada con corrimiento al rojo y azul.
+    """
+    # Calcular el factor de corrimiento
     shift_factor = np.sqrt(1 - 2 * schwarzschild_radius / r)
-    shift_factor = np.clip(shift_factor, 0.8, 1.2)
-    mask = np.any(img_array > 0, axis=-1)
-    img_array[mask, 0] *= shift_factor[mask]  # Redshift
-    img_array[mask, 2] /= shift_factor[mask]  # Blueshift
+    shift_factor = np.clip(shift_factor, 0.8, 1.2)  # Limitar rangos para evitar extremos
+
+    # Crear una máscara para identificar píxeles válidos (que no sean completamente negros)
+    mask = np.any(img_array > 0, axis=-1)  # Excluir píxeles completamente negros
+
+    # Convertir img_array a float temporalmente para evitar problemas de casting
+    img_array = img_array.astype(np.float32)
+
+    # Aplicar corrimientos de color
+    img_array[mask, 0] *= shift_factor[mask]  # Corrimiento al rojo
+    img_array[mask, 2] /= shift_factor[mask]  # Corrimiento al azul
+
+    # Ajustar el canal verde para mantener balance cromático
+    img_array[mask, 1] *= (0.5 + 0.5 * shift_factor[mask])
+
+    # Limitar los valores dentro del rango válido [0, 255] y convertir de vuelta a uint8
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+
     return img_array
+
 
 def apply_light_magnification(img_array, schwarzschild_radius, r):
     """
