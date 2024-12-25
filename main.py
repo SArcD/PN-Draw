@@ -711,7 +711,7 @@ elif lensing_type == "Kerr Lensing":
 
 processed_image_array = np.array(processed_image)
 processed_image_array = adjust_brightness(processed_image_array, magnification_static)
-processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
+#processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
 processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
 # Mostrar la imagen fija procesada
@@ -759,7 +759,7 @@ for i in range(num_frames):
     magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
 
     frame_image = adjust_brightness(frame_image, magnification_dynamic)
-    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
+    #frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
 
     # Agregar frame procesado a la lista
     frames.append(Image.fromarray(frame_image.astype(np.uint8)))
