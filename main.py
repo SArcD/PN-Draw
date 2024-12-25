@@ -515,11 +515,13 @@ for shell in shells:
 # Combine with other layers
 final_image = Image.alpha_composite(final_image, gaseous_shells)
 
-# Display the updated image
+# Visualizar la imagen generada inicialmente
 st.image(final_image, caption="Nebula Simulation with Gaseous Elliptical Shells", use_column_width=True)
-#O_image = final_image.copy()
-#static_image = final_image.copy()  # Use a separate copy for animation
-#animation_image = final_image.copy()  # Use a separate copy for animation
+
+# Crear dos copias independientes de la imagen final
+static_image = final_image.copy()  # Para la imagen fija
+animation_image = final_image.copy()  # Para la animación
+
 
 
 ##############################################################################3
@@ -658,18 +660,14 @@ schwarzschild_radius = st.sidebar.slider("Schwarzschild Radius (pixels)", 1, 300
 
 lens_type = st.sidebar.selectbox("Lens Type (Weak/Strong Lensing)", ["point", "extended"])
 
-# Crear copias separadas de final_image para la imagen estática y la animación
-static_image = final_image.copy()
-animation_image = final_image.copy()
 
-# Calcular el lensing para la imagen estática
+# Aplicar efectos de lensing a la imagen fija
 r_static = np.sqrt((np.arange(static_image.size[0]) - black_hole_x_fixed)**2 +
                     (np.arange(static_image.size[1])[:, None] - black_hole_y_fixed)**2)
 r_static = np.maximum(r_static, 1e-5)
 magnification_static = 1 + (schwarzschild_radius / r_static)
 magnification_static = np.clip(magnification_static, 1, 10)
 
-# Aplicar lensing a static_image
 if lensing_type == "Weak Lensing":
     processed_image = apply_weak_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, lens_type=lens_type)
 elif lensing_type == "Strong Lensing":
@@ -679,51 +677,32 @@ elif lensing_type == "Microlensing":
 elif lensing_type == "Kerr Lensing":
     processed_image = apply_kerr_lensing(static_image, (black_hole_x_fixed, black_hole_y_fixed), schwarzschild_radius, spin_parameter)
 
-# Modificar brillo y corrimientos en la imagen estática
 processed_image_array = np.array(processed_image)
 processed_image_array = adjust_brightness(processed_image_array, magnification_static)
 processed_image_array = apply_red_blue_shift(processed_image_array, schwarzschild_radius, r_static)
 processed_image = Image.fromarray(processed_image_array.astype(np.uint8))
 
-st.image(processed_image, caption=f"{lensing_type} Applied", use_column_width=True)
+# Mostrar la imagen fija procesada
+st.image(processed_image, caption=f"{lensing_type} Applied (Static Image)", use_column_width=True)
 
-# Generar animación con frames independientes
+# Parámetros de la animación
 frames = []
 x_positions = np.linspace(x_start, x_end, num_frames)
 y_positions = np.linspace(y_start, y_end, num_frames)
 
 for i in range(num_frames):
     current_position = (x_positions[i], y_positions[i])
+    frame_image = np.array(
+        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter) if lensing_type == "Kerr Lensing" else
+        apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Weak Lensing" else
+        apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type) if lensing_type == "Strong Lensing" else
+        apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+    )
+    frame_image = adjust_brightness(frame_image, magnification_static)
+    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_static)
+    frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
-    # Crear una copia limpia del array de animation_image en cada iteración
-    frame_image_array = np.array(animation_image.copy())
-
-    # Calcular r y magnificación para el frame actual
-    r_animation = np.sqrt((np.arange(frame_image_array.shape[1]) - current_position[0])**2 +
-                          (np.arange(frame_image_array.shape[0])[:, None] - current_position[1])**2)
-    r_animation = np.maximum(r_animation, 1e-5)
-    magnification_animation = 1 + (schwarzschild_radius / r_animation)
-    magnification_animation = np.clip(magnification_animation, 1, 10)
-
-    # Aplicar lensing al frame actual
-    if lensing_type == "Weak Lensing":
-        frame_image = apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
-    elif lensing_type == "Strong Lensing":
-        frame_image = apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
-    elif lensing_type == "Microlensing":
-        frame_image = apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
-    elif lensing_type == "Kerr Lensing":
-        frame_image = apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
-
-    # Modificar brillo y corrimientos en el frame actual
-    frame_image_array = np.array(frame_image)
-    frame_image_array = adjust_brightness(frame_image_array, magnification_animation)
-    frame_image_array = apply_red_blue_shift(frame_image_array, schwarzschild_radius, r_animation)
-
-    # Agregar el frame al video
-    frames.append(Image.fromarray(frame_image_array.astype(np.uint8)))
-
-# Guardar el video
+# Guardar y mostrar la animación
 video_path = save_video_with_moviepy(frames, fps)
 st.video(video_path)
 
