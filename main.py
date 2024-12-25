@@ -672,6 +672,7 @@ for i in range(num_cstars):
 #)
 
 # Generate layers
+image_size=(image_width, image_height)
 filaments_image = generate_filaments(image_size, centers, num_filaments, filament_radius, filament_length, hex_to_rgb(filament_start_color), hex_to_rgb(filament_end_color), filament_blur, filament_elliptical)
 diffuse_gas_image = generate_diffuse_gas(image_size, centers, gas_inner_radius, gas_outer_radius, hex_to_rgb(gas_start_color), hex_to_rgb(gas_end_color), gas_blur, gas_elliptical)
 bubble_image = generate_bubble(image_size, centers, bubble_inner_radius, bubble_outer_radius, hex_to_rgb(bubble_start_color), hex_to_rgb(bubble_end_color), bubble_turbulence, bubble_blur, bubble_elliptical)
