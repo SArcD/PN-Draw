@@ -645,45 +645,41 @@ for i in range(num_cstars):
 
 
 # Generate layers
-image_size = (image_width, image_height)
-filaments_image = generate_filaments(
-    image_size, center, num_filaments, filament_radius, filament_length,
-    tuple(int(filament_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(filament_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    filament_blur, filament_elliptical
-)
-diffuse_gas_image = generate_diffuse_gas(
-    image_size, center, gas_inner_radius, gas_outer_radius,
-    tuple(int(gas_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(gas_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    gas_blur, gas_elliptical
-)
-bubble_image = generate_bubble(
-    image_size, center, bubble_inner_radius, bubble_outer_radius,
-    tuple(int(bubble_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(bubble_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    bubble_turbulence, bubble_blur, bubble_elliptical
-)
-gas_arcs_image = generate_gas_arcs(
-    image_size, center, arc_radius, arc_thickness, arc_start_angle, arc_end_angle,
-    tuple(int(arc_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    tuple(int(arc_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
-    arc_turbulence, arc_blur, arc_elliptical
-)
-
-star_field_image = generate_star_field(image_size, num_stars)
-
-#central_star_image = draw_central_star_with_filaments(
-#    image_size, center, star_size, halo_size, star_color, num_star_filaments,
-#    filament_dispersion, star_blur_radius
+#image_size = (image_width, image_height)
+#filaments_image = generate_filaments(
+#    image_size, center, num_filaments, filament_radius, filament_length,
+#    tuple(int(filament_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    tuple(int(filament_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    filament_blur, filament_elliptical
 #)
+#diffuse_gas_image = generate_diffuse_gas(
+#    image_size, center, gas_inner_radius, gas_outer_radius,
+#    tuple(int(gas_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    tuple(int(gas_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    gas_blur, gas_elliptical
+#)
+#bubble_image = generate_bubble(
+#    image_size, center, bubble_inner_radius, bubble_outer_radius,
+#    tuple(int(bubble_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    tuple(int(bubble_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    bubble_turbulence, bubble_blur, bubble_elliptical
+#)
+#gas_arcs_image = generate_gas_arcs(
+#    image_size, center, arc_radius, arc_thickness, arc_start_angle, arc_end_angle,
+#    tuple(int(arc_start_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    tuple(int(arc_end_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)),
+#    arc_turbulence, arc_blur, arc_elliptical
+)
 
+# Generate layers
+filaments_image = generate_filaments(image_size, centers, num_filaments, filament_radius, filament_length, hex_to_rgb(filament_start_color), hex_to_rgb(filament_end_color), filament_blur, filament_elliptical)
+diffuse_gas_image = generate_diffuse_gas(image_size, centers, gas_inner_radius, gas_outer_radius, hex_to_rgb(gas_start_color), hex_to_rgb(gas_end_color), gas_blur, gas_elliptical)
+bubble_image = generate_bubble(image_size, centers, bubble_inner_radius, bubble_outer_radius, hex_to_rgb(bubble_start_color), hex_to_rgb(bubble_end_color), bubble_turbulence, bubble_blur, bubble_elliptical)
+gas_arcs_image = generate_gas_arcs(image_size, centers, arc_radius, arc_thickness, arc_start_angle, arc_end_angle, hex_to_rgb(arc_start_color), hex_to_rgb(arc_end_color), arc_turbulence, arc_blur, arc_elliptical)
+star_field_image = generate_star_field(image_size, num_stars)
 central_star_image = draw_multiple_stars(image_size, star_configs)
-#st.image(central_star_image, caption="Multiple Stars", use_column_width=True)
 
-
-
-# Combine images
+# Combine layers
 final_image = Image.alpha_composite(star_field_image, filaments_image)
 final_image = Image.alpha_composite(final_image, diffuse_gas_image)
 final_image = Image.alpha_composite(final_image, bubble_image)
@@ -691,7 +687,32 @@ final_image = Image.alpha_composite(final_image, gas_arcs_image)
 final_image = Image.alpha_composite(final_image, central_star_image)
 
 # Display the final image
-st.image(final_image, use_column_width=True)
+st.image(final_image, caption="Nebula Simulation", use_column_width=True)
+
+
+
+
+#star_field_image = generate_star_field(image_size, num_stars)
+
+#central_star_image = draw_central_star_with_filaments(
+#    image_size, center, star_size, halo_size, star_color, num_star_filaments,
+#    filament_dispersion, star_blur_radius
+#)
+
+#central_star_image = draw_multiple_stars(image_size, star_configs)
+#st.image(central_star_image, caption="Multiple Stars", use_column_width=True)
+
+
+
+# Combine images
+#final_image = Image.alpha_composite(star_field_image, filaments_image)
+#final_image = Image.alpha_composite(final_image, diffuse_gas_image)
+#final_image = Image.alpha_composite(final_image, bubble_image)
+#final_image = Image.alpha_composite(final_image, gas_arcs_image)
+#final_image = Image.alpha_composite(final_image, central_star_image)
+
+# Display the final image
+#st.image(final_image, use_column_width=True)
 
 
 
