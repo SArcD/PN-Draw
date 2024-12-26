@@ -393,7 +393,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
     halo_draw = ImageDraw.Draw(halo)
     for r in range(halo_size, 0, -1):
-        alpha = int(80 * (r / halo_size))  # Gradually decrease opacity
+        alpha = int(100 * (r / halo_size))  # Gradually decrease opacity
         halo_draw.ellipse(
             (halo_size - r, halo_size - r, halo_size + r, halo_size + r),
             fill=color + (alpha,)
@@ -454,9 +454,8 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
         end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
 
         # Randomize filament opacity, width, and brightness for realism
-        opacity = np.random.randint(100, 200)
+        opacity = np.random.randint(150, 255)
         width = np.random.randint(2, 4)
-        glow_size = width * 3
 
         # Draw core line of filament
         filament_draw.line(
@@ -465,15 +464,16 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             width=width,
         )
 
-        # Add glow around the filament
-        for offset in range(1, glow_size):
+        # Add radial glow around the filament
+        for offset in range(1, 4):
+            glow_opacity = max(10, opacity - offset * 50)  # Reduce opacity for glow layers
             filament_draw.line(
-                [(position[0] - offset, position[1] - offset), (end_x + offset, end_y + offset)],
-                fill=color + (int(opacity / (offset + 1)),),
-                width=1,
+                [(position[0], position[1]), (end_x, end_y)],
+                fill=color + (glow_opacity,),
+                width=width + offset,
             )
 
-    # Apply Gaussian blur to the filaments for a diffuse effect
+    # Apply Gaussian blur to the filaments for a smoother look
     filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 2))
 
     # Combine the filaments with the star image
