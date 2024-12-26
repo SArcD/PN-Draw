@@ -83,6 +83,7 @@ if generate_animation:
 else:
     st.write("Ajusta los parámetros y presiona 'Generar Animación' para crear el video.")
 
+
 #################
 
 
