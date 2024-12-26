@@ -487,7 +487,7 @@ def generate_bubble_texture(image_size, center, radius, line_color, line_opacity
 # Streamlit UI
 st.title("Nebula Simulation with Circular and Elliptical Layers")
 
-st.header("Controls")
+st.sidebar.header("Controls")
 with st.sidebar.expander("Image size"):
     image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
     image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
