@@ -846,7 +846,7 @@ bubble_combined = Image.alpha_composite(bubble_image.convert("RGBA"), bubble_tex
 final_image = Image.alpha_composite(star_field_image, filaments_image)
 final_image = Image.alpha_composite(final_image, diffuse_gas_image)
 final_image = Image.alpha_composite(final_image, bubble_combined)  # Use the combined bubble and texture
-final_image = Image.alpha_composite(final_image, gas_arcs_image)
+#final_image = Image.alpha_composite(final_image, gas_arcs_image)
 final_image = Image.alpha_composite(final_image, central_star_image)
 
 # Display the final image
