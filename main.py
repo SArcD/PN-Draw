@@ -130,12 +130,20 @@ def generate_star_field(image_size, num_stars, min_points=5, max_points=8,
         size = np.random.uniform(min_size, max_size) * min(width, height) / 5.0  # Scale based on image size
         brightness = np.random.randint(150, 555)  # Brightness range
         # Generate color variation (white, yellowish, bluish)
-        color = (
-            np.random.randint(brightness - 50, brightness),
-            np.random.randint(brightness - 50, brightness),
-            brightness
-        )
+        #color = (
+        #    np.random.randint(brightness - 50, brightness),
+        #    np.random.randint(brightness - 50, brightness),
+        #    brightness
+        #)
 
+        # Variación de color con tonos azules y rojos
+        r_offset = np.random.randint(-20, 20)  # Variación roja
+        b_offset = np.random.randint(-20, 20)  # Variación azul
+        r = np.clip(brightness + r_offset, 0, 255)
+        g = np.clip(brightness, 0, 255)
+        b = np.clip(brightness + b_offset, 0, 255)
+        color = (int(r), int(g), int(b))
+        
         # Create astronomical star shape (random number of points within range)
         num_points = np.random.randint(min_points, max_points + 1)
         angles = np.linspace(0, 2*np.pi, num_points, endpoint=False)  # Evenly spaced points
