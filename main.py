@@ -1163,7 +1163,7 @@ for i in range(num_shells):
         "inner_radius": inner_radius,
         "outer_radius": outer_radius,
         "deformity": deformity,
-        "turbulence_intensity": turbulence_intensity
+        "turbulence_intensity": turbulence_intensity,
         "blur_radius": blur_radius,
         "start_color": tuple(int(start_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)),
         "end_color": tuple(int(end_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
