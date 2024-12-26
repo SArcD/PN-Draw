@@ -380,7 +380,6 @@ def generate_gas_arcs(image_size, centers, radius, thickness, start_angle, end_a
 ##########################################################
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
-
 def draw_star_with_filaments(img, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
     draw = ImageDraw.Draw(img)
 
@@ -452,9 +451,9 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
         end_x = position[0] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.cos(angle)
         end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
 
-        # Randomize filament opacity and width for realism
-        opacity = np.random.randint(30, 100)  # Make filaments less intense
-        width = np.random.randint(1, 2)  # Thin filaments
+        # Increase opacity and width for more intense filaments
+        opacity = np.random.randint(100, 200)  # Higher opacity
+        width = np.random.randint(2, 4)  # Thicker filaments
 
         filament_draw.line(
             [(position[0], position[1]), (end_x, end_y)],
@@ -462,8 +461,8 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             width=width,
         )
 
-    # Apply Gaussian blur to the filaments for a diffuse effect
-    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    # Reduce blur for sharper, more intense filaments
+    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=max(blur_radius / 2, 1)))
 
     # Combine the filaments with the star image
     img = Image.alpha_composite(img, filament_layer)
