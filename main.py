@@ -383,8 +383,19 @@ import numpy as np
 
 
 def draw_star_with_filaments(img, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
-    draw = ImageDraw.Draw(img)
+    """
+    Draw a star with adjustable filaments and color.
 
+    Parameters:
+        img (PIL.Image): The base image.
+        position (tuple): The position of the star (x, y).
+        star_size (int): The size of the star's core.
+        halo_size (int): The size of the star's halo.
+        color (tuple): RGB color of the star and filaments.
+        num_filaments (int): Number of filaments.
+        dispersion (int): Filament dispersion.
+        blur_radius (float): Blur radius for the filaments.
+    """
     # Ensure minimum star size to avoid errors
     if star_size < 6:
         star_size = 6
@@ -405,11 +416,10 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     star_layer = Image.new("RGBA", (star_size * 2, star_size * 2), (0, 0, 0, 0))
     star_draw = ImageDraw.Draw(star_layer)
     for r in range(star_size, 0, -1):
-        # Adjust the brightness of the star dynamically
         star_color = (
-            int(color[0] * (0.8 + 0.2 * (r / star_size))),  # Red channel
-            int(color[1] * (0.8 + 0.2 * (r / star_size))),  # Green channel
-            int(color[2] * (0.8 + 0.2 * (r / star_size))),  # Blue channel
+            int(color[0] * (0.8 + 0.2 * (r / star_size))),
+            int(color[1] * (0.8 + 0.2 * (r / star_size))),
+            int(color[2] * (0.8 + 0.2 * (r / star_size))),
             255  # Fully opaque
         )
         star_draw.ellipse(
@@ -417,30 +427,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             fill=star_color
         )
 
-    # Add solar granulation texture
-    granulation_density = max(50, star_size * 10)  # Adjust density for smaller stars
-    for _ in range(granulation_density):
-        x = np.random.randint(0, star_size * 2)
-        y = np.random.randint(0, star_size * 2)
-        intensity = np.random.randint(150, 255)
-        size = np.random.randint(1, max(2, star_size // 20))  # Smaller granulation size for smaller stars
-        star_draw.ellipse(
-            (x - size, y - size, x + size, y + size),
-            fill=(intensity, intensity, 0, 255)  # Fully opaque
-        )
-
-    # Add sunspots (dark areas)
-    sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
-    for _ in range(sunspot_count):
-        spot_x = np.random.randint(0, star_size * 2)
-        spot_y = np.random.randint(0, star_size * 2)
-        spot_size = np.random.randint(max(1, star_size // 50), max(2, star_size // 20))  # Adjust sunspot size for smaller stars
-        star_draw.ellipse(
-            (spot_x - spot_size, spot_y - spot_size, spot_x + spot_size, spot_y + spot_size),
-            fill=(0, 0, 0, 255)  # Fully opaque
-        )
-
-    # Mask to ensure circular profile
+    # Mask to ensure circular profile for the star
     mask = Image.new("L", (star_size * 2, star_size * 2), 0)
     mask_draw = ImageDraw.Draw(mask)
     mask_draw.ellipse((0, 0, star_size * 2, star_size * 2), fill=255)
@@ -453,7 +440,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     filament_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     filament_draw = ImageDraw.Draw(filament_layer)
     for i in range(num_filaments):
-        angle = 2 * np.pi * i / num_filaments + np.random.uniform(-0.1, 0.1)  # Slight random variation in angle
+        angle = 2 * np.pi * i / num_filaments + np.random.uniform(-0.1, 0.1)
         end_x = position[0] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.cos(angle)
         end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
 
@@ -468,17 +455,6 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             width=width,
         )
 
-        # Draw cross-like filaments for a starburst effect
-        for cross_angle_offset in [np.pi / 4, -np.pi / 4]:
-            cross_end_x = position[0] + (halo_size + dispersion) * np.cos(angle + cross_angle_offset)
-            cross_end_y = position[1] + (halo_size + dispersion) * np.sin(angle + cross_angle_offset)
-
-            filament_draw.line(
-                [(position[0], position[1]), (cross_end_x, cross_end_y)],
-                fill=color + (opacity // 2,),  # Dimmer than main filament
-                width=width // 2,
-            )
-
         # Add radial glow around the filament
         for offset in range(1, 4):
             glow_opacity = max(10, opacity - offset * 50)  # Reduce opacity for glow layers
@@ -489,13 +465,12 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             )
 
     # Apply Gaussian blur only to the filament layer
-    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 2))
+    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
     # Combine the filaments with the star image
     img = Image.alpha_composite(img, filament_layer)
 
     return img
-
 
 
 def draw_multiple_stars(image_size, star_configs):
