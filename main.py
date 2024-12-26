@@ -122,8 +122,8 @@ def generate_star_field(image_size, num_stars):
 #        t = (r - inner_radius) / (outer_radius - inner_radius)
 #        alpha = int(255 * (1 - t))
 
-#        r_color = int(start_color[0] + t * (end_color[0] - start_color[0]))
-#        g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
+#        r_ = int(start_[0] + t * (end_[0] - start_[0]))
+#        g_ = int(start_[1] + t * (end_[1] - start_[1]))
 #        b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
 
 #        offset_x = int(turbulence * np.random.uniform(-1, 1))
@@ -401,14 +401,20 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
     img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
 
-    # Draw star core with solid color (no transparency)
+    # Draw star core with solid color (adjusted dynamically based on `color`)
     star_layer = Image.new("RGBA", (star_size * 2, star_size * 2), (0, 0, 0, 0))
     star_draw = ImageDraw.Draw(star_layer)
     for r in range(star_size, 0, -1):
-        brightness = int(255 * (0.8 + 0.2 * (r / star_size)))  # Slight variation for brightness
+        # Adjust the brightness of the star dynamically
+        star_color = (
+            int(color[0] * (0.8 + 0.2 * (r / star_size))),  # Red channel
+            int(color[1] * (0.8 + 0.2 * (r / star_size))),  # Green channel
+            int(color[2] * (0.8 + 0.2 * (r / star_size))),  # Blue channel
+            255  # Fully opaque
+        )
         star_draw.ellipse(
             (star_size - r, star_size - r, star_size + r, star_size + r),
-            fill=(brightness, brightness, 0, 255)  # Fully opaque
+            fill=star_color
         )
 
     # Add solar granulation texture
