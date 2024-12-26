@@ -21,18 +21,15 @@ def generate_nebula_filaments(width, height, scale=50.0, octaves=6, persistence=
 
 def apply_color_gradient(image, color1=(0, 0, 100), color2=(200, 50, 0)):
     width, height = image.size
-    colored_image = Image.new("RGBA", (width, height))  # Use "RGBA" mode
+    colored_image = Image.new("RGBA", (width, height))
     for x in range(width):
         for y in range(height):
-            gray_value = image.getpixel((x, y))
-            # Adjust calculation (example):
-            transparency = 255 - int(gray_value)  # Higher gray = higher opacity
-            r = ...  # Color calculations
-            g = ...
-            b = ...
+            r, g, b = image.getpixel((x, y))  # Assuming image is RGB
+            gray_value = (r + g + b) // 3  # Calculate average for greyscale
+            transparency = 255 - int(gray_value * 0.8)  # Adjust opacity calculation
+            # ... rest of color calculations
             colored_image.putpixel((x, y), (r, g, b, transparency))
     return colored_image
-
 # Ejemplo de uso:
 width = 512
 height = 512
