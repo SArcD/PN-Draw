@@ -1054,7 +1054,7 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 from noise import pnoise2
 import random
 
-def generate_gaseous_shells_with_turbulence(
+def generate_gaseous_shells(
     image_size, center, semi_major, semi_minor, angle, inner_radius, outer_radius, start_color, end_color, deformity, turbulence_intensity, blur_radius
 ):
     """
