@@ -1151,7 +1151,7 @@ for i in range(num_shells):
     inner_radius = st.sidebar.slider(f"Inner Radius (Shell {i + 1})", 10, 400, 100)
     outer_radius = st.sidebar.slider(f"Outer Radius (Shell {i + 1})", inner_radius, 500, inner_radius + 50)
     deformity = st.sidebar.slider(f"Deformity (Shell {i + 1})", 0.0, 20.0, 5.0)
-    turbulence_intensity = st.sidebar.slider(f"Deformity (Shell {i + 1})", 0.0, 20.0, 5.0)
+    turbulence_intensity = st.sidebar.slider(f"Turbulence intensity (Shell {i + 1})", 0.0, 20.0, 5.0)
     blur_radius = st.sidebar.slider(f"Blur Radius (Shell {i + 1})", 1, 50, 10)
     start_color = st.sidebar.color_picker(f"Start Color (Shell {i + 1})", "#FF4500")
     end_color = st.sidebar.color_picker(f"End Color (Shell {i + 1})", "#0000FF")
