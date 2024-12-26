@@ -43,10 +43,13 @@ from PIL import Image, ImageDraw, ImageFilter
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 
+from PIL import Image, ImageDraw
+import numpy as np
+
 def generate_star_field(image_size, num_stars):
     """
     Generate a star field with realistic stars, including varying brightness,
-    sizes, colors, and starburst effects.
+    sizes, colors, and starburst effects using cross patterns.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
@@ -79,36 +82,30 @@ def generate_star_field(image_size, num_stars):
             fill=color + (255,)
         )
 
-        # Add glow (halo effect)
-        glow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        glow_draw = ImageDraw.Draw(glow_layer)
-        for r in range(1, size * 3):
-            alpha = int(255 * (1 - r / (size * 3)))
-            glow_draw.ellipse(
+        # Add glow (halo effect) without blur
+        for r in range(size + 1, size * 3):
+            alpha = int(255 * (1 - (r - size) / (size * 2)))  # Gradually decrease opacity
+            draw.ellipse(
                 [x - r, y - r, x + r, y + r],
-                fill=color + (alpha,)
+                outline=color + (alpha,)
             )
-        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=size))
-        img = Image.alpha_composite(img, glow_layer)
 
-        # Add starburst effect for larger stars
+        # Add cross pattern for larger stars
         if size > 3:
-            burst_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            burst_draw = ImageDraw.Draw(burst_layer)
-            for angle in range(0, 360, 45):  # Eight directional spikes
-                angle_rad = np.radians(angle)
-                end_x = x + int(size * 8 * np.cos(angle_rad))
-                end_y = y + int(size * 8 * np.sin(angle_rad))
-                burst_draw.line(
-                    [(x, y), (end_x, end_y)],
-                    fill=color + (100,),
-                    width=2
-                )
-            burst_layer = burst_layer.filter(ImageFilter.GaussianBlur(radius=2))
-            img = Image.alpha_composite(img, burst_layer)
+            # Vertical line
+            draw.line(
+                [(x, y - size * 5), (x, y + size * 5)],
+                fill=color + (150,),
+                width=2
+            )
+            # Horizontal line
+            draw.line(
+                [(x - size * 5, y), (x + size * 5, y)],
+                fill=color + (150,),
+                width=2
+            )
 
     return img
-
 
 
 #def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius, elliptical):
