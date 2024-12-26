@@ -454,15 +454,26 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
         end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
 
         # Randomize filament opacity, width, and brightness for realism
-        opacity = np.random.randint(150, 255)
-        width = np.random.randint(2, 4)
+        opacity = np.random.randint(200, 255)
+        width = np.random.randint(2, 6)
 
-        # Draw core line of filament
+        # Add a central filament
         filament_draw.line(
             [(position[0], position[1]), (end_x, end_y)],
             fill=color + (opacity,),
             width=width,
         )
+
+        # Draw cross-like filaments for a starburst effect
+        for cross_angle_offset in [np.pi / 4, -np.pi / 4]:
+            cross_end_x = position[0] + (halo_size + dispersion) * np.cos(angle + cross_angle_offset)
+            cross_end_y = position[1] + (halo_size + dispersion) * np.sin(angle + cross_angle_offset)
+
+            filament_draw.line(
+                [(position[0], position[1]), (cross_end_x, cross_end_y)],
+                fill=color + (opacity // 2,),  # Dimmer than main filament
+                width=width // 2,
+            )
 
         # Add radial glow around the filament
         for offset in range(1, 4):
