@@ -69,21 +69,22 @@ Prueba ajustar los parámetros para inducir el colapso.
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, FFMpegWriter
-import tempfile
+from matplotlib.animation import FuncAnimation
+from PIL import Image
+import io
 
 # Configuración inicial
 st.title("Simulación de Colapso de una Nube Molecular")
 st.sidebar.header("Parámetros de la nube")
-#mass = st.sidebar.slider(
-#    "Masa inicial (en masas solares)", 
-#    10, 100000, 1000, step=10
-#) * 1.989e30  # Conversión a kg
-#temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
-#density = st.sidebar.slider(
-#    "Densidad inicial (kg/m³)", 
-#    1e-21, 1e-17, 1e-19, format="%.1e"
-#)
+mass = st.sidebar.slider(
+    "Masa inicial (en masas solares)", 
+    10, 100000, 1000, step=10
+) * 1.989e30  # Conversión a kg
+temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
+density = st.sidebar.slider(
+    "Densidad inicial (kg/m³)", 
+    1e-21, 1e-17, 1e-19, format="%.1e"
+)
 
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
@@ -91,8 +92,7 @@ k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Parámetros de simulación
-steps = 100  # Número de fotogramas
-time = np.linspace(0, 1e6, steps)  # Tiempo arbitrario
+steps = 50  # Número de fotogramas
 initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
 # Función para generar partículas
@@ -127,21 +127,13 @@ def update(frame):
 # Crear la animación
 ani = FuncAnimation(fig, update, frames=steps, interval=50, blit=True)
 
-# Guardar la animación como video MP4
-with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-    writer = FFMpegWriter(fps=20, metadata=dict(artist="Streamlit"))
-    ani.save(temp_video.name, writer=writer)
-    video_path = temp_video.name
+# Guardar la animación como GIF
+buf = io.BytesIO()
+ani.save(buf, format="gif", writer="pillow")
+buf.seek(0)
 
-# Mostrar el video en Streamlit
-st.video(video_path, format="video/mp4")
-
-# Nota adicional
-st.write("""
-La simulación muestra cómo una nube molecular colapsa debido a la gravedad.
-El cambio de color y opacidad indica la densidad y evolución temporal.
-Prueba ajustar la masa, temperatura y densidad para explorar diferentes escenarios.
-""")
+# Mostrar el GIF en Streamlit
+st.image(buf, format="gif", caption="Colapso de una nube molecular")
 
 
 #################
