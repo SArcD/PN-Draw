@@ -531,7 +531,7 @@ center = (center_x, center_y)
 #arc_elliptical = st.sidebar.checkbox("Elliptical Arcs", False)
 
 # Centers for layers
-num_centers = st.sidebar.slider("Number of Centers", 1, 10, 3)
+num_centers = st.sidebar.slider("Number of Centers", 1, 10, 1)
 centers = [
     (
         st.sidebar.slider(f"Center X {i+1}", 0, image_width, image_width // 2, key=f"center_x_{i}"),
@@ -551,7 +551,7 @@ centers = [
 #filament_elliptical = st.sidebar.checkbox("Elliptical Filaments", False)
 
 # Filament configurations
-num_filament_layers = st.sidebar.slider("Number of Filament Layers", 1, 10, 3)
+num_filament_layers = st.sidebar.slider("Number of Filament Layers", 1, 10, 1)
 filament_configs = []
 for i in range(num_filament_layers):
     with st.sidebar.expander(f"Filament Layer {i + 1}"):
@@ -573,7 +573,7 @@ for i in range(num_filament_layers):
         })
 
 # Diffuse gas configurations
-num_gas_layers = st.sidebar.slider("Number of Gas Layers", 1, 5, 2)
+num_gas_layers = st.sidebar.slider("Number of Gas Layers", 1, 5, 1)
 gas_configs = []
 for i in range(num_gas_layers):
     with st.sidebar.expander(f"Gas Layer {i + 1}"):
@@ -594,7 +594,7 @@ for i in range(num_gas_layers):
 
 
 # Bubble configurations
-num_bubble_layers = st.sidebar.slider("Number of Bubble Layers", 1, 5, 2)
+num_bubble_layers = st.sidebar.slider("Number of Bubble Layers", 1, 5, 1)
 bubble_configs = []
 for i in range(num_bubble_layers):
     with st.sidebar.expander(f"Bubble Layer {i + 1}"):
