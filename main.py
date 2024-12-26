@@ -384,7 +384,7 @@ import numpy as np
 
 def draw_star_with_filaments(img, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
     """
-    Draw a star with adjustable filaments and color.
+    Draw a star with adjustable filaments, granular structure, and sunspots.
 
     Parameters:
         img (PIL.Image): The base image.
@@ -412,7 +412,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
     img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
 
-    # Draw star core with solid color (adjusted dynamically based on `color`)
+    # Draw star core with granular structure and sunspots
     star_layer = Image.new("RGBA", (star_size * 2, star_size * 2), (0, 0, 0, 0))
     star_draw = ImageDraw.Draw(star_layer)
     for r in range(star_size, 0, -1):
@@ -427,7 +427,30 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             fill=star_color
         )
 
-    # Mask to ensure circular profile for the star
+    # Add solar granulation texture
+    granulation_density = max(50, star_size * 10)  # Adjust density for smaller stars
+    for _ in range(granulation_density):
+        x = np.random.randint(0, star_size * 2)
+        y = np.random.randint(0, star_size * 2)
+        intensity = np.random.randint(150, 255)
+        size = np.random.randint(1, max(2, star_size // 20))  # Smaller granulation size for smaller stars
+        star_draw.ellipse(
+            (x - size, y - size, x + size, y + size),
+            fill=(intensity, intensity, 0, 255)  # Fully opaque
+        )
+
+    # Add sunspots (dark areas)
+    sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
+    for _ in range(sunspot_count):
+        spot_x = np.random.randint(0, star_size * 2)
+        spot_y = np.random.randint(0, star_size * 2)
+        spot_size = np.random.randint(max(1, star_size // 50), max(2, star_size // 20))  # Adjust sunspot size for smaller stars
+        star_draw.ellipse(
+            (spot_x - spot_size, spot_y - spot_size, spot_x + spot_size, spot_y + spot_size),
+            fill=(0, 0, 0, 255)  # Fully opaque
+        )
+
+    # Mask to ensure circular profile
     mask = Image.new("L", (star_size * 2, star_size * 2), 0)
     mask_draw = ImageDraw.Draw(mask)
     mask_draw.ellipse((0, 0, star_size * 2, star_size * 2), fill=255)
