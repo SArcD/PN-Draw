@@ -416,7 +416,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
         x = np.random.randint(0, star_size * 2)
         y = np.random.randint(0, star_size * 2)
         intensity = np.random.randint(150, 255)
-        size = np.random.randint(1, max(2, star_size // 50))  # Smaller granulation size for smaller stars
+        size = np.random.randint(1, max(2, star_size // 20))  # Smaller granulation size for smaller stars
         star_draw.ellipse(
             (x - size, y - size, x + size, y + size),
             fill=(intensity, intensity, 0, 255)  # Fully opaque
@@ -425,16 +425,24 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     # Add sunspots (dark areas)
     sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
     for _ in range(sunspot_count):
-        spot_x = np.random.randint(star_size // 4, star_size * 7 // 4)
-        spot_y = np.random.randint(star_size // 4, star_size * 7 // 4)
+        spot_x = np.random.randint(0, star_size * 2)
+        spot_y = np.random.randint(0, star_size * 2)
         spot_size = np.random.randint(max(1, star_size // 50), max(2, star_size // 20))  # Adjust sunspot size for smaller stars
         star_draw.ellipse(
             (spot_x - spot_size, spot_y - spot_size, spot_x + spot_size, spot_y + spot_size),
             fill=(0, 0, 0, 255)  # Fully opaque
         )
 
-    star_layer = star_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 3))
-    img.paste(star_layer, (position[0] - star_size, position[1] - star_size), star_layer)
+    star_layer = star_layer.filter(ImageFilter.GaussianBlur(radius=max(blur_radius / 3, 1)))
+
+    # Mask to ensure circular profile
+    mask = Image.new("L", (star_size * 2, star_size * 2), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.ellipse((0, 0, star_size * 2, star_size * 2), fill=255)
+
+    star_circle = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    star_circle.paste(star_layer, (position[0] - star_size, position[1] - star_size), mask=mask)
+    img = Image.alpha_composite(img, star_circle)
 
     # Draw radial filaments
     filament_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
