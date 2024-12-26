@@ -1305,7 +1305,7 @@ photon_ring = create_photon_ring(image_size, shadow_radius, ring_width)
 
 # Simulate loading the previously generated image of nebulosa and stars (final_image)
 # Replace this with your actual `final_image`
-final_image = Image.new("RGBA", image_size, (0, 0, 0, 0))  # Placeholder for nebulosa image
+#final_image = Image.new("RGBA", image_size, (0, 0, 0, 0))  # Placeholder for nebulosa image
 # Load or generate the nebulosa image here (e.g., from your previous process)
 # Example:
 # final_image = Image.open("nebula_stars.png").convert("RGBA")
