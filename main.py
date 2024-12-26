@@ -1,59 +1,67 @@
+import numpy as np
+
+# Constantes físicas
+k_B = 1.38e-23  # Constante de Boltzmann (J/K)
+G = 6.67e-11   # Constante de gravitación universal (N m²/kg²)
+m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
+
+def calcular_masa_jeans(T, mu, rho):
+    """Calcula la masa de Jeans."""
+    return (np.pi**(5/2) / 6) * (k_B * T / (G * mu * m_H))**(3/2) * rho**(-1/2)
+
+def calcular_longitud_jeans(T, mu, rho):
+    """Calcula la longitud de Jeans."""
+    return (np.pi * k_B * T / (G * mu * m_H * rho))**(1/2)
+
+# Ejemplo de uso
+T = 10  # Temperatura (K)
+mu = 1  # Peso molecular medio (amu)
+rho = 1e-20  # Densidad (kg/m³)
+
+M_J = calcular_masa_jeans(T, mu, rho)
+L_J = calcular_longitud_jeans(T, mu, rho)
+
+print(f"Masa de Jeans: {M_J:.2e} kg")
+print(f"Longitud de Jeans: {L_J:.2e} m")
+
 import streamlit as st
 import numpy as np
-from PIL import Image, ImageFilter, ImageOps
-import noise
+import matplotlib.pyplot as plt
 
-def generate_nebula_filaments(width, height, scale=50.0, octaves=6, persistence=0.5, lacunarity=2.0, blur_radius=2):
-    """Genera filamentos de nebulosa en escala de grises."""
-    img = np.zeros((height, width))
-    for y in range(height):
-        for x in range(width):
-            img[y][x] = noise.pnoise2(x/scale, y/scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=0)
-    img = ((img - img.min()) / (img.max() - img.min())) * 255
-    image = Image.fromarray(img.astype(np.uint8)).convert("L")
-    image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-    image = ImageOps.invert(image)
-    return image
+# ... (funciones calcular_masa_jeans y calcular_longitud_jeans del código anterior)
 
-def apply_color_gradient(image, color1, color2):
-    """Aplica un gradiente de color a la imagen en escala de grises."""
-    width, height = image.size
-    colored_image = Image.new("RGBA", (width, height))
-    for x in range(width):
-        for y in range(height):
-            gray_value = image.getpixel((x, y))
-            r = int(color1[0] + (color2[0] - color1[0]) * gray_value / 255)
-            g = int(color1[1] + (color2[1] - color1[1]) * gray_value / 255)
-            b = int(color1[2] + (color2[2] - color1[2]) * gray_value / 255)
-            colored_image.putpixel((x, y), (r, g, b, 255))
-    return colored_image
+st.title("Simulación del Criterio de Jeans")
 
-def main():
-    """Aplicación Streamlit para generar imágenes de nebulosas."""
-    st.title("Generador de Imágenes de Nebulosas")
+# Sliders para los parámetros
+T = st.slider("Temperatura (K)", 1, 100, 10)
+mu = st.slider("Peso molecular medio (amu)", 1, 10, 1)
+rho = st.slider("Densidad (kg/m³)", 1e-22, 1e-18, 1e-20, step=1e-22, format="%.2e")
 
-    width = st.slider("Ancho de la imagen", min_value=256, max_value=1024, value=512, step=32)
-    height = st.slider("Alto de la imagen", min_value=256, max_value=1024, value=512, step=32)
-    scale = st.slider("Escala", min_value=10.0, max_value=100.0, value=30.0, step=5.0)
-    blur_radius = st.slider("Radio de desenfoque", min_value=1, max_value=5, value=3)
+# Cálculo de la masa y longitud de Jeans
+M_J = calcular_masa_jeans(T, mu, rho)
+L_J = calcular_longitud_jeans(T, mu, rho)
 
-    # CONVERSIÓN EXPLÍCITA A TUPLA DE ENTEROS
-    color1 = tuple(int(x * 255) for x in st.color_picker("Color inicial", value="#000064").lstrip('#').encode('latin-1')) #Azul oscuro por defecto
-    color2 = tuple(int(x * 255) for x in st.color_picker("Color final", value="#c83200").lstrip('#').encode('latin-1')) #Rojo anaranjado por defecto
+st.write(f"Masa de Jeans: {M_J:.2e} kg")
+st.write(f"Longitud de Jeans: {L_J:.2e} m")
 
+# Visualización opcional (ejemplo con gráfico de dispersión)
+rhos = np.logspace(-22, -18, 50)  # Rango de densidades
+M_Js = [calcular_masa_jeans(T, mu, r) for r in rhos]
 
-    if st.button("Generar Nebulosa"):
-        with st.spinner("Generando nebulosa..."):
-            filaments = generate_nebula_filaments(width, height, scale, blur_radius=blur_radius)
-            colored_filaments = apply_color_gradient(filaments, color1, color2)
+fig, ax = plt.subplots()
+ax.plot(rhos, M_Js)
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlabel("Densidad (kg/m³)")
+ax.set_ylabel("Masa de Jeans (kg)")
+ax.set_title("Masa de Jeans vs. Densidad")
+st.pyplot(fig)
 
-            background = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-            background.paste(colored_filaments, (0, 0), colored_filaments)
+#Explicacion del criterio de Jeans
+st.subheader("Criterio de Jeans")
+st.write("El criterio de Jeans determina si una nube de gas colapsará bajo su propia gravedad para formar una estrella.")
+st.write("Si la masa de la nube es mayor que la Masa de Jeans calculada, o su tamaño es mayor que la Longitud de Jeans, entonces la gravedad dominará y la nube colapsará.")
 
-            st.image(background, use_column_width=True)
-
-if __name__ == "__main__":
-    main()
 #################
 
 
