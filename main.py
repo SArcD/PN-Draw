@@ -385,8 +385,8 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     draw = ImageDraw.Draw(img)
 
     # Ensure minimum star size to avoid errors
-    if star_size < 10:
-        star_size = 10
+    if star_size < 6:
+        star_size = 6
 
     # Draw halo with smooth gradient effect
     halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
@@ -400,36 +400,37 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
     img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
 
-    # Draw star core with radial gradient
+    # Draw star core with solid color (no transparency)
     star_layer = Image.new("RGBA", (star_size * 2, star_size * 2), (0, 0, 0, 0))
     star_draw = ImageDraw.Draw(star_layer)
     for r in range(star_size, 0, -1):
-        alpha = int(255 * (r / star_size))  # Gradually decrease opacity
         brightness = int(255 * (0.8 + 0.2 * (r / star_size)))  # Slight variation for brightness
         star_draw.ellipse(
             (star_size - r, star_size - r, star_size + r, star_size + r),
-            fill=(brightness, brightness, 0, alpha)
+            fill=(brightness, brightness, 0, 255)  # Fully opaque
         )
 
     # Add solar granulation texture
-    for _ in range(700):  # Increase density for granulation
+    granulation_density = max(50, star_size * 10)  # Adjust density for smaller stars
+    for _ in range(granulation_density):
         x = np.random.randint(0, star_size * 2)
         y = np.random.randint(0, star_size * 2)
         intensity = np.random.randint(150, 255)
         size = np.random.randint(1, max(2, star_size // 50))  # Smaller granulation size for smaller stars
         star_draw.ellipse(
             (x - size, y - size, x + size, y + size),
-            fill=(intensity, intensity, 0, 200)
+            fill=(intensity, intensity, 0, 255)  # Fully opaque
         )
 
     # Add sunspots (dark areas)
-    for _ in range(10):  # Number of sunspots
+    sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
+    for _ in range(sunspot_count):
         spot_x = np.random.randint(star_size // 4, star_size * 7 // 4)
         spot_y = np.random.randint(star_size // 4, star_size * 7 // 4)
         spot_size = np.random.randint(max(1, star_size // 50), max(2, star_size // 20))  # Adjust sunspot size for smaller stars
         star_draw.ellipse(
             (spot_x - spot_size, spot_y - spot_size, spot_x + spot_size, spot_y + spot_size),
-            fill=(0, 0, 0, 200)
+            fill=(0, 0, 0, 255)  # Fully opaque
         )
 
     star_layer = star_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 3))
