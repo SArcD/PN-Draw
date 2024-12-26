@@ -1,3 +1,79 @@
+#################33
+
+import numpy as np
+from PIL import Image, ImageFilter, ImageOps
+import noise
+
+def generate_nebula_filaments(width, height, scale=50.0, octaves=6, persistence=0.5, lacunarity=2.0, blur_radius=2):
+    """Genera una imagen con ruido Perlin para simular filamentos de nebulosa."""
+    img = np.zeros((height, width))
+    for y in range(height):
+        for x in range(width):
+            img[y][x] = noise.pnoise2(x/scale, 
+                                    y/scale, 
+                                    octaves=octaves, 
+                                    persistence=persistence, 
+                                    lacunarity=lacunarity, 
+                                    repeatx=1024, 
+                                    repeaty=1024, 
+                                    base=0)
+
+    # Normalizar a 0-255 y convertir a imagen
+    img = ((img - img.min()) / (img.max() - img.min())) * 255
+    image = Image.fromarray(img.astype(np.uint8))
+
+    # Aplicar desenfoque gaussiano para suavizar los filamentos
+    image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    # Invertir los colores para que los filamentos brillantes estén sobre un fondo oscuro
+    image = ImageOps.invert(image)
+
+    return image
+
+def apply_color_gradient(image, color1=(0, 0, 100), color2=(200, 50, 0)):
+    """Aplica un gradiente de color a la imagen en escala de grises."""
+    width, height = image.size
+    colored_image = Image.new("RGB", (width, height))
+    for x in range(width):
+        for y in range(height):
+            gray_value = image.getpixel((x, y))
+            r = int(color1[0] + (color2[0] - color1[0]) * (gray_value / 255))
+            g = int(color1[1] + (color2[1] - color1[1]) * (gray_value / 255))
+            b = int(color1[2] + (color2[2] - color1[2]) * (gray_value / 255))
+            colored_image.putpixel((x, y), (r, g, b))
+    return colored_image
+
+
+# Ejemplo de uso:
+width = 512
+height = 512
+filaments = generate_nebula_filaments(width, height, scale=30, blur_radius=3)
+
+# Aplicar un gradiente de color azul a rojo
+colored_filaments = apply_color_gradient(filaments)
+
+# Crear una imagen de fondo negro
+background = Image.new("RGB", (width, height), (0, 0, 0))
+
+# Pegar los filamentos coloreados sobre el fondo negro con modo de fusión "lighter" (similar a "trama")
+background.paste(colored_filaments, (0,0), colored_filaments)
+
+background.save("filamentos_nebulosa_con_color.png")
+
+# Otro ejemplo con diferentes colores y escala
+filaments2 = generate_nebula_filaments(width, height, scale=60, blur_radius=2)
+colored_filaments2 = apply_color_gradient(filaments2, color1=(50, 0, 100), color2=(150, 100, 0))
+background2 = Image.new("RGB", (width, height), (0, 0, 0))
+background2.paste(colored_filaments2, (0,0), colored_filaments2)
+background2.save("filamentos_nebulosa_con_color2.png")
+
+#################
+
+
+
+
+
+
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
