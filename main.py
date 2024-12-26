@@ -12,9 +12,41 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter
 
+#def generate_star_field(image_size, num_stars):
+#    """
+#    Generate a star field as a PIL image with white stars.
+
+#    Parameters:
+#        image_size (tuple): Size of the image (width, height).
+#        num_stars (int): Number of stars to generate.
+
+#    Returns:
+#        PIL.Image: Image with generated stars.
+#    """
+#    width, height = image_size
+#    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+#    draw = ImageDraw.Draw(img)
+
+#    for _ in range(num_stars):
+#        x = np.random.randint(0, width)
+#        y = np.random.randint(0, height)
+#        size = np.random.randint(1, 4)
+#        brightness = np.random.randint(200, 255)  # Brightness for white stars
+#        draw.ellipse(
+#            [x - size, y - size, x + size, y + size],
+#            fill=(255, 255, 255, brightness)
+#        )
+
+#    return img
+
+
+from PIL import Image, ImageDraw, ImageFilter
+import numpy as np
+
 def generate_star_field(image_size, num_stars):
     """
-    Generate a star field as a PIL image with white stars.
+    Generate a star field with realistic stars, including varying brightness,
+    sizes, colors, and starburst effects.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
@@ -24,20 +56,59 @@ def generate_star_field(image_size, num_stars):
         PIL.Image: Image with generated stars.
     """
     width, height = image_size
-    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
     draw = ImageDraw.Draw(img)
 
     for _ in range(num_stars):
+        # Randomize position, size, and brightness
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
-        size = np.random.randint(1, 4)
-        brightness = np.random.randint(200, 255)  # Brightness for white stars
-        draw.ellipse(
-            [x - size, y - size, x + size, y + size],
-            fill=(255, 255, 255, brightness)
+        size = np.random.randint(1, 6)  # Varying star sizes
+        brightness = np.random.randint(150, 255)  # Brightness range
+
+        # Generate color variation (white, yellowish, bluish)
+        color = (
+            np.random.randint(brightness - 50, brightness),
+            np.random.randint(brightness - 50, brightness),
+            brightness
         )
 
+        # Draw the star core
+        draw.ellipse(
+            [x - size, y - size, x + size, y + size],
+            fill=color + (255,)
+        )
+
+        # Add glow (halo effect)
+        glow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        glow_draw = ImageDraw.Draw(glow_layer)
+        for r in range(1, size * 3):
+            alpha = int(255 * (1 - r / (size * 3)))
+            glow_draw.ellipse(
+                [x - r, y - r, x + r, y + r],
+                fill=color + (alpha,)
+            )
+        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=size))
+        img = Image.alpha_composite(img, glow_layer)
+
+        # Add starburst effect for larger stars
+        if size > 3:
+            burst_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            burst_draw = ImageDraw.Draw(burst_layer)
+            for angle in range(0, 360, 45):  # Eight directional spikes
+                angle_rad = np.radians(angle)
+                end_x = x + int(size * 8 * np.cos(angle_rad))
+                end_y = y + int(size * 8 * np.sin(angle_rad))
+                burst_draw.line(
+                    [(x, y), (end_x, end_y)],
+                    fill=color + (100,),
+                    width=2
+                )
+            burst_layer = burst_layer.filter(ImageFilter.GaussianBlur(radius=2))
+            img = Image.alpha_composite(img, burst_layer)
+
     return img
+
 
 
 #def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius, elliptical):
