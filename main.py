@@ -384,18 +384,37 @@ import numpy as np
 def draw_star_with_filaments(img, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
     draw = ImageDraw.Draw(img)
 
-    # Draw halo
+    # Draw halo with gradient effect
     halo = Image.new("RGBA", (halo_size * 2, halo_size * 2), (0, 0, 0, 0))
     halo_draw = ImageDraw.Draw(halo)
-    halo_draw.ellipse((0, 0, halo_size * 2, halo_size * 2), fill=color + (50,))
-    halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 2))
+    for r in range(halo_size, 0, -1):
+        alpha = int(50 * (r / halo_size))  # Gradually decrease opacity
+        halo_draw.ellipse(
+            (halo_size - r, halo_size - r, halo_size + r, halo_size + r),
+            fill=color + (alpha,)
+        )
+    halo = halo.filter(ImageFilter.GaussianBlur(radius=halo_size / 4))
     img.paste(halo, (position[0] - halo_size, position[1] - halo_size), halo)
 
-    # Draw star
-    draw.ellipse(
-        (position[0] - star_size, position[1] - star_size, position[0] + star_size, position[1] + star_size),
-        fill=color + (255,),
-    )
+    # Draw star with internal gradient and texture
+    star_layer = Image.new("RGBA", (star_size * 2, star_size * 2), (0, 0, 0, 0))
+    star_draw = ImageDraw.Draw(star_layer)
+    for r in range(star_size, 0, -1):
+        alpha = int(255 * (r / star_size))  # Gradually decrease opacity
+        star_draw.ellipse(
+            (star_size - r, star_size - r, star_size + r, star_size + r),
+            fill=color + (alpha,)
+        )
+
+    # Add texture to the star
+    for _ in range(500):  # Add small random bright spots
+        x = np.random.randint(0, star_size * 2)
+        y = np.random.randint(0, star_size * 2)
+        intensity = np.random.randint(100, 255)
+        star_layer.putpixel((x, y), color + (intensity,))
+
+    star_layer = star_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 2))
+    img.paste(star_layer, (position[0] - star_size, position[1] - star_size), star_layer)
 
     # Draw radial filaments
     filament_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
@@ -405,10 +424,14 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
         end_x = position[0] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.cos(angle)
         end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
 
+        # Randomize filament opacity and width for realism
+        opacity = np.random.randint(50, 150)
+        width = np.random.randint(1, 3)
+
         filament_draw.line(
             [(position[0], position[1]), (end_x, end_y)],
-            fill=color + (100,),  # Semi-transparent
-            width=2,
+            fill=color + (opacity,),
+            width=width,
         )
 
     # Apply Gaussian blur to the filaments for a diffuse effect
@@ -418,6 +441,8 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     img = Image.alpha_composite(img, filament_layer)
 
     return img
+
+
 
 def draw_multiple_stars(image_size, star_configs):
     """
