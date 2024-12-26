@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
 from moviepy.editor import ImageSequenceClip
+from PIL import Image
 import tempfile
 
 # Configuración inicial
@@ -13,10 +13,15 @@ mass = st.sidebar.slider(
     "Masa inicial (en masas solares)", 
     10, 100000, 1000, step=10
 ) * 1.989e30  # Conversión a kg
-temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
+
+temperature = st.sidebar.slider(
+    "Temperatura inicial (K)", 
+    10, 500, 20, step=10  # Expandimos el rango a 500 K
+)
+
 density = st.sidebar.slider(
     "Densidad inicial (kg/m³)", 
-    1e-21, 1e-17, 1e-19, format="%.1e"
+    1e-22, 1e-17, 1e-19, format="%.1e"
 )
 
 # Constantes
@@ -24,7 +29,7 @@ G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Calcular el radio inicial de la nube
+# Calcular el radio inicial y crítico de Jeans
 initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 jeans_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
@@ -32,19 +37,14 @@ jeans_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density)
 st.write(f"Radio inicial de la nube: {initial_radius:.2e} m")
 st.write(f"Radio crítico de Jeans: {jeans_radius:.2e} m")
 
-# Evaluar si la nube colapsa
+# Evaluar estabilidad
 if initial_radius <= jeans_radius:
-    st.write("La nube es estable y no colapsará bajo las condiciones actuales.")
+    st.success("La nube es estable y no colapsará bajo las condiciones actuales.")
 else:
-    st.write("La nube colapsará bajo las condiciones actuales.")
-    
-    # Botón para generar la animación
+    st.warning("La nube colapsará bajo las condiciones actuales.")
     generate_animation = st.sidebar.button("Generar Animación")
 
     if generate_animation:
-        # Parámetros de simulación
-        steps = 50  # Número de fotogramas
-
         # Generar frames
         def generate_cloud_frame(radius, frame_number, num_particles=1000):
             angles = np.random.uniform(0, 2 * np.pi, num_particles)
@@ -69,6 +69,7 @@ else:
             return Image.fromarray(image)
 
         # Generar todos los frames
+        steps = 50
         frames = []
         for frame_number in range(steps):
             radius = initial_radius * (1 - frame_number / steps)
