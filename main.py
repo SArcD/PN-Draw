@@ -1267,41 +1267,41 @@ with open(video_path, "rb") as video_file:
 
 
 
-import numpy as np
-from PIL import Image, ImageDraw
-import streamlit as st
+#import numpy as np
+#from PIL import Image, ImageDraw
+#import streamlit as st
 
 
-def create_photon_ring(image_size, shadow_radius, ring_width):
-    """
-    Create a photon ring image using Pillow.
-    """
-    img = Image.new("RGBA", image_size, (0, 0, 0, 0))  # Transparent background
-    draw = ImageDraw.Draw(img)
-    center = (image_size[0] // 2, image_size[1] // 2)
+#def create_photon_ring(image_size, shadow_radius, ring_width):
+#    """
+#    Create a photon ring image using Pillow.
+#    """
+#    img = Image.new("RGBA", image_size, (0, 0, 0, 0))  # Transparent background
+#    draw = ImageDraw.Draw(img)
+#    center = (image_size[0] // 2, image_size[1] // 2)
 
-    for r in range(shadow_radius, shadow_radius + ring_width):
-        intensity = int(255 * (1 - (r - shadow_radius) / ring_width))  # Gradient intensity
-        color = (255, 140, 0, intensity)  # Orange-like color with gradient alpha
-        draw.ellipse(
-            [center[0] - r, center[1] - r, center[0] + r, center[1] + r],
-            outline=color,
-            width=1
-        )
+#    for r in range(shadow_radius, shadow_radius + ring_width):
+#        intensity = int(255 * (1 - (r - shadow_radius) / ring_width))  # Gradient intensity
+#        color = (255, 140, 0, intensity)  # Orange-like color with gradient alpha
+#        draw.ellipse(
+#            [center[0] - r, center[1] - r, center[0] + r, center[1] + r],
+#            outline=color,
+#            width=1
+#        )
 
-    return img
+#    return img
 
 
 # Streamlit UI
-st.title("Black Hole Shadow and Photon Ring")
+#st.title("Black Hole Shadow and Photon Ring")
 
 # Parameters for the photon ring
-image_size = (800, 800)  # Size must match the nebulosa and field of stars
-shadow_radius = st.sidebar.slider("Shadow Radius", 50, 300, 150)
-ring_width = st.sidebar.slider("Ring Width", 10, 100, 30)
+#image_size = (800, 800)  # Size must match the nebulosa and field of stars
+#shadow_radius = st.sidebar.slider("Shadow Radius", 50, 300, 150)
+#ring_width = st.sidebar.slider("Ring Width", 10, 100, 30)
 
 # Generate the photon ring (shadow and ring)
-photon_ring = create_photon_ring(image_size, shadow_radius, ring_width)
+#photon_ring = create_photon_ring(image_size, shadow_radius, ring_width)
 
 # Simulate loading the previously generated image of nebulosa and stars (final_image)
 # Replace this with your actual `final_image`
@@ -1311,8 +1311,8 @@ photon_ring = create_photon_ring(image_size, shadow_radius, ring_width)
 # final_image = Image.open("nebula_stars.png").convert("RGBA")
 
 # Combine the photon ring with the nebulosa and star field
-combined_image = Image.alpha_composite(final_image, photon_ring)
+#combined_image = Image.alpha_composite(final_image, photon_ring)
 
 # Display the final combined image
-st.image(combined_image, caption="Black Hole Shadow with Nebulosa and Photon Ring", use_column_width=True)
+#st.image(combined_image, caption="Black Hole Shadow with Nebulosa and Photon Ring", use_column_width=True)
 
