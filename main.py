@@ -434,8 +434,6 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             fill=(0, 0, 0, 255)  # Fully opaque
         )
 
-    star_layer = star_layer.filter(ImageFilter.GaussianBlur(radius=max(blur_radius / 3, 1)))
-
     # Mask to ensure circular profile
     mask = Image.new("L", (star_size * 2, star_size * 2), 0)
     mask_draw = ImageDraw.Draw(mask)
@@ -484,7 +482,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
                 width=width + offset,
             )
 
-    # Apply Gaussian blur to the filaments for a smoother look
+    # Apply Gaussian blur only to the filament layer
     filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 2))
 
     # Combine the filaments with the star image
