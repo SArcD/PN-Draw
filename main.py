@@ -2,32 +2,30 @@ import streamlit as st
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 import noise
-import io
 
 def generate_nebula_filaments(width, height, scale=50.0, octaves=6, persistence=0.5, lacunarity=2.0, blur_radius=2):
-    """Genera filamentos de nebulosa usando ruido Perlin."""
+    """Genera filamentos de nebulosa en escala de grises."""
     img = np.zeros((height, width))
     for y in range(height):
         for x in range(width):
             img[y][x] = noise.pnoise2(x/scale, y/scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=0)
     img = ((img - img.min()) / (img.max() - img.min())) * 255
-    image = Image.fromarray(img.astype(np.uint8)).convert("L")  # Convertir a escala de grises ("L")
+    image = Image.fromarray(img.astype(np.uint8)).convert("L")
     image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
     image = ImageOps.invert(image)
     return image
 
-def apply_color_gradient(image, color1=(0, 0, 100), color2=(200, 50, 0)):
+def apply_color_gradient(image, color1, color2):
     """Aplica un gradiente de color a la imagen en escala de grises."""
     width, height = image.size
     colored_image = Image.new("RGBA", (width, height))
     for x in range(width):
         for y in range(height):
-            gray_value = image.getpixel((x, y)) # Obtener el valor de gris (0-255)
-            # Calcular los nuevos colores RGB interpolando entre color1 y color2
+            gray_value = image.getpixel((x, y))
             r = int(color1[0] + (color2[0] - color1[0]) * gray_value / 255)
             g = int(color1[1] + (color2[1] - color1[1]) * gray_value / 255)
             b = int(color1[2] + (color2[2] - color1[2]) * gray_value / 255)
-            colored_image.putpixel((x, y), (r, g, b, 255)) # Opacidad total (255)
+            colored_image.putpixel((x, y), (r, g, b, 255))
     return colored_image
 
 def main():
@@ -38,15 +36,17 @@ def main():
     height = st.slider("Alto de la imagen", min_value=256, max_value=1024, value=512, step=32)
     scale = st.slider("Escala", min_value=10.0, max_value=100.0, value=30.0, step=5.0)
     blur_radius = st.slider("Radio de desenfoque", min_value=1, max_value=5, value=3)
-    color1 = st.color_picker("Color inicial", value=(0, 0, 100))
-    color2 = st.color_picker("Color final", value=(200, 50, 0))
+
+    # CONVERSIÓN EXPLÍCITA A TUPLA DE ENTEROS
+    color1 = tuple(int(x * 255) for x in st.color_picker("Color inicial", value="#000064").lstrip('#').encode('latin-1')) #Azul oscuro por defecto
+    color2 = tuple(int(x * 255) for x in st.color_picker("Color final", value="#c83200").lstrip('#').encode('latin-1')) #Rojo anaranjado por defecto
+
 
     if st.button("Generar Nebulosa"):
         with st.spinner("Generando nebulosa..."):
             filaments = generate_nebula_filaments(width, height, scale, blur_radius=blur_radius)
-            colored_filaments = apply_color_gradient(filaments, color1=color1, color2=color2)
+            colored_filaments = apply_color_gradient(filaments, color1, color2)
 
-            # Crear fondo transparente RGBA
             background = Image.new("RGBA", (width, height), (0, 0, 0, 0))
             background.paste(colored_filaments, (0, 0), colored_filaments)
 
