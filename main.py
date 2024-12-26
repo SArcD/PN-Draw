@@ -1206,55 +1206,61 @@ x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
 
-# Parámetros de la animación
-frames = []
-x_positions = np.linspace(x_start, x_end, num_frames)
-y_positions = np.linspace(y_start, y_end, num_frames)
+# Botón para generar animación
+generate_animation = st.sidebar.button("Generate Animation")
 
-for i in range(num_frames):
-    # Posición actual del agujero negro
-    current_position = (x_positions[i], y_positions[i])
+if generate_animation:
+    # Parámetros de la animación
+    frames = []
+    x_positions = np.linspace(x_start, x_end, num_frames)
+    y_positions = np.linspace(y_start, y_end, num_frames)
 
-    # Calcular r dinámicamente para cada frame
-    r_dynamic = np.sqrt(
-        (np.arange(animation_image.size[0]) - current_position[0])**2 +
-        (np.arange(animation_image.size[1])[:, None] - current_position[1])**2
-    )
-    r_dynamic = np.maximum(r_dynamic, 1e-5)  # Evitar divisiones por cero
+    for i in range(num_frames):
+        # Posición actual del agujero negro
+        current_position = (x_positions[i], y_positions[i])
 
-    # Aplicar efecto de lensing correspondiente
-    frame_image = np.array(
-        apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
-        if lensing_type == "Kerr Lensing"
-        else apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
-        if lensing_type == "Weak Lensing"
-        else apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
-        if lensing_type == "Strong Lensing"
-        else apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
-    )
+        # Calcular r dinámicamente para cada frame
+        r_dynamic = np.sqrt(
+            (np.arange(animation_image.size[0]) - current_position[0])**2 +
+            (np.arange(animation_image.size[1])[:, None] - current_position[1])**2
+        )
+        r_dynamic = np.maximum(r_dynamic, 1e-5)  # Evitar divisiones por cero
 
-    # Aplicar brillo y corrimiento dinámicos
-    magnification_dynamic = 1 + (schwarzschild_radius / r_dynamic)
-    magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
+        # Aplicar efecto de lensing correspondiente
+        frame_image = np.array(
+            apply_kerr_lensing(animation_image, current_position, schwarzschild_radius, spin_parameter)
+            if lensing_type == "Kerr Lensing"
+            else apply_weak_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+            if lensing_type == "Weak Lensing"
+            else apply_strong_lensing(animation_image, current_position, schwarzschild_radius, lens_type=lens_type)
+            if lensing_type == "Strong Lensing"
+            else apply_microlensing(animation_image, current_position, einstein_radius, source_type=source_type, source_radius=source_radius)
+        )
 
-    frame_image = adjust_brightness(frame_image, magnification_dynamic)
-    frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
+        # Aplicar brillo y corrimiento dinámicos
+        magnification_dynamic = 1 + (schwarzschild_radius / r_dynamic)
+        magnification_dynamic = np.clip(magnification_dynamic, 1, 10)
 
-    # Agregar frame procesado a la lista
-    frames.append(Image.fromarray(frame_image.astype(np.uint8)))
+        frame_image = adjust_brightness(frame_image, magnification_dynamic)
+        frame_image = apply_red_blue_shift(frame_image, schwarzschild_radius, r_dynamic)
 
-# Guardar y mostrar la animación
-video_path = save_video_with_moviepy(frames, fps)
-st.video(video_path)
+        # Agregar frame procesado a la lista
+        frames.append(Image.fromarray(frame_image.astype(np.uint8)))
 
-# Botón para descargar el video
-with open(video_path, "rb") as video_file:
-    st.download_button(
-        label="Download Video",
-        data=video_file,
-        file_name="black_hole_animation.mp4",
-        mime="video/mp4"
-    )
+    # Guardar y mostrar la animación
+    video_path = save_video_with_moviepy(frames, fps)
+    st.video(video_path)
+
+    # Botón para descargar el video
+    with open(video_path, "rb") as video_file:
+        st.download_button(
+            label="Download Video",
+            data=video_file,
+            file_name="black_hole_animation.mp4",
+            mime="video/mp4"
+        )
+else:
+    st.write("Adjust the parameters and press 'Generate Animation' to create the video.")
 
 
 ################################
