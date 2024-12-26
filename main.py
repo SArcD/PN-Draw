@@ -489,10 +489,10 @@ st.title("Nebula Simulation with Circular and Elliptical Layers")
 
 st.sidebar.header("Controls")
 with st.sidebar.expander("Image size"):
-    image_width = st.sidebar.slider("Image Width", 400, 1600, 800)
-    image_height = st.sidebar.slider("Image Height", 400, 1600, 800)
-    center_x = st.sidebar.slider("Center X", 0, image_width, image_width // 2)
-    center_y = st.sidebar.slider("Center Y", 0, image_height, image_height // 2)
+    image_width = st.slider("Image Width", 400, 1600, 800)
+    image_height = st.slider("Image Height", 400, 1600, 800)
+    center_x = st.slider("Center X", 0, image_width, image_width // 2)
+    center_y = st.slider("Center Y", 0, image_height, image_height // 2)
     center = (center_x, center_y)
 
 # Filament parameters
