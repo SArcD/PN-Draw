@@ -1,67 +1,70 @@
 import numpy as np
+import noise
+from PIL import Image
 
-# Constantes físicas
-k_B = 1.38e-23  # Constante de Boltzmann (J/K)
-G = 6.67e-11   # Constante de gravitación universal (N m²/kg²)
-m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
+def generar_nube(ancho, alto, escala=10.0, octavas=6, persistencia=0.5, lacunaridad=2.0):
+    """Genera una nube usando ruido de Perlin."""
+    mapa_densidad = np.zeros((alto, ancho))
+    for y in range(alto):
+        for x in range(ancho):
+            mapa_densidad[y][x] = noise.pnoise2(x / escala, y / escala, octaves=octavas, persistence=persistencia, lacunaridad=lacunaridad, repeatx=1024, repeaty=1024, base=0)
 
-def calcular_masa_jeans(T, mu, rho):
-    """Calcula la masa de Jeans."""
-    return (np.pi**(5/2) / 6) * (k_B * T / (G * mu * m_H))**(3/2) * rho**(-1/2)
+    # Normalizar entre 0 y 1
+    mapa_densidad = (mapa_densidad - mapa_densidad.min()) / (mapa_densidad.max() - mapa_densidad.min())
+    return mapa_densidad
 
-def calcular_longitud_jeans(T, mu, rho):
-    """Calcula la longitud de Jeans."""
-    return (np.pi * k_B * T / (G * mu * m_H * rho))**(1/2)
+def visualizar_nube(mapa_densidad):
+    """Convierte el mapa de densidad a una imagen para visualización."""
+    img = (mapa_densidad * 255).astype(np.uint8)
+    return Image.fromarray(img).convert("L")  # Escala de grises
 
-# Ejemplo de uso
-T = 10  # Temperatura (K)
-mu = 1  # Peso molecular medio (amu)
-rho = 1e-20  # Densidad (kg/m³)
 
-M_J = calcular_masa_jeans(T, mu, rho)
-L_J = calcular_longitud_jeans(T, mu, rho)
+from PIL import ImageFilter
 
-print(f"Masa de Jeans: {M_J:.2e} kg")
-print(f"Longitud de Jeans: {L_J:.2e} m")
+def simular_formacion_densidad(mapa_densidad, iteraciones=3, radio_desenfoque=2):
+    """Simula la formación de zonas densas aplicando un desenfoque gaussiano repetidamente."""
+    imagen = visualizar_nube(mapa_densidad)
+    for _ in range(iteraciones):
+        imagen = imagen.filter(ImageFilter.GaussianBlur(radius=radio_desenfoque))
+    return np.array(imagen) / 255  # Normalizar de nuevo entre 0 y 1
 
 import streamlit as st
 import numpy as np
+from PIL import Image, ImageFilter
 import matplotlib.pyplot as plt
 
-# ... (funciones calcular_masa_jeans y calcular_longitud_jeans del código anterior)
+# ... (funciones generar_nube, visualizar_nube, simular_formacion_densidad)
 
-st.title("Simulación del Criterio de Jeans")
+st.title("Simulación Simplificada de Formación de Zonas Densas en una Nube")
 
-# Sliders para los parámetros
-T = st.slider("Temperatura (K)", 1, 100, 10)
-mu = st.slider("Peso molecular medio (amu)", 1, 10, 1)
-rho = st.slider("Densidad (kg/m³)", 1e-22, 1e-18, 1e-20, step=1e-22, format="%.2e")
+ancho = st.slider("Ancho de la nube", 256, 1024, 512)
+alto = st.slider("Alto de la nube", 256, 1024, 512)
+escala = st.slider("Escala del ruido", 5.0, 50.0, 10.0)
+iteraciones = st.slider("Iteraciones de simulación", 1, 10, 3)
 
-# Cálculo de la masa y longitud de Jeans
-M_J = calcular_masa_jeans(T, mu, rho)
-L_J = calcular_longitud_jeans(T, mu, rho)
+if st.button("Generar y Simular"):
+    with st.spinner("Generando y simulando..."):
+        mapa_densidad_inicial = generar_nube(ancho, alto, escala=escala)
+        mapa_densidad_final = simular_formacion_densidad(mapa_densidad_inicial, iteraciones=iteraciones)
 
-st.write(f"Masa de Jeans: {M_J:.2e} kg")
-st.write(f"Longitud de Jeans: {L_J:.2e} m")
+        # Visualización en Streamlit
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Nube Inicial")
+            st.image(visualizar_nube(mapa_densidad_inicial), use_column_width=True)
+        with col2:
+            st.subheader("Después de la Simulación")
+            st.image(visualizar_nube(mapa_densidad_final), use_column_width=True)
 
-# Visualización opcional (ejemplo con gráfico de dispersión)
-rhos = np.logspace(-22, -18, 50)  # Rango de densidades
-M_Js = [calcular_masa_jeans(T, mu, r) for r in rhos]
-
-fig, ax = plt.subplots()
-ax.plot(rhos, M_Js)
-ax.set_xscale('log')
-ax.set_yscale('log')
-ax.set_xlabel("Densidad (kg/m³)")
-ax.set_ylabel("Masa de Jeans (kg)")
-ax.set_title("Masa de Jeans vs. Densidad")
-st.pyplot(fig)
-
-#Explicacion del criterio de Jeans
-st.subheader("Criterio de Jeans")
-st.write("El criterio de Jeans determina si una nube de gas colapsará bajo su propia gravedad para formar una estrella.")
-st.write("Si la masa de la nube es mayor que la Masa de Jeans calculada, o su tamaño es mayor que la Longitud de Jeans, entonces la gravedad dominará y la nube colapsará.")
-
+        #Opcional: Mapa de calor con matplotlib
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        im1 = ax1.imshow(mapa_densidad_inicial, cmap='viridis')
+        ax1.set_title('Nube Inicial')
+        fig.colorbar(im1, ax=ax1)
+        im2 = ax2.imshow(mapa_densidad_final, cmap='viridis')
+        ax2.set_title('Nube Simulada')
+        fig.colorbar(im2, ax=ax2)
+        st.pyplot(fig)
 #################
 
 
