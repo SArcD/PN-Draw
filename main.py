@@ -1,78 +1,53 @@
-import numpy as np
-import noise
-from PIL import Image
-import numpy as np
-import noise
-
-
-import numpy as np
-import noise
-
-import numpy as np
-import noise
-
-import numpy as np
-import noise
-
-def generar_nube(ancho, alto, escala=10.0, octavas=6, persistencia=0.5, lacunaridad=2.0):
-  """Genera una nube usando ruido de Perlin (versión para un punto)."""
-  centro_x = ancho // 2
-  centro_y = alto // 2
-  densidad = noise.pnoise3(centro_x / escala, centro_y / escala, np.zeros_like(centro_x), octaves=octavas, persistence=persistencia, lacunaridad=lacunaridad, repeatx=1024, repeaty=1024, base=0)
-  return densidad  # Return the single density value
-
-def visualizar_nube(mapa_densidad):
-    """Convierte el mapa de densidad a una imagen para visualización."""
-    img = (mapa_densidad * 255).astype(np.uint8)
-    return Image.fromarray(img).convert("L")  # Escala de grises
-
-
-from PIL import ImageFilter
-
-def simular_formacion_densidad(mapa_densidad, iteraciones=3, radio_desenfoque=2):
-    """Simula la formación de zonas densas aplicando un desenfoque gaussiano repetidamente."""
-    imagen = visualizar_nube(mapa_densidad)
-    for _ in range(iteraciones):
-        imagen = imagen.filter(ImageFilter.GaussianBlur(radius=radio_desenfoque))
-    return np.array(imagen) / 255  # Normalizar de nuevo entre 0 y 1
-
 import streamlit as st
 import numpy as np
-from PIL import Image, ImageFilter
 import matplotlib.pyplot as plt
 
-# ... (funciones generar_nube, visualizar_nube, simular_formacion_densidad)
+# Configuración inicial
+st.title("Simulación del Colapso de una Nube Molecular")
+st.sidebar.header("Parámetros de la nube")
+mass = st.sidebar.slider("Masa inicial (en masas solares)", 0.1, 10.0, 1.0, step=0.1)
+temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 1000, 100)
+density = st.sidebar.slider("Densidad inicial (kg/m³)", 1e-20, 1e-18, 1e-19, format="%.1e")
 
-st.title("Simulación Simplificada de Formación de Zonas Densas en una Nube")
+# Constantes
+G = 6.67430e-11  # Constante gravitacional
+k_B = 1.380649e-23  # Constante de Boltzmann
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (en kg)
 
-ancho = st.slider("Ancho de la nube", 256, 1024, 512)
-alto = st.slider("Alto de la nube", 256, 1024, 512)
-escala = st.slider("Escala del ruido", 5.0, 50.0, 10.0)
-iteraciones = st.slider("Iteraciones de simulación", 1, 10, 3)
+# Función de simulación simplificada
+def simulate_collapse(mass, temperature, density, steps=100):
+    radii = np.linspace(1, 0.1, steps)  # Radio disminuye en el colapso
+    time = np.linspace(0, 1e6, steps)  # Tiempo arbitrario para la simulación
 
-if st.button("Generar y Simular"):
-    with st.spinner("Generando y simulando..."):
-        mapa_densidad_inicial = generar_nube(ancho, alto, escala=escala)
-        mapa_densidad_final = simular_formacion_densidad(mapa_densidad_inicial, iteraciones=iteraciones)
+    # Presión térmica y fuerza gravitacional (simplificadas)
+    pressure = (density * k_B * temperature) / mu
+    gravity = G * mass * density / (radii**2)
 
-        # Visualización en Streamlit
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Nube Inicial")
-            st.image(visualizar_nube(mapa_densidad_inicial), use_column_width=True)
-        with col2:
-            st.subheader("Después de la Simulación")
-            st.image(visualizar_nube(mapa_densidad_final), use_column_width=True)
+    collapse_rate = gravity - pressure  # Aproximación simple
+    collapse_rate[collapse_rate < 0] = 0  # No hay colapso si la presión domina
 
-        #Opcional: Mapa de calor con matplotlib
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-        im1 = ax1.imshow(mapa_densidad_inicial, cmap='viridis')
-        ax1.set_title('Nube Inicial')
-        fig.colorbar(im1, ax=ax1)
-        im2 = ax2.imshow(mapa_densidad_final, cmap='viridis')
-        ax2.set_title('Nube Simulada')
-        fig.colorbar(im2, ax=ax2)
-        st.pyplot(fig)
+    return radii, collapse_rate
+
+# Cálculos
+radii, collapse_rate = simulate_collapse(mass, temperature, density)
+
+# Visualización
+fig, ax = plt.subplots()
+ax.plot(radii, collapse_rate, label="Tasa de colapso")
+ax.set_xlabel("Radio (arbitrario)")
+ax.set_ylabel("Tasa de colapso")
+ax.set_title("Evolución del colapso")
+ax.legend()
+
+st.pyplot(fig)
+
+# Notas adicionales
+st.write("""
+**Nota**: Esta simulación es una simplificación. 
+El colapso real incluye factores como la fragmentación, la formación de estrellas, 
+y procesos de enfriamiento radiativo.
+""")
+
 #################
 
 
