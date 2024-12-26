@@ -124,17 +124,19 @@ def update(frame):
     scatter.set_alpha(alphas)
     return scatter,
 
+from matplotlib.animation import PillowWriter
+
 # Crear la animación
 ani = FuncAnimation(fig, update, frames=steps, interval=50, blit=True)
 
-# Guardar la animación como GIF
+# Guardar la animación como GIF usando PillowWriter
 buf = io.BytesIO()
-ani.save(buf, format="gif", writer="pillow")
+writer = PillowWriter(fps=20)
+ani.save(buf, writer=writer)
 buf.seek(0)
 
 # Mostrar el GIF en Streamlit
 st.image(buf, format="gif", caption="Colapso de una nube molecular")
-
 
 #################
 
