@@ -43,17 +43,17 @@ from PIL import Image, ImageDraw, ImageFilter
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 
-def generate_star_field(image_size, num_stars):
+def generate_star_field(image_size, num_stars, diffuse_effect=True):
     """
-    Generate a star field with realistic stars, including varying brightness,
-    sizes, colors, and starburst effects using cross patterns.
+    Generate a star field with stars that have a diffuse effect for the background.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         num_stars (int): Number of stars to generate.
+        diffuse_effect (bool): If True, applies a diffuse blur to the stars.
 
     Returns:
         PIL.Image: Image with generated stars.
@@ -66,7 +66,7 @@ def generate_star_field(image_size, num_stars):
         # Randomize position, size, and brightness
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
-        size = np.random.randint(1, 6)  # Varying star sizes
+        size = np.random.randint(1, 4)  # Small size for background stars
         brightness = np.random.randint(150, 255)  # Brightness range
 
         # Generate color variation (white, yellowish, bluish)
@@ -82,28 +82,18 @@ def generate_star_field(image_size, num_stars):
             fill=color + (255,)
         )
 
-        # Add glow (halo effect) without blur
-        for r in range(size + 1, size * 3):
-            alpha = int(255 * (1 - (r - size) / (size * 2)))  # Gradually decrease opacity
-            draw.ellipse(
-                [x - r, y - r, x + r, y + r],
-                outline=color + (alpha,)
-            )
+        # Add glow (halo effect) for diffuse stars
+        if diffuse_effect:
+            for r in range(size + 1, size * 3):
+                alpha = int(255 * (1 - (r - size) / (size * 2)))  # Gradually decrease opacity
+                draw.ellipse(
+                    [x - r, y - r, x + r, y + r],
+                    outline=color + (alpha,)
+                )
 
-        # Add cross pattern for larger stars
-        if size > 3:
-            # Vertical line
-            draw.line(
-                [(x, y - size * 5), (x, y + size * 5)],
-                fill=color + (150,),
-                width=2
-            )
-            # Horizontal line
-            draw.line(
-                [(x - size * 5, y), (x + size * 5, y)],
-                fill=color + (150,),
-                width=2
-            )
+    # Apply blur only to the background stars (diffuse effect)
+    if diffuse_effect:
+        img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
 
     return img
 
