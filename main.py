@@ -9,11 +9,11 @@ mass = st.sidebar.slider(
     "Masa inicial (en masas solares)", 
     10, 100000, 1000, step=10
 ) * 1.989e30  # Conversión a kg
-#temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
-#density = st.sidebar.slider(
-#    "Densidad inicial (kg/m³)", 
-#    1e-21, 1e-17, 1e-19, format="%.1e"
-#)
+temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
+density = st.sidebar.slider(
+    "Densidad inicial (kg/m³)", 
+    1e-21, 1e-17, 1e-19, format="%.1e"
+)
 
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
@@ -74,20 +74,20 @@ from matplotlib.animation import FuncAnimation
 # Configuración inicial
 st.title("Simulación de Colapso de una Nube Molecular")
 st.sidebar.header("Parámetros de la nube")
-mass = st.sidebar.slider(
-    "Masa inicial (en masas solares)", 
-    10, 100000, 1000, step=10
-) * 1.989e30  # Conversión a kg
-temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
-density = st.sidebar.slider(
-    "Densidad inicial (kg/m³)", 
-    1e-21, 1e-17, 1e-19, format="%.1e"
-)
+#mass = st.sidebar.slider(
+#    "Masa inicial (en masas solares)", 
+#    10, 100000, 1000, step=10
+#) * 1.989e30  # Conversión a kg
+#temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
+#density = st.sidebar.slider(
+#    "Densidad inicial (kg/m³)", 
+#    1e-21, 1e-17, 1e-19, format="%.1e"
+#)
 
 # Constantes
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+#G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+#k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+#mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Parámetros de simulación
 steps = 50
