@@ -66,8 +66,8 @@ def generate_star_field(image_size, num_stars, diffuse_effect=True):
         # Randomize position, size, and brightness
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
-        size = np.random.randint(0.1, 2)  # Small size for background stars
-        brightness = np.random.randint(150, 255)  # Brightness range
+        size = np.random.randint(0.1, 5)  # Small size for background stars
+        brightness = np.random.randint(100, 255)  # Brightness range
 
         # Generate color variation (white, yellowish, bluish)
         color = (
