@@ -8,16 +8,18 @@ import noise
 import numpy as np
 import noise
 
+import numpy as np
+import noise
+
 def generar_nube(ancho, alto, escala=10.0, octavas=6, persistencia=0.5, lacunaridad=2.0):
   """Genera una nube usando ruido de Perlin."""
   mapa_densidad = np.zeros((alto, ancho))  # Create a NumPy array
   for y in range(alto):
     for x in range(ancho):
-      mapa_densidad[y][x] = noise.pnoise2(x / escala, y / escala, octaves=octavas, persistence=persistencia, lacunaridad=lacunaridad, repeatx=1024, repeaty=1024, base=0)
-  # Normalizar entre 0 y 1 (assuming pnoise2 returns values between -1 and 1)
+      mapa_densidad[y][x] = noise.pnoise3(x / escala, y / escala, octaves=octavas, persistence=persistencia, lacunaridad=lacunaridad, repeatx=1024, repeaty=1024, base=0)
+  # Normalizar entre 0 y 1 (assuming pnoise3 returns values between -1 and 1)
   mapa_densidad = (mapa_densidad - mapa_densidad.min()) / (mapa_densidad.max() - mapa_densidad.min())
   return mapa_densidad
-
 
 def visualizar_nube(mapa_densidad):
     """Convierte el mapa de densidad a una imagen para visualización."""
