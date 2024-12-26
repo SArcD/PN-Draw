@@ -53,6 +53,8 @@ background2 = Image.new("RGB", (width, height), (0, 0, 0))
 background2.paste(colored_filaments2, (0,0), colored_filaments2)
 background2.save("filamentos_nebulosa_con_color2.png")
 
+
+
 #################
 
 
