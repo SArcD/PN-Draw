@@ -65,17 +65,17 @@ significa que la nube no colapsa bajo los parámetros iniciales.
 Prueba ajustar los parámetros para inducir el colapso.
 """)
 
+#######################3
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from PIL import Image
-import io
+from matplotlib.animation import FuncAnimation, FFMpegWriter
+import tempfile
 
 # Configuración inicial
-st.title("Simulación de Colapso de una Nube Molecular")
-st.sidebar.header("Parámetros de la nube")
+#st.title("Simulación de Colapso de una Nube Molecular")
+#st.sidebar.header("Parámetros de la nube")
 #mass = st.sidebar.slider(
 #    "Masa inicial (en masas solares)", 
 #    10, 100000, 1000, step=10
@@ -87,9 +87,9 @@ st.sidebar.header("Parámetros de la nube")
 #)
 
 # Constantes
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+#G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+#k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+#mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Parámetros de simulación
 steps = 50  # Número de fotogramas
@@ -113,30 +113,36 @@ ax.set_title("Colapso de una Nube Molecular")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 
-# Actualizar cada cuadro de la animación
+# Función de actualización de cada cuadro
 def update(frame):
     radius = initial_radius * (1 - frame / steps)  # Reducir el radio en cada paso
     x, y = generate_cloud(radius)
     colors = np.linspace(0, 1, len(x)) * frame / steps  # Cambiar color según el tiempo
-    alphas = 0.2 + 0.8 * (1 - frame / steps)  # Aumentar opacidad hacia el final
     scatter.set_offsets(np.c_[x, y])
     scatter.set_array(colors)
-    scatter.set_alpha(alphas)
     return scatter,
-
-from matplotlib.animation import PillowWriter
 
 # Crear la animación
 ani = FuncAnimation(fig, update, frames=steps, interval=50, blit=True)
 
-# Guardar la animación como GIF usando PillowWriter
-buf = io.BytesIO()
-writer = PillowWriter(fps=20)
-ani.save(buf, writer=writer)
-buf.seek(0)
+# Guardar el video como MP4
+with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+    writer = FFMpegWriter(fps=20, metadata=dict(artist="Streamlit"))
+    ani.save(temp_video.name, writer=writer)
+    video_path = temp_video.name
 
-# Mostrar el GIF en Streamlit
-st.image(buf, format="gif", caption="Colapso de una nube molecular")
+# Mostrar el video en Streamlit
+st.video(video_path, format="video/mp4", start_time=0)
+
+# Nota adicional
+st.write("""
+La simulación muestra cómo una nube molecular colapsa debido a la gravedad.
+El cambio de color indica la densidad y evolución temporal.
+Prueba ajustar la masa, temperatura y densidad para explorar diferentes escenarios.
+""")
+
+
+
 
 #################
 
