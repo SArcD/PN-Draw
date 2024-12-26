@@ -2,46 +2,63 @@ import streamlit as st
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 import noise
+import io
 
 def generate_nebula_filaments(width, height, scale=50.0, octaves=6, persistence=0.5, lacunarity=2.0, blur_radius=2):
-  """Generates a PIL image with noise for gaseous filaments."""
-  img = np.zeros((height, width))
-  for y in range(height):
-    for x in range(width):
-      img[y][x] = noise.pnoise2(x/scale, y/scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=0)
-  img = ((img - img.min()) / (img.max() - img.min())) * 255
-  image = Image.fromarray(img.astype(np.uint8))
-  image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-  image = ImageOps.invert(image)  # Optional for desired color scheme
-  # Convert to "RGBA" before returning
-  image = image.convert("RGBA")
-  return image
+    """Genera una imagen con ruido Perlin para simular filamentos."""
+    img = np.zeros((height, width))
+    for y in range(height):
+        for x in range(width):
+            img[y][x] = noise.pnoise2(x/scale, y/scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=1024, repeaty=1024, base=0)
+    img = ((img - img.min()) / (img.max() - img.min())) * 255
+    image = Image.fromarray(img.astype(np.uint8)).convert("RGBA") # Convertir a RGBA aquí
+    image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    image = ImageOps.invert(image)
+    return image
 
 def apply_color_gradient(image, color1=(0, 0, 100), color2=(200, 50, 0)):
-  """Applies a color gradient to a PIL image based on grayscale values."""
-  width, height = image.size
-  colored_image = Image.new("RGBA", (width, height))
-  for x in range(width):
-    for y in range(height):
-      r, g, b = image.getpixel((x, y))  # Assuming image is now RGBA
-      gray_value = (r + g + b) // 3  # Calculate average for greyscale
-      transparency = 255 - int(gray_value * 0.8)  # Adjust opacity calculation
-      # Color calculations based on grayscale:
-      color_range = (color2[0] - color1[0], color2[1] - color1[1], color2[2] - color1[2])
-      new_color = (int(color1[0] + gray_value * color_range[0] / 255),
-                   int(color1[1] + gray_value * color_range[1] / 255),
-                   int(color1[2] + gray_value * color_range[2] / 255),
-                   transparency)
-      colored_image.putpixel((x, y), new_color)
-  return colored_image
+    """Aplica un gradiente de color a la imagen."""
+    width, height = image.size
+    colored_image = Image.new("RGBA", (width, height))
+    for x in range(width):
+        for y in range(height):
+            r, g, b, a = image.getpixel((x, y))
+            gray_value = (r + g + b) // 3
+            transparency = a # Conservar la transparencia original
+            color_range = (color2[0] - color1[0], color2[1] - color1[1], color2[2] - color1[2])
+            new_color = (int(color1[0] + gray_value * color_range[0] / 255),
+                         int(color1[1] + gray_value * color_range[1] / 255),
+                         int(color1[2] + gray_value * color_range[2] / 255),
+                         transparency)
+            colored_image.putpixel((x, y), new_color)
+    return colored_image
 
 def main():
-  """Streamlit app to generate and display a nebula image."""
-  st.title("Nebula Image Generator")
+    """Aplicación de Streamlit para generar y mostrar una imagen de nebulosa."""
+    st.title("Generador de Imágenes de Nebulosas")
 
-  # User input for parameters
-  width = st.slider("Image Width", min_value=25
+    # Entrada del usuario para los parámetros
+    width = st.slider("Ancho de la imagen", min_value=256, max_value=1024, value=512, step=32)
+    height = st.slider("Alto de la imagen", min_value=256, max_value=1024, value=512, step=32)
+    scale = st.slider("Escala", min_value=10.0, max_value=100.0, value=30.0, step=5.0)
+    blur_radius = st.slider("Radio de desenfoque", min_value=1, max_value=5, value=3)
+    color1 = st.color_picker("Color inicial", value=(0, 0, 100))
+    color2 = st.color_picker("Color final", value=(200, 50, 0))
 
+    if st.button("Generar Nebulosa"): # Botón para generar la imagen
+        with st.spinner("Generando nebulosa..."): # Spinner mientras se genera la imagen
+            filaments = generate_nebula_filaments(width, height, scale, blur_radius=blur_radius)
+            colored_filaments = apply_color_gradient(filaments, color1=color1, color2=color2)
+
+            # Crear fondo negro con transparencia para mejor resultado
+            background = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            background.paste(colored_filaments, (0, 0), colored_filaments)
+
+            # Mostrar la imagen en Streamlit
+            st.image(background, use_column_width=True)
+
+if __name__ == "__main__":
+    main()
 
 #################
 
