@@ -19,70 +19,79 @@ density = st.sidebar.slider(
     1e-21, 1e-17, 1e-19, format="%.1e"
 )
 
-# Botón para generar la animación
-generate_animation = st.sidebar.button("Generar Animación")
+# Constantes
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-if generate_animation:
-    # Constantes
-    G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-    k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-    mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+# Calcular el radio inicial de la nube
+initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+jeans_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
-    # Parámetros de simulación
-    steps = 50  # Número de fotogramas
-    initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+# Mostrar radios calculados
+st.write(f"Radio inicial de la nube: {initial_radius:.2e} m")
+st.write(f"Radio crítico de Jeans: {jeans_radius:.2e} m")
 
-    # Generar frames
-    def generate_cloud_frame(radius, frame_number, num_particles=1000):
-        angles = np.random.uniform(0, 2 * np.pi, num_particles)
-        radii = np.random.uniform(0, radius, num_particles)
-        x = radii * np.cos(angles)
-        y = radii * np.sin(angles)
-        colors = np.linspace(0, 255, num_particles).astype(np.uint8)
-
-        # Crear imagen RGB
-        image = np.zeros((500, 500, 3), dtype=np.uint8)
-        x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
-        y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
-
-        for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
-            if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
-                image[yi, xi] = [ci, 255 - ci, 128]  # Color dinámico (rojo-verde)
-
-        # Aplicar brillo dinámico
-        brightness = 1.0 + (frame_number / steps)
-        image = np.clip(image * brightness, 0, 255).astype(np.uint8)
-
-        return Image.fromarray(image)
-
-    # Generar todos los frames
-    frames = []
-    for frame_number in range(steps):
-        radius = initial_radius * (1 - frame_number / steps)
-        frame = generate_cloud_frame(radius, frame_number)
-        frames.append(frame)
-
-    # Guardar el video usando MoviePy
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-        clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
-        clip.write_videofile(temp_video.name, codec="libx264")
-        video_path = temp_video.name
-
-    # Mostrar el video en Streamlit
-    st.video(video_path)
-
-    # Botón para descargar el video
-    with open(video_path, "rb") as video_file:
-        st.download_button(
-            label="Descargar Video",
-            data=video_file,
-            file_name="colapso_nube.mp4",
-            mime="video/mp4"
-        )
-
+# Evaluar si la nube colapsa
+if initial_radius <= jeans_radius:
+    st.write("La nube es estable y no colapsará bajo las condiciones actuales.")
 else:
-    st.write("Ajusta los parámetros y presiona 'Generar Animación' para crear el video.")
+    st.write("La nube colapsará bajo las condiciones actuales.")
+    
+    # Botón para generar la animación
+    generate_animation = st.sidebar.button("Generar Animación")
 
+    if generate_animation:
+        # Parámetros de simulación
+        steps = 50  # Número de fotogramas
+
+        # Generar frames
+        def generate_cloud_frame(radius, frame_number, num_particles=1000):
+            angles = np.random.uniform(0, 2 * np.pi, num_particles)
+            radii = np.random.uniform(0, radius, num_particles)
+            x = radii * np.cos(angles)
+            y = radii * np.sin(angles)
+            colors = np.linspace(0, 255, num_particles).astype(np.uint8)
+
+            # Crear imagen RGB
+            image = np.zeros((500, 500, 3), dtype=np.uint8)
+            x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
+            y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
+
+            for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
+                if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
+                    image[yi, xi] = [ci, 255 - ci, 128]  # Color dinámico (rojo-verde)
+
+            # Aplicar brillo dinámico
+            brightness = 1.0 + (frame_number / steps)
+            image = np.clip(image * brightness, 0, 255).astype(np.uint8)
+
+            return Image.fromarray(image)
+
+        # Generar todos los frames
+        frames = []
+        for frame_number in range(steps):
+            radius = initial_radius * (1 - frame_number / steps)
+            frame = generate_cloud_frame(radius, frame_number)
+            frames.append(frame)
+
+        # Guardar el video usando MoviePy
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+            clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
+            clip.write_videofile(temp_video.name, codec="libx264")
+            video_path = temp_video.name
+
+        # Mostrar el video en Streamlit
+        st.video(video_path)
+
+        # Botón para descargar el video
+        with open(video_path, "rb") as video_file:
+            st.download_button(
+                label="Descargar Video",
+                data=video_file,
+                file_name="colapso_nube.mp4",
+                mime="video/mp4"
+            )
 
 #################
 
