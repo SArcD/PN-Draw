@@ -1,10 +1,14 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
+from PIL import Image
+from moviepy.editor import ImageSequenceClip
+import tempfile
 
 # Configuración inicial
-st.title("Simulación del Colapso de una Nube Molecular")
+st.title("Simulación de Colapso de una Nube Molecular")
 st.sidebar.header("Parámetros de la nube")
+
+# Parámetros ajustables
 mass = st.sidebar.slider(
     "Masa inicial (en masas solares)", 
     10, 100000, 1000, step=10
@@ -15,133 +19,69 @@ density = st.sidebar.slider(
     1e-21, 1e-17, 1e-19, format="%.1e"
 )
 
-# Constantes
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+# Botón para generar la animación
+generate_animation = st.sidebar.button("Generar Animación")
 
-# Criterio de Jeans
-def jeans_criterion(mass, temperature, density):
-    """Determina el radio crítico según el criterio de Jeans."""
-    critical_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
-    return critical_radius
+if generate_animation:
+    # Constantes
+    G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+    k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+    mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Simulación de colapso
-def simulate_collapse(mass, temperature, density, steps=100):
-    # Radio inicial como 10 veces el radio crítico
-    radii = np.linspace(10, 0.1, steps) * jeans_criterion(mass, temperature, density)
-    time = np.linspace(0, 1e6, steps)  # Tiempo arbitrario para la simulación
+    # Parámetros de simulación
+    steps = 50  # Número de fotogramas
+    initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
-    # Presión térmica y fuerza gravitacional
-    pressure = (density * k_B * temperature) / mu
-    gravity = G * mass / (radii**2)
+    # Generar frames
+    def generate_cloud_frame(radius, frame_number, num_particles=1000):
+        angles = np.random.uniform(0, 2 * np.pi, num_particles)
+        radii = np.random.uniform(0, radius, num_particles)
+        x = radii * np.cos(angles)
+        y = radii * np.sin(angles)
+        colors = np.linspace(0, 255, num_particles).astype(np.uint8)
 
-    # Tasa de colapso
-    collapse_rate = gravity - pressure
-    collapse_rate[collapse_rate < 0] = 0  # Si presión domina, no hay colapso
+        # Crear imagen RGB
+        image = np.zeros((500, 500, 3), dtype=np.uint8)
+        x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
+        y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
 
-    return radii, collapse_rate
+        for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
+            if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
+                image[yi, xi] = [ci, 255 - ci, 128]  # Color dinámico (rojo-verde)
 
-# Cálculos
-critical_radius = jeans_criterion(mass, temperature, density)
-radii, collapse_rate = simulate_collapse(mass, temperature, density)
+        # Aplicar brillo dinámico
+        brightness = 1.0 + (frame_number / steps)
+        image = np.clip(image * brightness, 0, 255).astype(np.uint8)
 
-# Visualización
-fig, ax = plt.subplots()
-ax.plot(radii, collapse_rate, label="Tasa de colapso")
-ax.axvline(critical_radius, color='r', linestyle='--', label="Radio crítico de Jeans")
-ax.set_xlabel("Radio (m)")
-ax.set_ylabel("Tasa de colapso (m/s²)")
-ax.set_title("Evolución del colapso de la nube molecular")
-ax.legend()
+        return Image.fromarray(image)
 
-st.pyplot(fig)
+    # Generar todos los frames
+    frames = []
+    for frame_number in range(steps):
+        radius = initial_radius * (1 - frame_number / steps)
+        frame = generate_cloud_frame(radius, frame_number)
+        frames.append(frame)
 
-# Notas adicionales
-st.write(f"Radio crítico de Jeans: {critical_radius:.2e} m")
-st.write("""
-**Nota**: Si la tasa de colapso es 0 en todo el rango, 
-significa que la nube no colapsa bajo los parámetros iniciales.
-Prueba ajustar los parámetros para inducir el colapso.
-""")
+    # Guardar el video usando MoviePy
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+        clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
+        clip.write_videofile(temp_video.name, codec="libx264")
+        video_path = temp_video.name
 
-#######################3
+    # Mostrar el video en Streamlit
+    st.video(video_path)
 
-import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image
-import tempfile
-from moviepy.editor import ImageSequenceClip
+    # Botón para descargar el video
+    with open(video_path, "rb") as video_file:
+        st.download_button(
+            label="Descargar Video",
+            data=video_file,
+            file_name="colapso_nube.mp4",
+            mime="video/mp4"
+        )
 
-# Configuración inicial
-#st.title("Simulación de Colapso de una Nube Molecular")
-#st.sidebar.header("Parámetros de la nube")
-#mass = st.sidebar.slider(
-#    "Masa inicial (en masas solares)", 
-#    10, 100000, 1000, step=10
-#) * 1.989e30  # Conversión a kg
-#temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
-#density = st.sidebar.slider(
-#    "Densidad inicial (kg/m³)", 
-#    1e-21, 1e-17, 1e-19, format="%.1e"
-#)
-
-# Constantes
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
-
-# Parámetros de simulación
-steps = 50  # Número de fotogramas
-initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
-
-# Función para generar partículas
-def generate_cloud(radius, num_particles=1000):
-    angles = np.random.uniform(0, 2 * np.pi, num_particles)
-    radii = np.random.uniform(0, radius, num_particles)
-    x = radii * np.cos(angles)
-    y = radii * np.sin(angles)
-    return x, y
-
-# Crear imágenes para la animación
-frames = []
-fig, ax = plt.subplots(figsize=(6, 6))
-for frame in range(steps):
-    ax.clear()
-    radius = initial_radius * (1 - frame / steps)  # Reducir el radio en cada paso
-    x, y = generate_cloud(radius)
-    colors = np.linspace(0, 1, len(x)) * frame / steps  # Cambiar color según el tiempo
-    scatter = ax.scatter(x, y, s=5, alpha=0.8, c=colors, cmap='viridis')
-    ax.set_xlim(-initial_radius, initial_radius)
-    ax.set_ylim(-initial_radius, initial_radius)
-    ax.set_title("Colapso de una Nube Molecular")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    fig.canvas.draw()
-    # Convertir la figura a una imagen
-    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    frames.append(Image.fromarray(image))
-
-# Crear el video usando MoviePy
-with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-    clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
-    clip.write_videofile(temp_video.name, codec="libx264")
-    video_path = temp_video.name
-
-# Mostrar el video en Streamlit
-st.video(video_path, format="video/mp4")
-
-# Nota adicional
-st.write("""
-La simulación muestra cómo una nube molecular colapsa debido a la gravedad.
-El cambio de color indica la densidad y evolución temporal.
-Prueba ajustar la masa, temperatura y densidad para explorar diferentes escenarios.
-""")
-
-
-
+else:
+    st.write("Ajusta los parámetros y presiona 'Generar Animación' para crear el video.")
 
 #################
 
