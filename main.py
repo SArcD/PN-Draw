@@ -102,7 +102,7 @@ from PIL import Image, ImageDraw
 import numpy as np
 
 def generate_star_field(image_size, num_stars, min_points=5, max_points=8,
-                        min_size=0.1, max_size=1.0, diffuse_effect=True):
+                        min_size=0.01, max_size=0.1, diffuse_effect=True):
     """
     Generate a star field with astronomical-looking stars.
 
