@@ -63,7 +63,7 @@ st.write("""
 **Nota**: Si la tasa de colapso es 0 en todo el rango, 
 significa que la nube no colapsa bajo los parámetros iniciales.
 Prueba ajustar los parámetros para inducir el colapso.
-"""
+""")
 
 
 
