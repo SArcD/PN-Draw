@@ -15,17 +15,11 @@ import numpy as np
 import noise
 
 def generar_nube(ancho, alto, escala=10.0, octavas=6, persistencia=0.5, lacunaridad=2.0):
-    """Genera una nube usando ruido de Perlin (versión vectorizada con manejo de división por cero)."""
-    x, y = np.meshgrid(np.arange(ancho), np.arange(alto))
-    mapa_densidad = noise.pnoise3(x / escala, y / escala, np.zeros_like(x), octaves=octavas, persistence=persistencia, lacunaridad=lacunaridad, repeatx=1024, repeaty=1024, base=0)
-
-    # Normalizar entre 0 y 1, manejando la posible división por cero
-    rango = mapa_densidad.max() - mapa_densidad.min()
-    if rango == 0:
-        return mapa_densidad
-    else:
-        mapa_densidad = (mapa_densidad - mapa_densidad.min()) / rango
-        return mapa_densidad
+  """Genera una nube usando ruido de Perlin (versión para un punto)."""
+  centro_x = ancho // 2
+  centro_y = alto // 2
+  densidad = noise.pnoise3(centro_x / escala, centro_y / escala, np.zeros_like(centro_x), octaves=octavas, persistence=persistencia, lacunaridad=lacunaridad, repeatx=1024, repeaty=1024, base=0)
+  return densidad  # Return the single density value
 
 def visualizar_nube(mapa_densidad):
     """Convierte el mapa de densidad a una imagen para visualización."""
