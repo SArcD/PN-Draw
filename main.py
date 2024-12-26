@@ -70,8 +70,9 @@ Prueba ajustar los parámetros para inducir el colapso.
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, FFMpegWriter
+from PIL import Image
 import tempfile
+from moviepy.editor import ImageSequenceClip
 
 # Configuración inicial
 #st.title("Simulación de Colapso de una Nube Molecular")
@@ -87,9 +88,9 @@ import tempfile
 #)
 
 # Constantes
-#G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-#k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-#mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Parámetros de simulación
 steps = 50  # Número de fotogramas
@@ -103,36 +104,34 @@ def generate_cloud(radius, num_particles=1000):
     y = radii * np.sin(angles)
     return x, y
 
-# Configuración inicial de la animación
+# Crear imágenes para la animación
+frames = []
 fig, ax = plt.subplots(figsize=(6, 6))
-scatter = ax.scatter([], [], s=5, alpha=0.8, c=[], cmap='viridis')
-ax.set_xlim(-initial_radius, initial_radius)
-ax.set_ylim(-initial_radius, initial_radius)
-ax.set_aspect('equal')
-ax.set_title("Colapso de una Nube Molecular")
-ax.set_xlabel("x (m)")
-ax.set_ylabel("y (m)")
-
-# Función de actualización de cada cuadro
-def update(frame):
+for frame in range(steps):
+    ax.clear()
     radius = initial_radius * (1 - frame / steps)  # Reducir el radio en cada paso
     x, y = generate_cloud(radius)
     colors = np.linspace(0, 1, len(x)) * frame / steps  # Cambiar color según el tiempo
-    scatter.set_offsets(np.c_[x, y])
-    scatter.set_array(colors)
-    return scatter,
+    scatter = ax.scatter(x, y, s=5, alpha=0.8, c=colors, cmap='viridis')
+    ax.set_xlim(-initial_radius, initial_radius)
+    ax.set_ylim(-initial_radius, initial_radius)
+    ax.set_title("Colapso de una Nube Molecular")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    fig.canvas.draw()
+    # Convertir la figura a una imagen
+    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    frames.append(Image.fromarray(image))
 
-# Crear la animación
-ani = FuncAnimation(fig, update, frames=steps, interval=50, blit=True)
-
-# Guardar el video como MP4
+# Crear el video usando MoviePy
 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-    writer = FFMpegWriter(fps=20, metadata=dict(artist="Streamlit"))
-    ani.save(temp_video.name, writer=writer)
+    clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
+    clip.write_videofile(temp_video.name, codec="libx264")
     video_path = temp_video.name
 
 # Mostrar el video en Streamlit
-st.video(video_path, format="video/mp4", start_time=0)
+st.video(video_path, format="video/mp4")
 
 # Nota adicional
 st.write("""
