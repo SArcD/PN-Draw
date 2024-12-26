@@ -1101,8 +1101,11 @@ def generate_gaseous_shells(
 
             # Sinusoidal deformity
             #sinusoidal_deformity = deformity * np.sin(3 * theta + t * np.pi)
-            sinusoidal_deformity = deformity * np.sin((1 + t) * theta + t * np.pi)
+            #sinusoidal_deformity = deformity * np.sin((1 + t) * theta + t * np.pi)
+            random_frequency = np.random.uniform(2, 5)
+            sinusoidal_deformity = deformity * np.sin(random_frequency * theta + t * np.pi)
 
+            
             # Randomized noise-based deformity
             random_deformity = turbulence_intensity * (random.uniform(-1, 1))
 
