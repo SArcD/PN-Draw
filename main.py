@@ -1151,6 +1151,7 @@ for i in range(num_shells):
     inner_radius = st.sidebar.slider(f"Inner Radius (Shell {i + 1})", 10, 400, 100)
     outer_radius = st.sidebar.slider(f"Outer Radius (Shell {i + 1})", inner_radius, 500, inner_radius + 50)
     deformity = st.sidebar.slider(f"Deformity (Shell {i + 1})", 0.0, 20.0, 5.0)
+    turbulence_intensity = st.sidebar.slider(f"Deformity (Shell {i + 1})", 0.0, 20.0, 5.0)
     blur_radius = st.sidebar.slider(f"Blur Radius (Shell {i + 1})", 1, 50, 10)
     start_color = st.sidebar.color_picker(f"Start Color (Shell {i + 1})", "#FF4500")
     end_color = st.sidebar.color_picker(f"End Color (Shell {i + 1})", "#0000FF")
@@ -1162,6 +1163,7 @@ for i in range(num_shells):
         "inner_radius": inner_radius,
         "outer_radius": outer_radius,
         "deformity": deformity,
+        "turbulence_intensity": turbulence_intensity
         "blur_radius": blur_radius,
         "start_color": tuple(int(start_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)),
         "end_color": tuple(int(end_color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
@@ -1173,9 +1175,14 @@ for shell in shells:
     shell_image = generate_gaseous_shells(
         image_size, center, shell["semi_major"], shell["semi_minor"], shell["angle"],
         shell["inner_radius"], shell["outer_radius"],
-        shell["start_color"], shell["end_color"], shell["deformity"], shell["blur_radius"]
+        shell["start_color"], shell["end_color"], shell["deformity"],shell["turbulence intensity"], shell["blur_radius"]
     )
     gaseous_shells = Image.alpha_composite(gaseous_shells, shell_image)
+
+
+#def generate_gaseous_shells(
+#    image_size, center, semi_major, semi_minor, angle, inner_radius, outer_radius, start_color, end_color, deformity, turbulence_intensity, blur_radius
+#)
 
 # Combine with other layers
 final_image = Image.alpha_composite(final_image, gaseous_shells)
