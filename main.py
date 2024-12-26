@@ -43,21 +43,82 @@ from PIL import Image, ImageDraw, ImageFilter
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 
-from PIL import Image, ImageDraw, ImageFilter
+#from PIL import Image, ImageDraw, ImageFilter
+#import numpy as np
+
+#def generate_star_field(image_size, num_stars, diffuse_effect=True):
+#    """
+#    Generate a star field with stars that have a diffuse effect for the background.
+
+#    Parameters:
+#        image_size (tuple): Size of the image (width, height).
+#        num_stars (int): Number of stars to generate.
+#        diffuse_effect (bool): If True, applies a diffuse blur to the stars.
+
+#    Returns:
+#        PIL.Image: Image with generated stars.
+ #   """
+ #   width, height = image_size
+#    img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+#    draw = ImageDraw.Draw(img)
+
+#    for _ in range(num_stars):
+#        # Randomize position, size, and brightness
+#        x = np.random.randint(0, width)
+#        y = np.random.randint(0, height)
+#        size = np.random.randint(0.01, 2)  # Small size for background stars
+#        brightness = np.random.randint(150, 555)  # Brightness range
+
+#        # Generate color variation (white, yellowish, bluish)
+#        color = (
+#            np.random.randint(brightness - 50, brightness),
+#            np.random.randint(brightness - 50, brightness),
+#            brightness
+#        )
+
+#        # Draw the star core
+#        draw.ellipse(
+#            [x - size, y - size, x + size, y + size],
+#            fill=color + (255,)
+#        )
+
+#        # Add glow (halo effect) for diffuse stars
+#        if diffuse_effect:
+#            for r in range(size + 1, size * 3):
+#                alpha = int(255 * (1 - (r - size) / (size * 2)))  # Gradually decrease opacity
+#                draw.ellipse(
+#                    [x - r, y - r, x + r, y + r],
+#                    outline=color + (alpha,)
+#                )
+
+    # Apply blur only to the background stars (diffuse effect)
+    #if diffuse_effect:
+    #    img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
+
+#    return img
+
+
+from PIL import Image, ImageDraw
 import numpy as np
 
-def generate_star_field(image_size, num_stars, diffuse_effect=True):
+def generate_star_field(image_size, num_stars, min_points=5, max_points=8,
+                        min_size=0.1, max_size=1.0, diffuse_effect=True):
     """
-    Generate a star field with stars that have a diffuse effect for the background.
+    Generate a star field with astronomical-looking stars.
 
     Parameters:
         image_size (tuple): Size of the image (width, height).
         num_stars (int): Number of stars to generate.
-        diffuse_effect (bool): If True, applies a diffuse blur to the stars.
+        min_points (int): Minimum number of points for a star's shape (default: 5).
+        max_points (int): Maximum number of points for a star's shape (default: 8).
+        min_size (float): Minimum size of a star (default: 0.1).
+        max_size (float): Maximum size of a star (default: 1.0).
+        diffuse_effect (bool): If True, applies a diffuse blur to the stars for a soft effect (default: True).
 
     Returns:
-        PIL.Image: Image with generated stars.
+        PIL.Image: Image with generated astronomical-like stars.
     """
+
     width, height = image_size
     img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
     draw = ImageDraw.Draw(img)
@@ -66,9 +127,8 @@ def generate_star_field(image_size, num_stars, diffuse_effect=True):
         # Randomize position, size, and brightness
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
-        size = np.random.randint(0.01, 2)  # Small size for background stars
+        size = np.random.uniform(min_size, max_size) * min(width, height) / 5.0  # Scale based on image size
         brightness = np.random.randint(150, 555)  # Brightness range
-
         # Generate color variation (white, yellowish, bluish)
         color = (
             np.random.randint(brightness - 50, brightness),
@@ -76,26 +136,27 @@ def generate_star_field(image_size, num_stars, diffuse_effect=True):
             brightness
         )
 
-        # Draw the star core
-        draw.ellipse(
-            [x - size, y - size, x + size, y + size],
-            fill=color + (255,)
-        )
+        # Create astronomical star shape (random number of points within range)
+        num_points = np.random.randint(min_points, max_points + 1)
+        angles = np.linspace(0, 2*np.pi, num_points, endpoint=False)  # Evenly spaced points
 
-        # Add glow (halo effect) for diffuse stars
+        # Calculate star coordinates based on size and angles
+        star_coords = [(x + size * np.cos(angle), y + size * np.sin(angle))
+                       for angle in angles]
+
+        # Draw the filled star shape
+        draw.polygon(star_coords, fill=color + (255,))
+
+        # Optionally add diffuse glow (halo effect)
         if diffuse_effect:
-            for r in range(size + 1, size * 3):
-                alpha = int(255 * (1 - (r - size) / (size * 2)))  # Gradually decrease opacity
-                draw.ellipse(
-                    [x - r, y - r, x + r, y + r],
-                    outline=color + (alpha,)
-                )
-
-    # Apply blur only to the background stars (diffuse effect)
-    #if diffuse_effect:
-    #    img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
+            for r in range(int(size * 0.5), int(size * 1.5)):  # Adjust blur radius based on size
+                alpha = int(255 * (1 - (r - size * 0.5) / size))  # Gradually decrease opacity
+                draw.polygon([(x + r * np.cos(angle), y + r * np.sin(angle))
+                              for angle in angles],
+                             outline=color + (alpha,))
 
     return img
+
 
 
 #def generate_filaments(image_size, center, num_filaments, radius, filament_length, start_color, end_color, blur_radius, elliptical):
