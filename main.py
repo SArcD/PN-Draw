@@ -92,8 +92,8 @@ def generate_star_field(image_size, num_stars, diffuse_effect=True):
                 )
 
     # Apply blur only to the background stars (diffuse effect)
-    if diffuse_effect:
-        img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
+    #if diffuse_effect:
+    #    img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
 
     return img
 
