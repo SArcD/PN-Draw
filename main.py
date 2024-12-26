@@ -5,48 +5,68 @@ import matplotlib.pyplot as plt
 # Configuración inicial
 st.title("Simulación del Colapso de una Nube Molecular")
 st.sidebar.header("Parámetros de la nube")
-mass = st.sidebar.slider("Masa inicial (en masas solares)", 0.1, 10.0, 1.0, step=0.1)
-temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 1000, 100)
-density = st.sidebar.slider("Densidad inicial (kg/m³)", 1e-20, 1e-18, 1e-19, format="%.1e")
+mass = st.sidebar.slider(
+    "Masa inicial (en masas solares)", 
+    10, 100000, 1000, step=10
+) * 1.989e30  # Conversión a kg
+temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
+density = st.sidebar.slider(
+    "Densidad inicial (kg/m³)", 
+    1e-21, 1e-17, 1e-19, format="%.1e"
+)
 
 # Constantes
-G = 6.67430e-11  # Constante gravitacional
-k_B = 1.380649e-23  # Constante de Boltzmann
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (en kg)
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Función de simulación simplificada
+# Criterio de Jeans
+def jeans_criterion(mass, temperature, density):
+    """Determina el radio crítico según el criterio de Jeans."""
+    critical_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+    return critical_radius
+
+# Simulación de colapso
 def simulate_collapse(mass, temperature, density, steps=100):
-    radii = np.linspace(1, 0.1, steps)  # Radio disminuye en el colapso
+    # Radio inicial como 10 veces el radio crítico
+    radii = np.linspace(10, 0.1, steps) * jeans_criterion(mass, temperature, density)
     time = np.linspace(0, 1e6, steps)  # Tiempo arbitrario para la simulación
 
-    # Presión térmica y fuerza gravitacional (simplificadas)
+    # Presión térmica y fuerza gravitacional
     pressure = (density * k_B * temperature) / mu
-    gravity = G * mass * density / (radii**2)
+    gravity = G * mass / (radii**2)
 
-    collapse_rate = gravity - pressure  # Aproximación simple
-    collapse_rate[collapse_rate < 0] = 0  # No hay colapso si la presión domina
+    # Tasa de colapso
+    collapse_rate = gravity - pressure
+    collapse_rate[collapse_rate < 0] = 0  # Si presión domina, no hay colapso
 
     return radii, collapse_rate
 
 # Cálculos
+critical_radius = jeans_criterion(mass, temperature, density)
 radii, collapse_rate = simulate_collapse(mass, temperature, density)
 
 # Visualización
 fig, ax = plt.subplots()
 ax.plot(radii, collapse_rate, label="Tasa de colapso")
-ax.set_xlabel("Radio (arbitrario)")
-ax.set_ylabel("Tasa de colapso")
-ax.set_title("Evolución del colapso")
+ax.axvline(critical_radius, color='r', linestyle='--', label="Radio crítico de Jeans")
+ax.set_xlabel("Radio (m)")
+ax.set_ylabel("Tasa de colapso (m/s²)")
+ax.set_title("Evolución del colapso de la nube molecular")
 ax.legend()
 
 st.pyplot(fig)
 
 # Notas adicionales
+st.write(f"Radio crítico de Jeans: {critical_radius:.2e} m")
 st.write("""
-**Nota**: Esta simulación es una simplificación. 
-El colapso real incluye factores como la fragmentación, la formación de estrellas, 
-y procesos de enfriamiento radiativo.
-""")
+**Nota**: Si la tasa de colapso es 0 en todo el rango, 
+significa que la nube no colapsa bajo los parámetros iniciales.
+Prueba ajustar los parámetros para inducir el colapso.
+"""
+
+
+
 
 #################
 
