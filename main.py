@@ -66,7 +66,7 @@ def generate_star_field(image_size, num_stars, diffuse_effect=True):
         # Randomize position, size, and brightness
         x = np.random.randint(0, width)
         y = np.random.randint(0, height)
-        size = np.random.randint(1, 4)  # Small size for background stars
+        size = np.random.randint(0.1, 2)  # Small size for background stars
         brightness = np.random.randint(150, 255)  # Brightness range
 
         # Generate color variation (white, yellowish, bluish)
@@ -92,8 +92,8 @@ def generate_star_field(image_size, num_stars, diffuse_effect=True):
                 )
 
     # Apply blur only to the background stars (diffuse effect)
-    if diffuse_effect:
-        img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
+    #if diffuse_effect:
+    #    img = img.filter(ImageFilter.GaussianBlur(radius=2))  # Small blur for diffusion
 
     return img
 
