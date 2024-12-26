@@ -778,7 +778,7 @@ central_star_image = draw_multiple_stars(image_size, star_configs)
 final_image = Image.alpha_composite(star_field_image, filaments_image)
 final_image = Image.alpha_composite(final_image, diffuse_gas_image)
 final_image = Image.alpha_composite(final_image, bubble_image)  # Añadimos las burbujas aquí
-final_image = Image.alpha_composite(final_image, gas_arcs_image)
+#final_image = Image.alpha_composite(final_image, gas_arcs_image)
 final_image = Image.alpha_composite(final_image, central_star_image)
 
 st.image(final_image, caption="Nebula Simulation", use_column_width=True)
