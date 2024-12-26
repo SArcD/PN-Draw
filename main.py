@@ -377,20 +377,6 @@ def generate_gas_arcs(image_size, centers, radius, thickness, start_angle, end_a
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ##########################################################
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
@@ -555,33 +541,99 @@ centers = [
 ]
 
 # Sidebar for filament parameters
-st.sidebar.header("Filament Parameters")
-num_filaments = st.sidebar.slider("Number of Filaments", 10, 500, 100)
-filament_radius = st.sidebar.slider("Filament Radius", 10, 400, 200)
-filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
-filament_start_color = st.sidebar.color_picker("Filament Start Color", "#FFA500")
-filament_end_color = st.sidebar.color_picker("Filament End Color", "#FF4500")
-filament_blur = st.sidebar.slider("Filament Blur", 0, 30, 5)
-filament_elliptical = st.sidebar.checkbox("Elliptical Filaments", False)
+#st.sidebar.header("Filament Parameters")
+#num_filaments = st.sidebar.slider("Number of Filaments", 10, 500, 100)
+#filament_radius = st.sidebar.slider("Filament Radius", 10, 400, 200)
+#filament_length = st.sidebar.slider("Filament Length", 10, 300, 100)
+#filament_start_color = st.sidebar.color_picker("Filament Start Color", "#FFA500")
+#filament_end_color = st.sidebar.color_picker("Filament End Color", "#FF4500")
+#filament_blur = st.sidebar.slider("Filament Blur", 0, 30, 5)
+#filament_elliptical = st.sidebar.checkbox("Elliptical Filaments", False)
+
+# Filament configurations
+num_filament_layers = st.sidebar.slider("Number of Filament Layers", 1, 10, 3)
+filament_configs = []
+for i in range(num_filament_layers):
+    with st.sidebar.expander(f"Filament Layer {i + 1}"):
+        num_filaments = st.slider(f"Number of Filaments (Layer {i + 1})", 10, 500, 100, key=f"num_filaments_{i}")
+        radius = st.slider(f"Filament Radius (Layer {i + 1})", 10, 400, 200, key=f"radius_{i}")
+        length = st.slider(f"Filament Length (Layer {i + 1})", 10, 300, 100, key=f"length_{i}")
+        start_color = st.color_picker(f"Start Color (Layer {i + 1})", "#FFA500", key=f"start_color_{i}")
+        end_color = st.color_picker(f"End Color (Layer {i + 1})", "#FF4500", key=f"end_color_{i}")
+        blur = st.slider(f"Filament Blur (Layer {i + 1})", 0, 30, 5, key=f"blur_{i}")
+        elliptical = st.checkbox(f"Elliptical Filaments (Layer {i + 1})", False, key=f"elliptical_{i}")
+        filament_configs.append({
+            "num_filaments": num_filaments,
+            "radius": radius,
+            "length": length,
+            "start_color": hex_to_rgb(start_color),
+            "end_color": hex_to_rgb(end_color),
+            "blur": blur,
+            "elliptical": elliptical
+        })
+
+# Diffuse gas configurations
+num_gas_layers = st.sidebar.slider("Number of Gas Layers", 1, 5, 2)
+gas_configs = []
+for i in range(num_gas_layers):
+    with st.sidebar.expander(f"Gas Layer {i + 1}"):
+        inner_radius = st.slider(f"Inner Radius (Layer {i + 1})", 50, 400, 150, key=f"inner_radius_{i}")
+        outer_radius = st.slider(f"Outer Radius (Layer {i + 1})", 100, 500, 300, key=f"outer_radius_{i}")
+        start_color = st.color_picker(f"Start Color (Layer {i + 1})", "#FF4500", key=f"gas_start_color_{i}")
+        end_color = st.color_picker(f"End Color (Layer {i + 1})", "#0000FF", key=f"gas_end_color_{i}")
+        blur = st.slider(f"Gas Blur (Layer {i + 1})", 0, 50, 20, key=f"gas_blur_{i}")
+        elliptical = st.checkbox(f"Elliptical Gas (Layer {i + 1})", False, key=f"gas_elliptical_{i}")
+        gas_configs.append({
+            "inner_radius": inner_radius,
+            "outer_radius": outer_radius,
+            "start_color": hex_to_rgb(start_color),
+            "end_color": hex_to_rgb(end_color),
+            "blur": blur,
+            "elliptical": elliptical
+        })
+
+
+# Bubble configurations
+num_bubble_layers = st.sidebar.slider("Number of Bubble Layers", 1, 5, 2)
+bubble_configs = []
+for i in range(num_bubble_layers):
+    with st.sidebar.expander(f"Bubble Layer {i + 1}"):
+        inner_radius = st.slider(f"Inner Radius (Layer {i + 1})", 10, 200, 50, key=f"bubble_inner_radius_{i}")
+        outer_radius = st.slider(f"Outer Radius (Layer {i + 1})", 50, 300, 150, key=f"bubble_outer_radius_{i}")
+        start_color = st.color_picker(f"Start Color (Layer {i + 1})", "#FF00FF", key=f"bubble_start_color_{i}")
+        end_color = st.color_picker(f"End Color (Layer {i + 1})", "#000000", key=f"bubble_end_color_{i}")
+        turbulence = st.slider(f"Turbulence (Layer {i + 1})", 0.0, 10.0, 2.0, key=f"bubble_turbulence_{i}")
+        blur = st.slider(f"Bubble Blur (Layer {i + 1})", 0, 30, 10, key=f"bubble_blur_{i}")
+        elliptical = st.checkbox(f"Elliptical Bubbles (Layer {i + 1})", False, key=f"bubble_elliptical_{i}")
+        bubble_configs.append({
+            "inner_radius": inner_radius,
+            "outer_radius": outer_radius,
+            "start_color": hex_to_rgb(start_color),
+            "end_color": hex_to_rgb(end_color),
+            "turbulence": turbulence,
+            "blur": blur,
+            "elliptical": elliptical
+        })
+
 
 # Sidebar for diffuse gas parameters
-st.sidebar.header("Diffuse Gas Parameters")
-gas_inner_radius = st.sidebar.slider("Gas Inner Radius", 50, 400, 150)
-gas_outer_radius = st.sidebar.slider("Gas Outer Radius", 100, 500, 300)
-gas_start_color = st.sidebar.color_picker("Gas Start Color", "#FF4500")
-gas_end_color = st.sidebar.color_picker("Gas End Color", "#0000FF")
-gas_blur = st.sidebar.slider("Gas Blur", 0, 50, 20)
-gas_elliptical = st.sidebar.checkbox("Elliptical Gas", False)
+#st.sidebar.header("Diffuse Gas Parameters")
+#gas_inner_radius = st.sidebar.slider("Gas Inner Radius", 50, 400, 150)
+#gas_outer_radius = st.sidebar.slider("Gas Outer Radius", 100, 500, 300)
+#gas_start_color = st.sidebar.color_picker("Gas Start Color", "#FF4500")
+#gas_end_color = st.sidebar.color_picker("Gas End Color", "#0000FF")
+#gas_blur = st.sidebar.slider("Gas Blur", 0, 50, 20)
+#gas_elliptical = st.sidebar.checkbox("Elliptical Gas", False)
 
 # Sidebar for bubble parameters
-st.sidebar.header("Bubble Parameters")
-bubble_inner_radius = st.sidebar.slider("Bubble Inner Radius", 10, 200, 50)
-bubble_outer_radius = st.sidebar.slider("Bubble Outer Radius", 50, 300, 150)
-bubble_start_color = st.sidebar.color_picker("Bubble Start Color", "#FF00FF")
-bubble_end_color = st.sidebar.color_picker("Bubble End Color", "#000000")
-bubble_turbulence = st.sidebar.slider("Bubble Turbulence", 0.0, 10.0, 2.0)
-bubble_blur = st.sidebar.slider("Bubble Blur", 0, 30, 10)
-bubble_elliptical = st.sidebar.checkbox("Elliptical Bubble", False)
+#st.sidebar.header("Bubble Parameters")
+#bubble_inner_radius = st.sidebar.slider("Bubble Inner Radius", 10, 200, 50)
+#bubble_outer_radius = st.sidebar.slider("Bubble Outer Radius", 50, 300, 150)
+#bubble_start_color = st.sidebar.color_picker("Bubble Start Color", "#FF00FF")
+#bubble_end_color = st.sidebar.color_picker("Bubble End Color", "#000000")
+#bubble_turbulence = st.sidebar.slider("Bubble Turbulence", 0.0, 10.0, 2.0)
+#bubble_blur = st.sidebar.slider("Bubble Blur", 0, 30, 10)
+#bubble_elliptical = st.sidebar.checkbox("Elliptical Bubble", False)
 
 # Sidebar for arc parameters
 st.sidebar.header("Arc Parameters")
@@ -671,24 +723,74 @@ for i in range(num_cstars):
 #    arc_turbulence, arc_blur, arc_elliptical
 #)
 
+# Generate filament layers
+filaments_image = Image.new("RGBA", image_size, (0, 0, 0, 0))
+for config in filament_configs:
+    filaments_image = Image.alpha_composite(
+        filaments_image,
+        generate_filaments(
+            image_size, centers, 
+            config["num_filaments"], config["radius"], config["length"],
+            config["start_color"], config["end_color"], 
+            config["blur"], config["elliptical"]
+        )
+    )
+
+# Generate gas layers
+diffuse_gas_image = Image.new("RGBA", image_size, (0, 0, 0, 0))
+for config in gas_configs:
+    diffuse_gas_image = Image.alpha_composite(
+        diffuse_gas_image,
+        generate_diffuse_gas(
+            image_size, centers, 
+            config["inner_radius"], config["outer_radius"],
+            config["start_color"], config["end_color"], 
+            config["blur"], config["elliptical"]
+        )
+    )
+
+# Generate bubble layers
+bubble_image = Image.new("RGBA", image_size, (0, 0, 0, 0))
+for config in bubble_configs:
+    bubble_image = Image.alpha_composite(
+        bubble_image,
+        generate_bubble(
+            image_size, centers, 
+            config["inner_radius"], config["outer_radius"],
+            config["start_color"], config["end_color"], 
+            config["turbulence"], config["blur"], config["elliptical"]
+        )
+    )
+
+
 # Generate layers
 image_size=(image_width, image_height)
-filaments_image = generate_filaments(image_size, centers, num_filaments, filament_radius, filament_length, hex_to_rgb(filament_start_color), hex_to_rgb(filament_end_color), filament_blur, filament_elliptical)
-diffuse_gas_image = generate_diffuse_gas(image_size, centers, gas_inner_radius, gas_outer_radius, hex_to_rgb(gas_start_color), hex_to_rgb(gas_end_color), gas_blur, gas_elliptical)
-bubble_image = generate_bubble(image_size, centers, bubble_inner_radius, bubble_outer_radius, hex_to_rgb(bubble_start_color), hex_to_rgb(bubble_end_color), bubble_turbulence, bubble_blur, bubble_elliptical)
+#filaments_image = generate_filaments(image_size, centers, num_filaments, filament_radius, filament_length, hex_to_rgb(filament_start_color), hex_to_rgb(filament_end_color), filament_blur, filament_elliptical)
+#diffuse_gas_image = generate_diffuse_gas(image_size, centers, gas_inner_radius, gas_outer_radius, hex_to_rgb(gas_start_color), hex_to_rgb(gas_end_color), gas_blur, gas_elliptical)
+#bubble_image = generate_bubble(image_size, centers, bubble_inner_radius, bubble_outer_radius, hex_to_rgb(bubble_start_color), hex_to_rgb(bubble_end_color), bubble_turbulence, bubble_blur, bubble_elliptical)
 gas_arcs_image = generate_gas_arcs(image_size, centers, arc_radius, arc_thickness, arc_start_angle, arc_end_angle, hex_to_rgb(arc_start_color), hex_to_rgb(arc_end_color), arc_turbulence, arc_blur, arc_elliptical)
 star_field_image = generate_star_field(image_size, num_stars)
 central_star_image = draw_multiple_stars(image_size, star_configs)
 
-# Combine layers
+
 final_image = Image.alpha_composite(star_field_image, filaments_image)
 final_image = Image.alpha_composite(final_image, diffuse_gas_image)
-final_image = Image.alpha_composite(final_image, bubble_image)
+final_image = Image.alpha_composite(final_image, bubble_image)  # Añadimos las burbujas aquí
 final_image = Image.alpha_composite(final_image, gas_arcs_image)
 final_image = Image.alpha_composite(final_image, central_star_image)
 
-# Display the final image
 st.image(final_image, caption="Nebula Simulation", use_column_width=True)
+
+
+# Combine layers
+#final_image = Image.alpha_composite(star_field_image, filaments_image)
+#final_image = Image.alpha_composite(final_image, diffuse_gas_image)
+#final_image = Image.alpha_composite(final_image, bubble_image)
+#final_image = Image.alpha_composite(final_image, gas_arcs_image)
+#final_image = Image.alpha_composite(final_image, central_star_image)
+
+# Display the final image
+#st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
 
