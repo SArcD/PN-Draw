@@ -380,6 +380,8 @@ def generate_gas_arcs(image_size, centers, radius, thickness, start_angle, end_a
 ##########################################################
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
+
+
 def draw_star_with_filaments(img, position, star_size, halo_size, color, num_filaments, dispersion, blur_radius):
     draw = ImageDraw.Draw(img)
 
@@ -443,26 +445,36 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     star_circle.paste(star_layer, (position[0] - star_size, position[1] - star_size), mask=mask)
     img = Image.alpha_composite(img, star_circle)
 
-    # Draw radial filaments
+    # Draw radial filaments with glow effect
     filament_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     filament_draw = ImageDraw.Draw(filament_layer)
     for i in range(num_filaments):
-        angle = 2 * np.pi * i / num_filaments
+        angle = 2 * np.pi * i / num_filaments + np.random.uniform(-0.1, 0.1)  # Slight random variation in angle
         end_x = position[0] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.cos(angle)
         end_y = position[1] + (halo_size + np.random.uniform(-dispersion, dispersion)) * np.sin(angle)
 
-        # Increase opacity and width for more intense filaments
-        opacity = np.random.randint(100, 200)  # Higher opacity
-        width = np.random.randint(2, 4)  # Thicker filaments
+        # Randomize filament opacity, width, and brightness for realism
+        opacity = np.random.randint(100, 200)
+        width = np.random.randint(2, 4)
+        glow_size = width * 3
 
+        # Draw core line of filament
         filament_draw.line(
             [(position[0], position[1]), (end_x, end_y)],
             fill=color + (opacity,),
             width=width,
         )
 
-    # Reduce blur for sharper, more intense filaments
-    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=max(blur_radius / 2, 1)))
+        # Add glow around the filament
+        for offset in range(1, glow_size):
+            filament_draw.line(
+                [(position[0] - offset, position[1] - offset), (end_x + offset, end_y + offset)],
+                fill=color + (int(opacity / (offset + 1)),),
+                width=1,
+            )
+
+    # Apply Gaussian blur to the filaments for a diffuse effect
+    filament_layer = filament_layer.filter(ImageFilter.GaussianBlur(radius=blur_radius / 2))
 
     # Combine the filaments with the star image
     img = Image.alpha_composite(img, filament_layer)
