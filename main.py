@@ -66,6 +66,63 @@ Prueba ajustar los parámetros para inducir el colapso.
 """)
 
 
+import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+# Configuración inicial
+st.title("Simulación de Colapso de una Nube Molecular")
+st.sidebar.header("Parámetros de la nube")
+mass = st.sidebar.slider(
+    "Masa inicial (en masas solares)", 
+    10, 100000, 1000, step=10
+) * 1.989e30  # Conversión a kg
+temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 100, 20)
+density = st.sidebar.slider(
+    "Densidad inicial (kg/m³)", 
+    1e-21, 1e-17, 1e-19, format="%.1e"
+)
+
+# Constantes
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+
+# Parámetros de simulación
+steps = 50
+time = np.linspace(0, 1e6, steps)  # Tiempo arbitrario
+initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+
+# Función para generar la nube
+def generate_cloud(radius, num_particles=500):
+    angles = np.random.uniform(0, 2 * np.pi, num_particles)
+    radii = np.random.uniform(0, radius, num_particles)
+    x = radii * np.cos(angles)
+    y = radii * np.sin(angles)
+    return x, y
+
+# Generar los fotogramas
+frames = []
+radii = np.linspace(initial_radius, initial_radius * 0.1, steps)
+
+for r in radii:
+    x, y = generate_cloud(r)
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(x, y, s=1, alpha=0.6)
+    ax.set_xlim(-initial_radius, initial_radius)
+    ax.set_ylim(-initial_radius, initial_radius)
+    ax.set_title("Colapso de la nube molecular")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_aspect('equal')
+    frames.append(fig)
+    plt.close(fig)
+
+# Crear la animación
+st.write("Simulación de colapso:")
+for fig in frames:
+    st.pyplot(fig)
 
 
 #################
