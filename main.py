@@ -26,7 +26,7 @@ def apply_color_gradient(image, color1=(0, 0, 100), color2=(200, 50, 0)):
         for y in range(height):
             gray_value = image.getpixel((x, y))
             # Adjust calculation (example):
-            transparency = 255 - int(gray_value * 0.8)  # Higher gray = higher opacity
+            transparency = 255 - int(gray_value * 1.0)  # Higher gray = higher opacity
             r = ...  # Color calculations
             g = ...
             b = ...
