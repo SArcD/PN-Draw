@@ -69,7 +69,8 @@ Prueba ajustar los parámetros para inducir el colapso.
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, FFMpegWriter
+import tempfile
 
 # Configuración inicial
 st.title("Simulación de Colapso de una Nube Molecular")
@@ -85,44 +86,62 @@ st.sidebar.header("Parámetros de la nube")
 #)
 
 # Constantes
-#G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-#k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-#mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Parámetros de simulación
-steps = 50
+steps = 100  # Número de fotogramas
 time = np.linspace(0, 1e6, steps)  # Tiempo arbitrario
 initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
-# Función para generar la nube
-def generate_cloud(radius, num_particles=500):
+# Función para generar partículas
+def generate_cloud(radius, num_particles=1000):
     angles = np.random.uniform(0, 2 * np.pi, num_particles)
     radii = np.random.uniform(0, radius, num_particles)
     x = radii * np.cos(angles)
     y = radii * np.sin(angles)
     return x, y
 
-# Generar los fotogramas
-frames = []
-radii = np.linspace(initial_radius, initial_radius * 0.1, steps)
+# Configuración inicial de la animación
+fig, ax = plt.subplots(figsize=(6, 6))
+scatter = ax.scatter([], [], s=5, alpha=0.8, c=[], cmap='viridis')
+ax.set_xlim(-initial_radius, initial_radius)
+ax.set_ylim(-initial_radius, initial_radius)
+ax.set_aspect('equal')
+ax.set_title("Colapso de una Nube Molecular")
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
 
-for r in radii:
-    x, y = generate_cloud(r)
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(x, y, s=1, alpha=0.6)
-    ax.set_xlim(-initial_radius, initial_radius)
-    ax.set_ylim(-initial_radius, initial_radius)
-    ax.set_title("Colapso de la nube molecular")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    ax.set_aspect('equal')
-    frames.append(fig)
-    plt.close(fig)
+# Actualizar cada cuadro de la animación
+def update(frame):
+    radius = initial_radius * (1 - frame / steps)  # Reducir el radio en cada paso
+    x, y = generate_cloud(radius)
+    colors = np.linspace(0, 1, len(x)) * frame / steps  # Cambiar color según el tiempo
+    alphas = 0.2 + 0.8 * (1 - frame / steps)  # Aumentar opacidad hacia el final
+    scatter.set_offsets(np.c_[x, y])
+    scatter.set_array(colors)
+    scatter.set_alpha(alphas)
+    return scatter,
 
 # Crear la animación
-st.write("Simulación de colapso:")
-for fig in frames:
-    st.pyplot(fig)
+ani = FuncAnimation(fig, update, frames=steps, interval=50, blit=True)
+
+# Guardar la animación como video MP4
+with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+    writer = FFMpegWriter(fps=20, metadata=dict(artist="Streamlit"))
+    ani.save(temp_video.name, writer=writer)
+    video_path = temp_video.name
+
+# Mostrar el video en Streamlit
+st.video(video_path, format="video/mp4")
+
+# Nota adicional
+st.write("""
+La simulación muestra cómo una nube molecular colapsa debido a la gravedad.
+El cambio de color y opacidad indica la densidad y evolución temporal.
+Prueba ajustar la masa, temperatura y densidad para explorar diferentes escenarios.
+""")
 
 
 #################
