@@ -991,9 +991,74 @@ st.image(final_image, caption="Nebula Simulation", use_column_width=True)
 
 
 ############################################################
-def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, inner_radius, outer_radius, start_color, end_color, deformity, blur_radius):
+#def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, inner_radius, outer_radius, start_color, end_color, deformity, blur_radius):
+#    """
+#    Generate gaseous shells with elliptical profiles, deformities, and sinusoidal variations.
+
+#    Parameters:
+#        image_size: Tuple[int, int] - Size of the image (width, height).
+#        center: Tuple[int, int] - Center of the shell (x, y).
+#        semi_major: int - Semi-major axis for the elliptical profile.
+#        semi_minor: int - Semi-minor axis for the elliptical profile.
+#        angle: float - Rotation angle of the ellipse in degrees.
+#        inner_radius: int - Inner radius of the shell.
+#        outer_radius: int - Outer radius of the shell.
+#        start_color: Tuple[int, int, int] - RGB color at the inner edge.
+#        end_color: Tuple[int, int, int] - RGB color at the outer edge.
+#        deformity: float - Degree of irregularity in the shell shape.
+#        blur_radius: int - Gaussian blur radius for smoothing.
+
+#    Returns:
+#        PIL.Image: Image with the generated shell.
+#    """
+#    width, height = image_size
+#    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+#    draw = ImageDraw.Draw(img)
+
+#    # Precompute rotation matrix for the angle
+#    angle_rad = np.radians(angle)
+#    cos_theta = np.cos(angle_rad)
+#    sin_theta = np.sin(angle_rad)
+
+#    for r in range(inner_radius, outer_radius):
+#        t = (r - inner_radius) / (outer_radius - inner_radius)  # Normalized radius
+#        alpha = int(255 * (1 - t))  # Fade as we move outward
+
+#        # Gradual color transition
+#        r_color = int(start_color[0] + t * (end_color[0] - start_color[0]))
+#        g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
+#        b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
+
+#        # Generate points for the elliptical profile with sinusoidal deformity
+#        points = []
+#        for theta in np.linspace(0, 2 * np.pi, 200):  # 200 points for smooth shell
+#            noise = deformity * np.sin(3 * theta + t * np.pi)  # Sinusoidal deformity
+#            radius = r + noise
+#            x_ellipse = radius * semi_major * np.cos(theta) / outer_radius
+#            y_ellipse = radius * semi_minor * np.sin(theta) / outer_radius
+
+            # Rotate the points by the specified angle
+#            x_rotated = cos_theta * x_ellipse - sin_theta * y_ellipse
+#            y_rotated = sin_theta * x_ellipse + cos_theta * y_ellipse
+
+#            # Translate to the center
+#            x = int(center[0] + x_rotated)
+#            y = int(center[1] + y_rotated)
+#            points.append((x, y))
+
+#        draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
+
+#    # Apply Gaussian blur to smooth out edges
+#    return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
+from noise import pnoise2
+import random
+
+def generate_gaseous_shells_with_turbulence(
+    image_size, center, semi_major, semi_minor, angle, inner_radius, outer_radius, start_color, end_color, deformity, turbulence_intensity, blur_radius
+):
     """
-    Generate gaseous shells with elliptical profiles, deformities, and sinusoidal variations.
+    Generate gaseous shells with extreme turbulence and gas-like deformities.
 
     Parameters:
         image_size: Tuple[int, int] - Size of the image (width, height).
@@ -1005,7 +1070,8 @@ def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, i
         outer_radius: int - Outer radius of the shell.
         start_color: Tuple[int, int, int] - RGB color at the inner edge.
         end_color: Tuple[int, int, int] - RGB color at the outer edge.
-        deformity: float - Degree of irregularity in the shell shape.
+        deformity: float - Degree of sinusoidal irregularity in the shell shape.
+        turbulence_intensity: float - Scale of random noise for extreme deformities.
         blur_radius: int - Gaussian blur radius for smoothing.
 
     Returns:
@@ -1029,11 +1095,28 @@ def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, i
         g_color = int(start_color[1] + t * (end_color[1] - start_color[1]))
         b_color = int(start_color[2] + t * (end_color[2] - start_color[2]))
 
-        # Generate points for the elliptical profile with sinusoidal deformity
+        # Generate points for the elliptical profile with extreme turbulence
         points = []
-        for theta in np.linspace(0, 2 * np.pi, 200):  # 200 points for smooth shell
-            noise = deformity * np.sin(3 * theta + t * np.pi)  # Sinusoidal deformity
+        for theta in np.linspace(0, 2 * np.pi, 300):  # 300 points for smooth shell
+
+            # Sinusoidal deformity
+            sinusoidal_deformity = deformity * np.sin(3 * theta + t * np.pi)
+
+            # Randomized noise-based deformity
+            random_deformity = turbulence_intensity * (random.uniform(-1, 1))
+
+            # Perlin noise for smooth variations (optional, requires `noise` library)
+            perlin_deformity = turbulence_intensity * pnoise2(
+                center[0] + r * np.cos(theta) * 0.01,
+                center[1] + r * np.sin(theta) * 0.01,
+                octaves=3,
+            )
+
+            # Combine all deformities
+            noise = sinusoidal_deformity + random_deformity + perlin_deformity
             radius = r + noise
+
+            # Elliptical deformation
             x_ellipse = radius * semi_major * np.cos(theta) / outer_radius
             y_ellipse = radius * semi_minor * np.sin(theta) / outer_radius
 
@@ -1046,10 +1129,14 @@ def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, i
             y = int(center[1] + y_rotated)
             points.append((x, y))
 
+        # Draw polygonal shells
         draw.polygon(points, outline=(r_color, g_color, b_color, alpha))
 
     # Apply Gaussian blur to smooth out edges
     return img.filter(ImageFilter.GaussianBlur(blur_radius))
+
+
+
 
 # Streamlit: Gaseous Shell Parameters
 st.sidebar.header("Gaseous Shells")
