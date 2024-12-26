@@ -551,7 +551,7 @@ centers = [
 #filament_elliptical = st.sidebar.checkbox("Elliptical Filaments", False)
 
 # Filament configurations
-num_filament_layers = st.sidebar.slider("Number of Filament Layers", 1, 10, 1)
+num_filament_layers = st.sidebar.slider("Number of Filament Layers", 1, 5, 1)
 filament_configs = []
 for i in range(num_filament_layers):
     with st.sidebar.expander(f"Filament Layer {i + 1}"):
@@ -636,16 +636,16 @@ for i in range(num_bubble_layers):
 #bubble_elliptical = st.sidebar.checkbox("Elliptical Bubble", False)
 
 # Sidebar for arc parameters
-st.sidebar.header("Arc Parameters")
-arc_radius = st.sidebar.slider("Arc Radius", 50, 300, 150)
-arc_thickness = st.sidebar.slider("Arc Thickness", 1, 20, 5)
-arc_start_angle = st.sidebar.slider("Arc Start Angle", 0, 360, 0)
-arc_end_angle = st.sidebar.slider("Arc End Angle", 0, 360, 180)
-arc_start_color = st.sidebar.color_picker("Arc Start Color", "#FFFFFF")
-arc_end_color = st.sidebar.color_picker("Arc End Color", "#CCCCCC")
-arc_turbulence = st.sidebar.slider("Arc Turbulence", 0.0, 10.0, 2.0)
-arc_blur = st.sidebar.slider("Arc Blur", 0, 30, 5)
-arc_elliptical = st.sidebar.checkbox("Elliptical Arcs", False)
+#st.sidebar.header("Arc Parameters")
+#arc_radius = st.sidebar.slider("Arc Radius", 50, 300, 150)
+#arc_thickness = st.sidebar.slider("Arc Thickness", 1, 20, 5)
+#arc_start_angle = st.sidebar.slider("Arc Start Angle", 0, 360, 0)
+#arc_end_angle = st.sidebar.slider("Arc End Angle", 0, 360, 180)
+#arc_start_color = st.sidebar.color_picker("Arc Start Color", "#FFFFFF")
+#arc_end_color = st.sidebar.color_picker("Arc End Color", "#CCCCCC")
+#arc_turbulence = st.sidebar.slider("Arc Turbulence", 0.0, 10.0, 2.0)
+#arc_blur = st.sidebar.slider("Arc Blur", 0, 30, 5)
+#arc_elliptical = st.sidebar.checkbox("Elliptical Arcs", False)
 
 
 
@@ -668,7 +668,7 @@ star_colors = ["#FFFFFF", "#FFD700", "#87CEEB"]
 st.sidebar.header("Star Configuration")
 
 # Number of stars
-num_cstars = st.sidebar.slider("Number of Stars", 1, 10, 3)
+num_cstars = st.sidebar.slider("Number of Stars", 1, 10, 1)
 
 # Create a list of star configurations
 star_configs = []
@@ -770,7 +770,7 @@ for config in bubble_configs:
 #filaments_image = generate_filaments(image_size, centers, num_filaments, filament_radius, filament_length, hex_to_rgb(filament_start_color), hex_to_rgb(filament_end_color), filament_blur, filament_elliptical)
 #diffuse_gas_image = generate_diffuse_gas(image_size, centers, gas_inner_radius, gas_outer_radius, hex_to_rgb(gas_start_color), hex_to_rgb(gas_end_color), gas_blur, gas_elliptical)
 #bubble_image = generate_bubble(image_size, centers, bubble_inner_radius, bubble_outer_radius, hex_to_rgb(bubble_start_color), hex_to_rgb(bubble_end_color), bubble_turbulence, bubble_blur, bubble_elliptical)
-gas_arcs_image = generate_gas_arcs(image_size, centers, arc_radius, arc_thickness, arc_start_angle, arc_end_angle, hex_to_rgb(arc_start_color), hex_to_rgb(arc_end_color), arc_turbulence, arc_blur, arc_elliptical)
+#gas_arcs_image = generate_gas_arcs(image_size, centers, arc_radius, arc_thickness, arc_start_angle, arc_end_angle, hex_to_rgb(arc_start_color), hex_to_rgb(arc_end_color), arc_turbulence, arc_blur, arc_elliptical)
 star_field_image = generate_star_field(image_size, num_stars)
 central_star_image = draw_multiple_stars(image_size, star_configs)
 
@@ -916,7 +916,7 @@ def generate_gaseous_shells(image_size, center, semi_major, semi_minor, angle, i
 
 # Streamlit: Gaseous Shell Parameters
 st.sidebar.header("Gaseous Shells")
-num_shells = st.sidebar.slider("Number of Shells", 1, 5, 3)
+num_shells = st.sidebar.slider("Number of Shells", 1, 5, 1)
 
 shells = []
 for i in range(num_shells):
