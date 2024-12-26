@@ -1175,7 +1175,7 @@ for shell in shells:
     shell_image = generate_gaseous_shells(
         image_size, center, shell["semi_major"], shell["semi_minor"], shell["angle"],
         shell["inner_radius"], shell["outer_radius"],
-        shell["start_color"], shell["end_color"], shell["deformity"],shell["turbulence intensity"], shell["blur_radius"]
+        shell["start_color"], shell["end_color"], shell["deformity"],shell["turbulence_intensity"], shell["blur_radius"]
     )
     gaseous_shells = Image.alpha_composite(gaseous_shells, shell_image)
 
