@@ -9,6 +9,8 @@ lx, ly = 1.0, 1.0  # Dimensiones físicas de la malla (en unidades arbitrarias)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt = 0.01  # Paso de tiempo
 c = 0.1  # Velocidad de advección constante
+R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
+M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
 
 # Crear la malla y el campo inicial
 def create_initial_conditions(nx, ny, lx, ly):
@@ -27,17 +29,28 @@ def create_initial_conditions(nx, ny, lx, ly):
         for j in range(ny):
             rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
 
-    # Normalizar la densidad para que sea positiva y esté entre 0 y 1
-    rho0 = (rho0 - rho0.min()) / (rho0.max() - rho0.min())
+    # Normalizar la densidad para que sea positiva y esté entre un rango físico
+    rho_min, rho_max = 0.5, 1.5  # Densidad mínima y máxima en kg/m³
+    rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
+
+    # Generar un campo de temperatura aleatorio
+    temp_min, temp_max = 200, 300  # Temperatura mínima y máxima en K
+    temperature = np.random.uniform(temp_min, temp_max, size=(nx, ny))
 
     # Campos de velocidad (en este caso, flujo constante hacia la derecha)
     v_x = np.ones((nx, ny)) * c
     v_y = np.zeros((nx, ny))
 
-    return rho0, v_x, v_y
+    return rho0, temperature, v_x, v_y
+
+# Calcular la presión con la ecuación de gas ideal
+def calculate_pressure(rho, temperature, R_gas, M_mol):
+    pressure = (rho * R_gas * temperature) / M_mol  # Presión en Pascales
+    return pressure
 
 # Inicializar los campos
-rho, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
+rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
+pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
 
 # Interfaz de Streamlit
 st.title("Distribución inicial de la nube de gas")
@@ -45,12 +58,31 @@ st.title("Distribución inicial de la nube de gas")
 # Mostrar la densidad inicial
 fig, ax = plt.subplots()
 cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
-ax.set_title("Densidad inicial de la nube")
+ax.set_title("Densidad inicial de la nube (kg/m³)")
 ax.set_xlabel("x")
 ax.set_ylabel("y")
-fig.colorbar(cax, label="Densidad")
-
+fig.colorbar(cax, label="Densidad (kg/m³)")
 st.pyplot(fig)
+
+# Mostrar el campo de temperatura
+fig, ax = plt.subplots()
+cax = ax.imshow(temperature, extent=(0, lx, 0, ly), origin="lower", cmap="plasma")
+ax.set_title("Temperatura inicial de la nube (K)")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+fig.colorbar(cax, label="Temperatura (K)")
+st.pyplot(fig)
+
+# Mostrar el campo de presión
+fig, ax = plt.subplots()
+cax = ax.imshow(pressure, extent=(0, lx, 0, ly), origin="lower", cmap="inferno")
+ax.set_title("Presión inicial de la nube (Pa)")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+fig.colorbar(cax, label="Presión (Pa)")
+st.pyplot(fig)
+
+
 
 ##############
 
