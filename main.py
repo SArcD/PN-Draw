@@ -16,7 +16,7 @@ mass = st.sidebar.slider(
 
 temperature = st.sidebar.slider(
     "Temperatura inicial (K)", 
-    00, 500, 20, step=10  # Expandimos el rango a 500 K
+    0, 500, 20, step=10  # Expandimos el rango a 500 K
 )
 
 density = st.sidebar.slider(
@@ -40,13 +40,59 @@ st.write(f"Radio crítico de Jeans: {jeans_radius:.2e} m")
 # Evaluar estabilidad
 if initial_radius <= jeans_radius:
     st.success("La nube es estable y no colapsará bajo las condiciones actuales.")
+    
+    # Botón para generar animación de estabilidad
+    generate_stable_animation = st.sidebar.button("Generar Animación de Estabilidad")
+    
+    if generate_stable_animation:
+        # Generar frames de la nube en equilibrio
+        def generate_stable_frame(num_particles=1000):
+            angles = np.random.uniform(0, 2 * np.pi, num_particles)
+            radii = np.random.uniform(0, initial_radius, num_particles)
+            x = radii * np.cos(angles)
+            y = radii * np.sin(angles)
+            colors = np.linspace(0, 255, num_particles).astype(np.uint8)
+
+            # Crear imagen RGB
+            image = np.zeros((500, 500, 3), dtype=np.uint8)
+            x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
+            y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
+
+            for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
+                if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
+                    image[yi, xi] = [ci, 255 - ci, 128]  # Color dinámico (rojo-verde)
+
+            return Image.fromarray(image)
+
+        # Generar todos los frames para la nube en equilibrio
+        steps = 50
+        frames = [generate_stable_frame() for _ in range(steps)]
+
+        # Guardar el video usando MoviePy
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+            clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=10)
+            clip.write_videofile(temp_video.name, codec="libx264")
+            video_path = temp_video.name
+
+        # Mostrar el video en Streamlit
+        st.video(video_path)
+
+        # Botón para descargar el video
+        with open(video_path, "rb") as video_file:
+            st.download_button(
+                label="Descargar Video (Estabilidad)",
+                data=video_file,
+                file_name="nube_estable.mp4",
+                mime="video/mp4"
+            )
+
 else:
     st.warning("La nube colapsará bajo las condiciones actuales.")
-    generate_animation = st.sidebar.button("Generar Animación")
+    generate_collapse_animation = st.sidebar.button("Generar Animación de Colapso")
 
-    if generate_animation:
-        # Generar frames
-        def generate_cloud_frame(radius, frame_number, num_particles=1000):
+    if generate_collapse_animation:
+        # Generar frames de colapso
+        def generate_collapse_frame(radius, frame_number, num_particles=1000):
             angles = np.random.uniform(0, 2 * np.pi, num_particles)
             radii = np.random.uniform(0, radius, num_particles)
             x = radii * np.cos(angles)
@@ -62,18 +108,14 @@ else:
                 if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
                     image[yi, xi] = [ci, 255 - ci, 128]  # Color dinámico (rojo-verde)
 
-            # Aplicar brillo dinámico
-            brightness = 1.0 + (frame_number / steps)
-            image = np.clip(image * brightness, 0, 255).astype(np.uint8)
-
             return Image.fromarray(image)
 
-        # Generar todos los frames
+        # Generar todos los frames para el colapso
         steps = 50
         frames = []
         for frame_number in range(steps):
             radius = initial_radius * (1 - frame_number / steps)
-            frame = generate_cloud_frame(radius, frame_number)
+            frame = generate_collapse_frame(radius, frame_number)
             frames.append(frame)
 
         # Guardar el video usando MoviePy
@@ -88,7 +130,7 @@ else:
         # Botón para descargar el video
         with open(video_path, "rb") as video_file:
             st.download_button(
-                label="Descargar Video",
+                label="Descargar Video (Colapso)",
                 data=video_file,
                 file_name="colapso_nube.mp4",
                 mime="video/mp4"
