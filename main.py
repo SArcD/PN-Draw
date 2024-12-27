@@ -45,10 +45,7 @@ else:
     generate_collapse_animation = st.sidebar.button("Generar Animación de Colapso")
 
     if generate_collapse_animation:
-        # Generar frames de colapso
-
-
-
+        # Función para generar frames del colapso
         def generate_collapse_frame(radius, frame_number, num_particles=1000):
             # Generar posiciones de partículas
             angles = np.random.uniform(0, 2 * np.pi, num_particles)
@@ -56,8 +53,14 @@ else:
             x = radii * np.cos(angles)
             y = radii * np.sin(angles)
 
-            # Simular temperatura por densidad
-            temperature_profile = temperature * (radii / radius)**(-1.5)  # Perfil dinámico
+            # Calcular densidad local
+            density_local = np.zeros(num_particles)
+            for i in range(num_particles):
+                dist = np.sqrt((x - x[i])**2 + (y - y[i])**2)
+                density_local[i] = np.sum(dist < (radius / 20))  # Partículas cercanas
+
+            # Simular temperatura basada en densidad local
+            temperature_profile = temperature * (1 + density_local / np.max(density_local))
             temperature_profile = np.clip(temperature_profile, temperature, 5 * temperature)  # Límite superior
 
             # Color por temperatura (rojo para caliente, azul para frío)
@@ -75,12 +78,13 @@ else:
 
             return Image.fromarray(image)
 
-
-        # Generar todos los frames para el colapso
+        # Generar todos los frames del colapso
         steps = 50
         frames = []
         for frame_number in range(steps):
-            radius = initial_radius * (1 - frame_number / steps)
+            # Ralentizar el colapso dinámicamente por presión térmica
+            pressure_factor = 1 + frame_number / steps
+            radius = initial_radius * (1 - frame_number / steps / pressure_factor)
             if radius < 0:
                 radius = 1e-3  # Evitar radios negativos
             frame = generate_collapse_frame(radius, frame_number)
