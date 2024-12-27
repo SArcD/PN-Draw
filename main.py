@@ -1,6 +1,3 @@
-
-
-#################
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -79,6 +76,78 @@ for t in range(nt):
 # Mostrar resultados
 for frame in frames:
     st.pyplot(frame)
+
+# Identificar zonas de densidad más alta
+st.header("Zonas de densidad más alta")
+
+# Obtener los índices de las 3 zonas con densidad más alta
+highest_densities = np.unravel_index(np.argsort(rho.ravel())[-3:], rho.shape)
+zones = []
+for i in range(3):
+    x_idx, y_idx = highest_densities[0][i], highest_densities[1][i]
+    density = rho[x_idx, y_idx]
+    position = (x_idx * dx, y_idx * dy)
+    zones.append({"posición": position, "densidad": density})
+
+for i, zone in enumerate(zones):
+    st.write(f"Zona {i + 1}: Posición {zone['posición']}, Densidad {zone['densidad']:.4f}")
+
+# Crear partículas en las zonas seleccionadas
+st.header("Simulación de partículas")
+particles = []
+for zone in zones:
+    num_particles = int(zone['densidad'] * 100)  # Número proporcional a la densidad
+    for _ in range(num_particles):
+        x = zone['posición'][0] + np.random.uniform(-dx, dx)
+        y = zone['posición'][1] + np.random.uniform(-dy, dy)
+        particles.append({"posición": (x, y), "velocidad": (0.0, 0.0)})
+
+# Asignar velocidades iniciales
+for particle in particles:
+    x_idx = int(particle['posición'][0] / dx)
+    y_idx = int(particle['posición'][1] / dy)
+    particle['velocidad'] = (v_x[x_idx, y_idx], v_y[x_idx, y_idx])
+
+# Calcular fuerzas gravitatorias
+G = 1.0  # Constante gravitacional arbitraria
+for i, p1 in enumerate(particles):
+    fx, fy = 0.0, 0.0
+    for j, p2 in enumerate(particles):
+        if i != j:
+            dx = p2['posición'][0] - p1['posición'][0]
+            dy = p2['posición'][1] - p1['posición'][1]
+            r = np.sqrt(dx**2 + dy**2) + 1e-5  # Distancia con corrección para evitar división por cero
+            f = G / r**2
+            fx += f * dx / r
+            fy += f * dy / r
+    p1['fuerza'] = (fx, fy)
+
+# Integrar las ecuaciones de movimiento
+for t in range(100):  # 100 pasos de simulación
+    for particle in particles:
+        fx, fy = particle['fuerza']
+        vx, vy = particle['velocidad']
+        x, y = particle['posición']
+
+        # Actualizar velocidad y posición
+        vx += fx * dt
+        vy += fy * dt
+        x += vx * dt
+        y += vy * dt
+
+        particle['velocidad'] = (vx, vy)
+        particle['posición'] = (x, y)
+
+# Mostrar partículas finales
+final_positions = np.array([p['posición'] for p in particles])
+plt.figure(figsize=(8, 8))
+plt.scatter(final_positions[:, 0], final_positions[:, 1], s=1, c="red")
+plt.title("Distribución final de partículas")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.xlim(0, lx)
+plt.ylim(0, ly)
+st.pyplot(plt)
 
 ##############
 
