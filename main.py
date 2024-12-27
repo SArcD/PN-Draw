@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Densidad de Nube Molecular")
+st.title("Simulación de Densidad de Nube Molecular (Optimizada)")
 st.sidebar.header("Parámetros de la Nube y Estrella")
 
 # Parámetros ajustables
@@ -34,42 +34,48 @@ time_steps = st.sidebar.slider(
     50, 200, 100, step=10
 )
 
+grid_size = st.sidebar.slider(
+    "Tamaño de la cuadrícula (resolución)", 
+    100, 500, 300, step=50
+)
+
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Dimensiones de la simulación
-grid_size = 500
-density = np.zeros((grid_size, grid_size))
-
-# Inicializar densidad con gradiente radial
 x = np.linspace(-initial_radius, initial_radius, grid_size)
 y = np.linspace(-initial_radius, initial_radius, grid_size)
 X, Y = np.meshgrid(x, y)
 R = np.sqrt(X**2 + Y**2)
+
+# Inicializar densidad con gradiente radial
 density = np.exp(-R / initial_radius)  # Mayor densidad en el centro
 
 # Coordenadas de la estrella
 star_x, star_y = grid_size // 2, grid_size // 2
 
-# Función para calcular fuerzas gravitacionales locales
-def calculate_gravity_density(density, star_mass, cloud_mass, radius, dt):
-    global grid_size
-    new_density = np.copy(density)
-    for i in range(grid_size):
-        for j in range(grid_size):
-            r = np.sqrt((i - star_x)**2 + (j - star_y)**2) + 1e-10
-            gravity_effect = G * (star_mass + cloud_mass * density[i, j]) / r**2
-            new_density[i, j] += -gravity_effect * dt
-            new_density[i, j] = max(new_density[i, j], 0)  # Evitar valores negativos
+# Precalcular influencia gravitacional de la estrella
+star_gravity = G * star_mass / (R**2 + 1e-10)  # Evitar división por cero
+
+# Función para calcular la evolución de la densidad
+def update_density(density, star_gravity, cloud_mass, dt):
+    # Gravedad local de la nube
+    cloud_gravity = G * cloud_mass * density / (R**2 + 1e-10)
+    # Cambio en densidad: gravedad total menos disipación
+    total_gravity = star_gravity + cloud_gravity
+    density_change = total_gravity * dt
+    # Actualizar densidad y evitar valores negativos
+    new_density = density - density_change
+    new_density[new_density < 0] = 0
     return new_density
 
 # Generar frames de simulación
 frames = []
 dt = 0.1  # Paso de tiempo
 for t in range(time_steps):
-    density = calculate_gravity_density(density, star_mass, cloud_mass, initial_radius, dt)
+    density = update_density(density, star_gravity, cloud_mass, dt)
     normalized_density = (density / np.max(density) * 255).astype(np.uint8)
     frame = Image.fromarray(normalized_density).convert("RGB")
     frames.append(frame)
@@ -86,11 +92,12 @@ st.video(video_path)
 # Botón para descargar el video
 with open(video_path, "rb") as video_file:
     st.download_button(
-        label="Descargar Video (Mapa de Densidad)",
+        label="Descargar Video (Mapa de Densidad Optimizado)",
         data=video_file,
-        file_name="nube_densidad.mp4",
+        file_name="nube_densidad_optimizado.mp4",
         mime="video/mp4"
     )
+
 
 
 #################
