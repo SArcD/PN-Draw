@@ -5,25 +5,27 @@ from moviepy.editor import ImageSequenceClip
 import tempfile
 
 # Parámetros ajustables desde la barra lateral
-st.sidebar.header("Parámetros de la Nube")
-num_particles = st.sidebar.slider("Número de partículas", 100, 2000, 500, step=100)
-initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 50, 200, 100, step=10)
-temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 300, 100, step=10)
+st.sidebar.header("Parámetros de la Nube de Gas")
+num_particles = st.sidebar.slider("Número de partículas", 100, 5000, 1000, step=100)
+initial_radius = st.sidebar.slider("Radio inicial de la nube (pc)", 0.1, 10.0, 1.0, step=0.1) * 3.086e16  # Convertir a metros
+initial_temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 500, 100, step=10)
 time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
 gravitational_factor = st.sidebar.slider("Intensidad gravitacional", 0.1, 10.0, 1.0, step=0.1)
 
 # Constantes físicas
-G = 6.67430e-11  # Constante gravitacional
-k_B = 1.380649e-23  # Constante de Boltzmann
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas de gas (kg)
+solar_mass = 1.989e30  # Masa solar (kg)
+cloud_mass = 10 * solar_mass  # Masa total de la nube (kg)
 
 # Inicialización de partículas
 theta = np.random.uniform(0, 2 * np.pi, num_particles)
 r = np.random.uniform(0, initial_radius, num_particles)
 x = r * np.cos(theta)
 y = r * np.sin(theta)
-vx = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en X
-vy = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en Y
+vx = np.random.normal(0, 10, num_particles)  # Velocidad inicial en X (m/s)
+vy = np.random.normal(0, 10, num_particles)  # Velocidad inicial en Y (m/s)
 
 # Simulación
 frames = []
@@ -32,17 +34,17 @@ for t in range(time_steps):
     r = np.sqrt(x**2 + y**2)
     
     # Gravedad: aceleración hacia el centro
-    ax = -gravitational_factor * G * x / (r**3 + 1e-10)
-    ay = -gravitational_factor * G * y / (r**3 + 1e-10)
+    ax = -gravitational_factor * G * cloud_mass * x / (r**3 + 1e-10)
+    ay = -gravitational_factor * G * cloud_mass * y / (r**3 + 1e-10)
     
     # Efecto de presión térmica
-    pressure_factor = k_B * temperature / mu
-    vx += ax + np.random.normal(0, pressure_factor, num_particles)
-    vy += ay + np.random.normal(0, pressure_factor, num_particles)
+    pressure_factor = k_B * initial_temperature / mu
+    vx += ax + np.random.normal(0, pressure_factor / 1e5, num_particles)
+    vy += ay + np.random.normal(0, pressure_factor / 1e5, num_particles)
     
     # Actualizar posiciones
-    x += vx * 0.1  # Paso de tiempo
-    y += vy * 0.1
+    x += vx * 1e12  # Factor de tiempo para hacer más visibles los movimientos
+    y += vy * 1e12
     
     # Crear un frame
     img = Image.new("RGB", (500, 500), "black")
@@ -54,7 +56,7 @@ for t in range(time_steps):
             draw.ellipse((px - 1, py - 1, px + 1, py + 1), fill="white")
     frames.append(img)
 
-# Guardar el video como GIF o MP4
+# Guardar el video como MP4
 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
     clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
     clip.write_videofile(temp_video.name, codec="libx264")
@@ -71,6 +73,7 @@ with open(video_path, "rb") as video_file:
         file_name="colapso_gravitacional.mp4",
         mime="video/mp4"
     )
+
 
 #################
 
