@@ -1,107 +1,41 @@
 import streamlit as st
 import numpy as np
-from moviepy.editor import ImageSequenceClip
-from PIL import Image
-import tempfile
+import matplotlib.pyplot as plt
 
-# Configuración inicial
-st.title("Simulación de Densidad de Nube Molecular (Corregida y Depurada)")
-st.sidebar.header("Parámetros de la Nube y Estrella")
+# Parámetros iniciales
+grid_size = st.sidebar.slider("Resolución de la cuadrícula", 100, 500, 300, step=50)
+initial_radius = st.sidebar.slider("Radio inicial", 100, 500, 300, step=10)
+time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
 
-# Parámetros ajustables
-cloud_mass = st.sidebar.slider(
-    "Masa inicial de la nube (en masas solares)", 
-    1, 100000, 1000, step=10
-) * 1.989e30  # Conversión a kg
-
-star_mass = st.sidebar.slider(
-    "Masa de la estrella central (en masas solares)", 
-    0.1, 100.0, 1.0, step=0.1
-) * 1.989e30  # Conversión a kg
-
-temperature = st.sidebar.slider(
-    "Temperatura inicial de la nube (K)", 
-    10, 500, 100, step=10
-)
-
-initial_radius = st.sidebar.slider(
-    "Radio inicial de la nube (en unidades arbitrarias)", 
-    100, 500, 300, step=10
-)
-
-time_steps = st.sidebar.slider(
-    "Número de pasos de tiempo", 
-    50, 200, 100, step=10
-)
-
-grid_size = st.sidebar.slider(
-    "Tamaño de la cuadrícula (resolución)", 
-    100, 500, 300, step=50
-)
-
-# Constantes
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
-
-# Dimensiones de la simulación
 x = np.linspace(-initial_radius, initial_radius, grid_size)
 y = np.linspace(-initial_radius, initial_radius, grid_size)
 X, Y = np.meshgrid(x, y)
 R = np.sqrt(X**2 + Y**2)
 
-# Inicializar densidad con gradiente radial
-density = np.exp(-R / initial_radius)  # Mayor densidad en el centro
+# Inicializar densidad
+density = np.exp(-R / initial_radius)
 
-# Coordenadas de la estrella
-star_x, star_y = grid_size // 2, grid_size // 2
+# Función para actualizar la densidad
+def update_density(density, star_mass, dt):
+    G = 6.67430e-11  # Constante gravitacional
+    star_gravity = G * star_mass / (R**2 + 1e-10)
+    density_change = star_gravity * density * dt
+    density -= density_change
+    density[density < 0] = 0
+    return density
 
-# Precalcular influencia gravitacional de la estrella
-star_gravity = G * star_mass / (R**2 + 1e-10)  # Evitar división por cero
-
-# Función para calcular la evolución de la densidad
-def update_density(density, star_gravity, cloud_mass, dt):
-    # Gravedad local de la nube
-    cloud_gravity = G * cloud_mass * density / (R**2 + 1e-10)
-    # Cambio en densidad: gravedad total menos disipación
-    total_gravity = star_gravity + cloud_gravity
-    density_change = total_gravity * dt
-    # Actualizar densidad y evitar valores negativos
-    new_density = density - density_change
-    new_density[new_density < 0] = 0
-    return new_density
-
-# Generar frames de simulación
-frames = []
-dt = 0.1  # Paso de tiempo
+# Visualizar cada paso
 for t in range(time_steps):
-    density = update_density(density, star_gravity, cloud_mass, dt)
-    normalized_density = (density / np.max(density) * 255).astype(np.uint8)
-    frame = Image.fromarray(normalized_density, mode="L").convert("RGB")  # Convertir a RGB
-    frames.append(frame)
-
-# Verificar consistencia de frames
-frame_shapes = [np.array(frame).shape for frame in frames]
-if len(set(frame_shapes)) > 1:
-    st.error("Los frames tienen dimensiones inconsistentes.")
-else:
-    # Crear video usando MoviePy
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-        clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
-        clip.write_videofile(temp_video.name, codec="libx264")
-        video_path = temp_video.name
-
-    # Mostrar el video en Streamlit
-    st.video(video_path)
-
-    # Botón para descargar el video
-    with open(video_path, "rb") as video_file:
-        st.download_button(
-            label="Descargar Video (Mapa de Densidad Corregido)",
-            data=video_file,
-            file_name="nube_densidad_corregido.mp4",
-            mime="video/mp4"
-        )
+    star_mass = 1.989e30  # Masa de la estrella en kg
+    density = update_density(density, star_mass, 0.1)
+    plt.figure(figsize=(6, 6))
+    plt.imshow(density, cmap="inferno", extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
+    plt.title(f"Paso {t + 1}")
+    plt.colorbar(label="Densidad")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.tight_layout()
+    st.pyplot(plt)
 
 
 
