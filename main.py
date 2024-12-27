@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Densidad de Nube Molecular (Optimizada)")
+st.title("Simulación de Densidad de Nube Molecular (Corregida)")
 st.sidebar.header("Parámetros de la Nube y Estrella")
 
 # Parámetros ajustables
@@ -77,7 +77,7 @@ dt = 0.1  # Paso de tiempo
 for t in range(time_steps):
     density = update_density(density, star_gravity, cloud_mass, dt)
     normalized_density = (density / np.max(density) * 255).astype(np.uint8)
-    frame = Image.fromarray(normalized_density).convert("RGB")
+    frame = Image.fromarray(normalized_density, mode="L")  # Modo "L" para mapa de grises
     frames.append(frame)
 
 # Crear video usando MoviePy
@@ -92,11 +92,12 @@ st.video(video_path)
 # Botón para descargar el video
 with open(video_path, "rb") as video_file:
     st.download_button(
-        label="Descargar Video (Mapa de Densidad Optimizado)",
+        label="Descargar Video (Mapa de Densidad Corregido)",
         data=video_file,
-        file_name="nube_densidad_optimizado.mp4",
+        file_name="nube_densidad_corregido.mp4",
         mime="video/mp4"
     )
+
 
 
 
