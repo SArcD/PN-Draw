@@ -4,26 +4,34 @@ from PIL import Image, ImageDraw
 from moviepy.editor import ImageSequenceClip
 import tempfile
 
-# Parámetros ajustables desde la barra lateral
-st.sidebar.header("Parámetros de la Nube de Gas")
-num_particles = st.sidebar.slider("Número de partículas", 100, 5000, 1000, step=100)
+# Parámetros interactivos
+st.sidebar.header("Parámetros de la Nube")
+num_particles = st.sidebar.slider("Número de partículas", 100, 10000, 2000, step=500)
 initial_radius = st.sidebar.slider("Radio inicial de la nube (pc)", 0.1, 10.0, 1.0, step=0.1) * 3.086e16  # Convertir a metros
 initial_temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 500, 100, step=10)
-time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
+time_steps = st.sidebar.slider("Número de pasos de tiempo", 50, 500, 200, step=50)
 gravitational_factor = st.sidebar.slider("Intensidad gravitacional", 0.1, 10.0, 1.0, step=0.1)
 
 # Constantes físicas
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas de gas (kg)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas (kg)
 solar_mass = 1.989e30  # Masa solar (kg)
 cloud_mass = 10 * solar_mass  # Masa total de la nube (kg)
 
-# Inicialización de partículas
+# Inicialización de partículas con perfil irregular
+np.random.seed(42)  # Fijar semilla para reproducibilidad
 theta = np.random.uniform(0, 2 * np.pi, num_particles)
 r = np.random.uniform(0, initial_radius, num_particles)
 x = r * np.cos(theta)
 y = r * np.sin(theta)
+
+# Introducir irregularidades en la distribución inicial
+noise_x = np.random.normal(0, initial_radius * 0.1, num_particles)
+noise_y = np.random.normal(0, initial_radius * 0.1, num_particles)
+x += noise_x
+y += noise_y
+
 vx = np.random.normal(0, 10, num_particles)  # Velocidad inicial en X (m/s)
 vy = np.random.normal(0, 10, num_particles)  # Velocidad inicial en Y (m/s)
 
@@ -46,14 +54,19 @@ for t in range(time_steps):
     x += vx * 1e12  # Factor de tiempo para hacer más visibles los movimientos
     y += vy * 1e12
     
+    # Calcular densidad local para colorear partículas
+    density = np.histogram2d(x, y, bins=(50, 50), range=[[-initial_radius, initial_radius]]*2)[0]
+    density_norm = (density / np.max(density))  # Normalizar densidad
+    
     # Crear un frame
     img = Image.new("RGB", (500, 500), "black")
     draw = ImageDraw.Draw(img)
-    for xi, yi in zip(x, y):
+    for xi, yi, d in zip(x, y, density_norm.flatten()):
         px = int(250 + xi / initial_radius * 250)
         py = int(250 + yi / initial_radius * 250)
         if 0 <= px < 500 and 0 <= py < 500:
-            draw.ellipse((px - 1, py - 1, px + 1, py + 1), fill="white")
+            color = int(d * 255)
+            draw.ellipse((px - 2, py - 2, px + 2, py + 2), fill=(color, color, 255))  # Azul para densidad alta
     frames.append(img)
 
 # Guardar el video como MP4
