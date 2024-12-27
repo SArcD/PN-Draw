@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from PIL import Image, ImageDraw
 
 # Parámetros ajustables
 st.sidebar.header("Parámetros de la Nube")
@@ -32,7 +31,7 @@ def pressure_gradient(density, temperature):
     grad_y = -k_B * temperature * grad_y
     return grad_x, grad_y
 
-# Simulación del colapso
+# Simulación del colapso y creación de frames
 frames = []
 for t in range(time_steps):
     # Calcular el gradiente de presión
@@ -45,29 +44,26 @@ for t in range(time_steps):
     density += gravity - 0.1 * (grad_x + grad_y)
     density[density < 0] = 0  # Evitar densidades negativas
     
-    # Guardar el estado actual
-    frames.append(np.copy(density))
-
-# Crear animación con Matplotlib
-fig, ax = plt.subplots(figsize=(6, 6))
-cmap = plt.get_cmap("plasma")
-im = ax.imshow(frames[0], cmap=cmap, extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
-plt.colorbar(im, ax=ax, label="Densidad")
-plt.title("Colapso Gravitacional de Jeans")
-
-def update(frame):
-    im.set_array(frame)
-    return [im]
-
-ani = FuncAnimation(fig, update, frames=frames, interval=100, blit=True)
+    # Normalizar densidad para representación
+    norm_density = (density / np.max(density) * 255).astype(np.uint8)
+    
+    # Crear imagen para el frame actual
+    img = Image.fromarray(norm_density, mode="L").convert("RGB")
+    frames.append(img)
 
 # Guardar la animación como GIF
-from matplotlib.animation import PillowWriter
-with st.spinner("Generando animación..."):
-    ani.save("colapso_jeans.gif", writer=PillowWriter(fps=10))
+gif_path = "colapso_jeans_pillow.gif"
+frames[0].save(
+    gif_path,
+    save_all=True,
+    append_images=frames[1:],
+    duration=100,
+    loop=0
+)
 
 # Mostrar la animación en Streamlit
-st.image("colapso_jeans.gif", caption="Colapso Gravitacional de Jeans")
+st.image(gif_path, caption="Colapso Gravitacional de Jeans")
+
 
 #################
 
