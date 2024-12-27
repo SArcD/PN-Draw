@@ -5,7 +5,7 @@ from noise import pnoise2
 
 # Parámetros iniciales
 nx, ny = 100, 100  # Tamaño de la malla
-lx, ly = 1.0, 1.0  # Dimensiones físicas de la malla (en unidades arbitrarias)
+lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt = 0.01  # Paso de tiempo
 c = 0.1  # Velocidad de advección constante
@@ -59,8 +59,8 @@ st.title("Distribución inicial de la nube de gas")
 fig, ax = plt.subplots()
 cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
 ax.set_title("Densidad inicial de la nube (kg/m³)")
-ax.set_xlabel("x")
-ax.set_ylabel("y")
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Densidad (kg/m³)")
 st.pyplot(fig)
 
@@ -68,8 +68,8 @@ st.pyplot(fig)
 fig, ax = plt.subplots()
 cax = ax.imshow(temperature, extent=(0, lx, 0, ly), origin="lower", cmap="plasma")
 ax.set_title("Temperatura inicial de la nube (K)")
-ax.set_xlabel("x")
-ax.set_ylabel("y")
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Temperatura (K)")
 st.pyplot(fig)
 
@@ -77,12 +77,10 @@ st.pyplot(fig)
 fig, ax = plt.subplots()
 cax = ax.imshow(pressure, extent=(0, lx, 0, ly), origin="lower", cmap="inferno")
 ax.set_title("Presión inicial de la nube (Pa)")
-ax.set_xlabel("x")
-ax.set_ylabel("y")
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Presión (Pa)")
 st.pyplot(fig)
-
-
 
 ##############
 
