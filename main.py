@@ -73,8 +73,10 @@ else:
         def generate_collapse_frame(x, y, radius, frame_number):
             # Crear imagen RGB
             image = np.zeros((500, 500, 3), dtype=np.uint8)
-            x_mapped = ((x / (2 * radius)) + 0.5) * image.shape[1]
-            y_mapped = ((y / (2 * radius)) + 0.5) * image.shape[0]
+            #x_mapped = ((x / (2 * radius)) + 0.5) * image.shape[1]
+            #y_mapped = ((y / (2 * radius)) + 0.5) * image.shape[0]
+            x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
+            y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
 
             # Simular temperatura por densidad local
             density_local = np.zeros(len(x))
