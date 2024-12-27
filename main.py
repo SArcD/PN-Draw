@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Densidad de Nube Molecular (Corregida)")
+st.title("Simulación de Densidad de Nube Molecular (Corregida y Depurada)")
 st.sidebar.header("Parámetros de la Nube y Estrella")
 
 # Parámetros ajustables
@@ -77,27 +77,31 @@ dt = 0.1  # Paso de tiempo
 for t in range(time_steps):
     density = update_density(density, star_gravity, cloud_mass, dt)
     normalized_density = (density / np.max(density) * 255).astype(np.uint8)
-    frame = Image.fromarray(normalized_density, mode="L")  # Modo "L" para mapa de grises
+    frame = Image.fromarray(normalized_density, mode="L").convert("RGB")  # Convertir a RGB
     frames.append(frame)
 
-# Crear video usando MoviePy
-with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-    clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
-    clip.write_videofile(temp_video.name, codec="libx264")
-    video_path = temp_video.name
+# Verificar consistencia de frames
+frame_shapes = [np.array(frame).shape for frame in frames]
+if len(set(frame_shapes)) > 1:
+    st.error("Los frames tienen dimensiones inconsistentes.")
+else:
+    # Crear video usando MoviePy
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+        clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
+        clip.write_videofile(temp_video.name, codec="libx264")
+        video_path = temp_video.name
 
-# Mostrar el video en Streamlit
-st.video(video_path)
+    # Mostrar el video en Streamlit
+    st.video(video_path)
 
-# Botón para descargar el video
-with open(video_path, "rb") as video_file:
-    st.download_button(
-        label="Descargar Video (Mapa de Densidad Corregido)",
-        data=video_file,
-        file_name="nube_densidad_corregido.mp4",
-        mime="video/mp4"
-    )
-
+    # Botón para descargar el video
+    with open(video_path, "rb") as video_file:
+        st.download_button(
+            label="Descargar Video (Mapa de Densidad Corregido)",
+            data=video_file,
+            file_name="nube_densidad_corregido.mp4",
+            mime="video/mp4"
+        )
 
 
 
