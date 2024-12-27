@@ -1,97 +1,70 @@
 import streamlit as st
 import numpy as np
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 # Parámetros ajustables
 st.sidebar.header("Parámetros de la Nube")
-num_particles = st.sidebar.slider("Número de partículas", 100, 5000, 1000, step=100)
-initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 100, 500, 300, step=50)
-star_mass = st.sidebar.slider("Masa de la estrella central (en masas solares)", 0.1, 50.0, 1.0, step=0.1) * 1.989e30
+grid_size = st.sidebar.slider("Resolución de la cuadrícula", 50, 300, 100, step=50)
+initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 10, 100, 50, step=10)
+temperature = st.sidebar.slider("Temperatura de la nube (K)", 10, 300, 100, step=10)
 time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
 
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas de gas (kg)
 
-# Inicializar partículas
-theta = np.random.uniform(0, 2 * np.pi, num_particles)
-r = np.random.uniform(0, initial_radius, num_particles)
-x = r * np.cos(theta)
-y = r * np.sin(theta)
-vx = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en X
-vy = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en Y
+# Dimensiones de la simulación
+x = np.linspace(-initial_radius, initial_radius, grid_size)
+y = np.linspace(-initial_radius, initial_radius, grid_size)
+X, Y = np.meshgrid(x, y)
+R = np.sqrt(X**2 + Y**2)
+
+# Inicializar densidad con un perfil gaussiano
+density = np.exp(-R**2 / (2 * (initial_radius / 3)**2))
+density += np.random.normal(0, 0.1, size=density.shape)  # Agregar ruido para zonas densas
+
+# Función de presión térmica
+def pressure_gradient(density, temperature):
+    return -k_B * temperature * np.gradient(density)
 
 # Simulación del colapso
-positions = []
+frames = []
 for t in range(time_steps):
-    # Calcular la distancia de cada partícula al centro
-    r = np.sqrt(x**2 + y**2)
+    # Calcular el gradiente de presión
+    grad_x, grad_y = pressure_gradient(density, temperature)
     
-    # Gravedad: aceleración hacia el centro
-    ax = -G * star_mass * x / (r**3 + 1e-10)
-    ay = -G * star_mass * y / (r**3 + 1e-10)
+    # Efecto gravitacional
+    gravity = G * density / (R**2 + 1e-10)
     
-    # Actualizar velocidades
-    vx += ax * 0.1  # Factor de tiempo
-    vy += ay * 0.1
+    # Actualizar densidad (simplificación dinámica)
+    density += gravity - 0.1 * (grad_x + grad_y)
+    density[density < 0] = 0  # Evitar densidades negativas
     
-    # Actualizar posiciones
-    x += vx * 0.1
-    y += vy * 0.1
-    
-    # Guardar posiciones para animación
-    positions.append((x.copy(), y.copy()))
+    # Guardar el estado actual
+    frames.append(np.copy(density))
 
-# Crear figura con Plotly
-fig = go.Figure()
+# Crear animación con Matplotlib
+fig, ax = plt.subplots(figsize=(6, 6))
+cmap = plt.get_cmap("plasma")
+im = ax.imshow(frames[0], cmap=cmap, extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
+plt.colorbar(im, ax=ax, label="Densidad")
+plt.title("Colapso Gravitacional de Jeans")
 
-# Agregar frames
-for i, (x_frame, y_frame) in enumerate(positions):
-    fig.add_trace(go.Scatter(
-        x=x_frame,
-        y=y_frame,
-        mode='markers',
-        marker=dict(
-            size=3,
-            color=np.sqrt(x_frame**2 + y_frame**2),
-            colorscale='Plasma',
-            opacity=0.7
-        ),
-        name=f"Frame {i+1}",
-        visible=False  # Inicialmente no visible
-    ))
+def update(frame):
+    im.set_array(frame)
+    return [im]
 
-# Configurar primer frame visible
-fig.data[0].visible = True
+ani = FuncAnimation(fig, update, frames=frames, interval=100, blit=True)
 
-# Crear botones para la animación
-steps = []
-for i in range(len(positions)):
-    step = dict(
-        method="update",
-        args=[{"visible": [False] * len(positions)},
-              {"title": f"Frame {i+1}"}],  # Cambia el título dinámicamente
-    )
-    step["args"][0]["visible"][i] = True  # Solo el frame actual es visible
-    steps.append(step)
+# Guardar la animación como GIF
+from matplotlib.animation import PillowWriter
+with st.spinner("Generando animación..."):
+    ani.save("colapso_jeans.gif", writer=PillowWriter(fps=10))
 
-sliders = [dict(
-    active=0,
-    currentvalue={"prefix": "Frame: "},
-    pad={"t": 50},
-    steps=steps
-)]
-
-# Configurar layout de la figura
-fig.update_layout(
-    sliders=sliders,
-    title="Colapso Gravitacional Simulado",
-    xaxis=dict(range=[-initial_radius, initial_radius], title="X"),
-    yaxis=dict(range=[-initial_radius, initial_radius], title="Y"),
-    showlegend=False
-)
-
-# Mostrar la figura en Streamlit
-st.plotly_chart(fig)
+# Mostrar la animación en Streamlit
+st.image("colapso_jeans.gif", caption="Colapso Gravitacional de Jeans")
 
 
 #################
