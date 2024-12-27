@@ -55,7 +55,6 @@ for t in range(time_steps):
     ax.set_title(f"Paso de Tiempo: {t + 1}")
     st.pyplot(fig)
 
-
 #################
 
 
