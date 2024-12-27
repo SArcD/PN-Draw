@@ -18,6 +18,15 @@ k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas (kg)
 solar_mass = 1.989e30  # Masa solar (kg)
 cloud_mass = 10 * solar_mass  # Masa total de la nube (kg)
+initial_density = cloud_mass / (4 / 3 * np.pi * initial_radius**3)  # Densidad promedio inicial (kg/m³)
+
+# Cálculo de la masa crítica de Jeans
+jeans_mass = (5 * k_B * initial_temperature / (mu * G))**1.5 / (6 * np.sqrt(np.pi) * initial_density)
+
+# Determinar si la nube colapsa o no
+collapses = cloud_mass > jeans_mass
+collapse_message = "La nube colapsa" if collapses else "La nube no colapsa"
+st.write(f"**{collapse_message} según el criterio de Jeans.**")
 
 # Inicialización de partículas con perfil irregular
 np.random.seed(42)  # Fijar semilla para reproducibilidad
@@ -86,7 +95,6 @@ with open(video_path, "rb") as video_file:
         file_name="colapso_gravitacional.mp4",
         mime="video/mp4"
     )
-
 
 #################
 
