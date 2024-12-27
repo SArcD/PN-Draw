@@ -96,16 +96,16 @@ for i, zone in enumerate(zones):
 st.header("Simulación de partículas")
 particles = []
 for zone in zones:
-    num_particles = int(zone['densidad'] * 100)  # Número proporcional a la densidad
+    num_particles = max(10, int(zone['densidad'] * 100))  # Garantizar al menos 10 partículas
     for _ in range(num_particles):
-        x = zone['posición'][0] + np.random.uniform(-dx, dx)
-        y = zone['posición'][1] + np.random.uniform(-dy, dy)
+        x = zone['posición'][0] + np.random.uniform(-dx * 5, dx * 5)  # Expandir rango de dispersión
+        y = zone['posición'][1] + np.random.uniform(-dy * 5, dy * 5)
         particles.append({"posición": (x, y), "velocidad": (0.0, 0.0)})
 
 # Asignar velocidades iniciales
 for particle in particles:
-    x_idx = int(particle['posición'][0] / dx)
-    y_idx = int(particle['posición'][1] / dy)
+    x_idx = int(min(max(particle['posición'][0] / dx, 0), nx - 1))
+    y_idx = int(min(max(particle['posición'][1] / dy, 0), ny - 1))
     particle['velocidad'] = (v_x[x_idx, y_idx], v_y[x_idx, y_idx])
 
 # Calcular fuerzas gravitatorias
@@ -139,7 +139,7 @@ for t in range(100):  # 100 pasos de simulación
         particle['posición'] = (x, y)
 
 # Mostrar partículas finales
-final_positions = np.array([p['posición'] for p in particles])
+final_positions = np.array([p['posición'] for p in particles if 0 <= p['posición'][0] <= lx and 0 <= p['posición'][1] <= ly])
 plt.figure(figsize=(8, 8))
 plt.scatter(final_positions[:, 0], final_positions[:, 1], s=1, c="red")
 plt.title("Distribución final de partículas")
