@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Colapso de una Nube Molecular")
+st.title("Simulación de Nube Molecular Oscilante")
 st.sidebar.header("Parámetros de la nube")
 
 # Parámetros ajustables
@@ -16,7 +16,7 @@ mass = st.sidebar.slider(
 
 temperature = st.sidebar.slider(
     "Temperatura inicial (K)", 
-    10, 500, 20, step=10
+    10, 500, 100, step=10
 )
 
 density = st.sidebar.slider(
@@ -29,106 +29,79 @@ initial_radius = st.sidebar.slider(
     1e15, 1e18, 1e16, format="%.1e"
 )
 
+beta = st.sidebar.slider(
+    "Coeficiente de amortiguamiento (\u03B2)", 
+    0.0, 2.0, 0.1, step=0.1
+)
+
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Calcular el radio crítico de Jeans
-jeans_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+# Calcular la frecuencia angular
+omega = np.sqrt((4 * np.pi * G * density) / (15 * k_B * temperature / mu))
 
-# Mostrar radios calculados
-st.write(f"Radio inicial de la nube: {initial_radius:.2e} m")
-st.write(f"Radio crítico de Jeans: {jeans_radius:.2e} m")
+# Generar posiciones iniciales de partículas
+def generate_particles(num_particles, radius):
+    r = np.random.uniform(0, radius, num_particles)
+    theta = np.random.uniform(0, 2 * np.pi, num_particles)
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return x, y
 
-# Evaluar estabilidad
-if initial_radius <= jeans_radius:
-    st.success("La nube es estable y no colapsará bajo las condiciones actuales.")
-else:
-    st.warning("La nube colapsará bajo las condiciones actuales.")
-    generate_collapse_animation = st.sidebar.button("Generar Animación de Colapso")
+# Función para generar un frame de la oscilación
+def generate_oscillation_frame(x_initial, y_initial, t, radius, num_particles):
+    # Calcular el factor de oscilación
+    amplitude = radius * np.exp(-beta * t)
+    oscillation_factor = amplitude * np.cos(omega * t)
 
-    if generate_collapse_animation:
-        # Función para generar una nube con densidad no uniforme
-        def generate_cloud(num_particles, radius, num_high_density_regions):
-            # Distribución gaussiana para la densidad
-            r = np.abs(np.random.normal(loc=0, scale=radius / 3, size=num_particles))
-            theta = np.random.uniform(0, 2 * np.pi, num_particles)
-            x = r * np.cos(theta)
-            y = r * np.sin(theta)
+    # Aplicar la oscilación
+    x_moving = x_initial * (1 + oscillation_factor / radius)
+    y_moving = y_initial * (1 + oscillation_factor / radius)
 
-            # Crear regiones de alta densidad
-            high_density_x = np.random.uniform(-radius, radius, num_high_density_regions)
-            high_density_y = np.random.uniform(-radius, radius, num_high_density_regions)
+    # Crear imagen RGB
+    image = np.zeros((500, 500, 3), dtype=np.uint8)
+    x_mapped = ((x_moving / (2 * initial_radius)) + 0.5) * image.shape[1]
+    y_mapped = ((y_moving / (2 * initial_radius)) + 0.5) * image.shape[0]
 
-            for i in range(num_high_density_regions):
-                dist = np.sqrt((x - high_density_x[i])**2 + (y - high_density_y[i])**2)
-                influence = dist < (radius / 10)  # Radio de influencia
-                x[influence] += np.random.normal(0, radius / 20, size=np.sum(influence))
-                y[influence] += np.random.normal(0, radius / 20, size=np.sum(influence))
+    # Dibujar partículas
+    for xi, yi in zip(x_mapped.astype(int), y_mapped.astype(int)):
+        if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
+            image[yi, xi] = [255, 255, 255]  # Blanco para partículas
 
-            return x, y
+    return Image.fromarray(image)
 
-        # Función para generar un frame del colapso
-        def generate_collapse_frame(x, y, frame_number, num_particles, initial_radius):
-            # Proporción de colapso hacia el centro
-            collapse_factor = 1 - (frame_number / 50)
+# Generar partículas
+num_particles = 5000
+x_initial, y_initial = generate_particles(num_particles, initial_radius)
 
-            # Mover las partículas hacia el centro
-            x_moving = x * collapse_factor
-            y_moving = y * collapse_factor
+# Generar todos los frames de la oscilación
+steps = 100
+frames = []
+time = np.linspace(0, 10, steps)  # Tiempo en segundos
+for t in time:
+    frame = generate_oscillation_frame(x_initial, y_initial, t, initial_radius, num_particles)
+    frames.append(frame)
 
-            # Crear imagen RGB
-            image = np.zeros((500, 500, 3), dtype=np.uint8)
-            x_mapped = ((x_moving / (2 * initial_radius)) + 0.5) * image.shape[1]
-            y_mapped = ((y_moving / (2 * initial_radius)) + 0.5) * image.shape[0]
+# Guardar el video usando MoviePy
+with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+    clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
+    clip.write_videofile(temp_video.name, codec="libx264")
+    video_path = temp_video.name
 
-            # Simular temperatura por densidad local
-            density_local = np.zeros(num_particles)
-            for i in range(num_particles):
-                dist = np.sqrt((x_moving - x_moving[i])**2 + (y_moving - y_moving[i])**2)
-                density_local[i] = np.sum(dist < (initial_radius / 20))
+# Mostrar el video en Streamlit
+st.video(video_path)
 
-            temperature_profile = temperature * (1 + density_local / np.max(density_local))
-            temperature_profile = np.clip(temperature_profile, temperature, 5 * temperature)
-            colors = np.interp(temperature_profile, [temperature, 5 * temperature], [50, 255]).astype(np.uint8)
+# Botón para descargar el video
+with open(video_path, "rb") as video_file:
+    st.download_button(
+        label="Descargar Video (Oscilación de Nube Molecular)",
+        data=video_file,
+        file_name="nube_oscilante.mp4",
+        mime="video/mp4"
+    )
 
-            # Dibujar partículas
-            for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
-                if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
-                    image[yi, xi] = [ci, 255 - ci, 255 - ci]  # Rojo para regiones calientes
-
-            return Image.fromarray(image)
-
-        # Generar todas las partículas
-        num_particles = 5000
-        num_high_density_regions = 5
-        x, y = generate_cloud(num_particles, initial_radius, num_high_density_regions)
-
-        # Generar todos los frames del colapso
-        steps = 50
-        frames = []
-        for frame_number in range(steps):
-            frame = generate_collapse_frame(x, y, frame_number, num_particles, initial_radius)
-            frames.append(frame)
-
-        # Guardar el video usando MoviePy
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-            clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
-            clip.write_videofile(temp_video.name, codec="libx264")
-            video_path = temp_video.name
-
-        # Mostrar el video en Streamlit
-        st.video(video_path)
-
-        # Botón para descargar el video
-        with open(video_path, "rb") as video_file:
-            st.download_button(
-                label="Descargar Video (Colapso No Uniforme)",
-                data=video_file,
-                file_name="colapso_nube_no_uniforme.mp4",
-                mime="video/mp4"
-            )
 
 
 #################
