@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Colapso de una Nube Molecular con Presión Térmica")
+st.title("Simulación de Colapso de una Nube Molecular con Densidad No Uniforme")
 st.sidebar.header("Parámetros de la nube")
 
 # Parámetros ajustables
@@ -16,7 +16,7 @@ mass = st.sidebar.slider(
 
 temperature = st.sidebar.slider(
     "Temperatura inicial (K)", 
-    10, 500, 20, step=10  # Expandimos el rango a 500 K
+    10, 500, 20, step=10
 )
 
 density = st.sidebar.slider(
@@ -24,13 +24,17 @@ density = st.sidebar.slider(
     1e-26, 1e-17, 1e-19, format="%.1e"
 )
 
+initial_radius = st.sidebar.slider(
+    "Radio inicial de la nube (m)", 
+    1e15, 1e18, 1e16, format="%.1e"
+)
+
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Calcular el radio inicial y crítico de Jeans
-initial_radius = 2.00 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+# Calcular el radio crítico de Jeans
 jeans_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
 # Mostrar radios calculados
@@ -45,49 +49,64 @@ else:
     generate_collapse_animation = st.sidebar.button("Generar Animación de Colapso")
 
     if generate_collapse_animation:
-        # Función para generar frames del colapso
-        def generate_collapse_frame(radius, frame_number, num_particles=1000):
-            # Generar posiciones de partículas
-            angles = np.random.uniform(0, 2 * np.pi, num_particles)
-            radii = np.random.uniform(0, radius, num_particles)
-            x = radii * np.cos(angles)
-            y = radii * np.sin(angles)
+        # Función para generar una nube con densidad no uniforme
+        def generate_cloud(num_particles, radius, num_high_density_regions):
+            # Distribución gaussiana para la densidad
+            r = np.abs(np.random.normal(loc=0, scale=radius / 3, size=num_particles))
+            theta = np.random.uniform(0, 2 * np.pi, num_particles)
+            x = r * np.cos(theta)
+            y = r * np.sin(theta)
 
-            # Calcular densidad local
-            density_local = np.zeros(num_particles)
-            for i in range(num_particles):
-                dist = np.sqrt((x - x[i])**2 + (y - y[i])**2)
-                density_local[i] = np.sum(dist < (radius / 20))  # Partículas cercanas
+            # Crear regiones de alta densidad
+            high_density_x = np.random.uniform(-radius, radius, num_high_density_regions)
+            high_density_y = np.random.uniform(-radius, radius, num_high_density_regions)
 
-            # Simular temperatura basada en densidad local
-            temperature_profile = temperature * (1 + density_local / np.max(density_local))
-            temperature_profile = np.clip(temperature_profile, temperature, 5 * temperature)  # Límite superior
+            for i in range(num_high_density_regions):
+                dist = np.sqrt((x - high_density_x[i])**2 + (y - high_density_y[i])**2)
+                influence = dist < (radius / 10)  # Radio de influencia
+                x[influence] += np.random.normal(0, radius / 20, size=np.sum(influence))
+                y[influence] += np.random.normal(0, radius / 20, size=np.sum(influence))
 
-            # Color por temperatura (rojo para caliente, azul para frío)
-            colors = np.interp(temperature_profile, [temperature, 5 * temperature], [50, 255]).astype(np.uint8)
+            return x, y
 
+        # Función para generar un frame del colapso
+        def generate_collapse_frame(x, y, radius, frame_number):
             # Crear imagen RGB
             image = np.zeros((500, 500, 3), dtype=np.uint8)
-            x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
-            y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
+            x_mapped = ((x / (2 * radius)) + 0.5) * image.shape[1]
+            y_mapped = ((y / (2 * radius)) + 0.5) * image.shape[0]
 
-            # Dibujar partículas en la imagen
+            # Simular temperatura por densidad local
+            density_local = np.zeros(len(x))
+            for i in range(len(x)):
+                dist = np.sqrt((x - x[i])**2 + (y - y[i])**2)
+                density_local[i] = np.sum(dist < (radius / 20))
+
+            temperature_profile = temperature * (1 + density_local / np.max(density_local))
+            temperature_profile = np.clip(temperature_profile, temperature, 5 * temperature)
+            colors = np.interp(temperature_profile, [temperature, 5 * temperature], [50, 255]).astype(np.uint8)
+
+            # Dibujar partículas
             for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
                 if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
-                    image[yi, xi] = [ci, 255 - ci, 255 - ci]  # Rojo-amarillo para regiones calientes
+                    image[yi, xi] = [ci, 255 - ci, 255 - ci]  # Rojo para regiones calientes
 
             return Image.fromarray(image)
+
+        # Generar todas las partículas
+        num_particles = 5000
+        num_high_density_regions = 5
+        x, y = generate_cloud(num_particles, initial_radius, num_high_density_regions)
 
         # Generar todos los frames del colapso
         steps = 50
         frames = []
         for frame_number in range(steps):
-            # Ralentizar el colapso dinámicamente por presión térmica
-            pressure_factor = 1 + frame_number / steps
-            radius = initial_radius * (1 - frame_number / steps / pressure_factor)
+            # Reducir el radio dinámicamente
+            radius = initial_radius * (1 - frame_number / steps)
             if radius < 0:
                 radius = 1e-3  # Evitar radios negativos
-            frame = generate_collapse_frame(radius, frame_number)
+            frame = generate_collapse_frame(x, y, radius, frame_number)
             frames.append(frame)
 
         # Guardar el video usando MoviePy
@@ -102,9 +121,9 @@ else:
         # Botón para descargar el video
         with open(video_path, "rb") as video_file:
             st.download_button(
-                label="Descargar Video (Colapso con Presión Térmica)",
+                label="Descargar Video (Colapso No Uniforme)",
                 data=video_file,
-                file_name="colapso_nube_presion.mp4",
+                file_name="colapso_nube_no_uniforme.mp4",
                 mime="video/mp4"
             )
 
