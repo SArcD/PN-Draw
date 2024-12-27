@@ -1,13 +1,13 @@
 import streamlit as st
 import numpy as np
-from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
 
 # Parámetros ajustables
-st.sidebar.header("Parámetros de la Nube")
+st.sidebar.header("Parámetros de la Simulación")
 grid_size = st.sidebar.slider("Resolución de la cuadrícula", 50, 300, 100, step=50)
 initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 10, 100, 50, step=10)
 temperature = st.sidebar.slider("Temperatura de la nube (K)", 10, 300, 100, step=10)
-time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
+time_steps = st.sidebar.slider("Número de pasos de tiempo (visualización)", 1, 50, 10, step=1)
 
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
@@ -31,8 +31,9 @@ def pressure_gradient(density, temperature):
     grad_y = -k_B * temperature * grad_y
     return grad_x, grad_y
 
-# Simulación del colapso y creación de frames
-frames = []
+# Simulación del colapso interactivo
+st.title("Colapso Gravitacional Interactivo (Criterio de Jeans)")
+
 for t in range(time_steps):
     # Calcular el gradiente de presión
     grad_x, grad_y = pressure_gradient(density, temperature)
@@ -47,22 +48,12 @@ for t in range(time_steps):
     # Normalizar densidad para representación
     norm_density = (density / np.max(density) * 255).astype(np.uint8)
     
-    # Crear imagen para el frame actual
-    img = Image.fromarray(norm_density, mode="L").convert("RGB")
-    frames.append(img)
-
-# Guardar la animación como GIF
-gif_path = "colapso_jeans_pillow.gif"
-frames[0].save(
-    gif_path,
-    save_all=True,
-    append_images=frames[1:],
-    duration=100,
-    loop=0
-)
-
-# Mostrar la animación en Streamlit
-st.image(gif_path, caption="Colapso Gravitacional de Jeans")
+    # Mostrar el estado actual
+    fig, ax = plt.subplots(figsize=(6, 6))
+    im = ax.imshow(norm_density, cmap="plasma", extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
+    plt.colorbar(im, ax=ax, label="Densidad")
+    ax.set_title(f"Paso de Tiempo: {t + 1}")
+    st.pyplot(fig)
 
 
 #################
