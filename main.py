@@ -30,7 +30,7 @@ k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
 # Calcular el radio inicial y crítico de Jeans
-initial_radius = 10 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
+initial_radius = 1.00 * np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 jeans_radius = np.sqrt((15 * k_B * temperature) / (4 * np.pi * G * mu * density))
 
 # Mostrar radios calculados
