@@ -27,7 +27,10 @@ density += np.random.normal(0, 0.1, size=density.shape)  # Agregar ruido para zo
 
 # Función de presión térmica
 def pressure_gradient(density, temperature):
-    return -k_B * temperature * np.gradient(density)
+    grad_x, grad_y = np.gradient(density)
+    grad_x = -k_B * temperature * grad_x
+    grad_y = -k_B * temperature * grad_y
+    return grad_x, grad_y
 
 # Simulación del colapso
 frames = []
@@ -38,7 +41,7 @@ for t in range(time_steps):
     # Efecto gravitacional
     gravity = G * density / (R**2 + 1e-10)
     
-    # Actualizar densidad (simplificación dinámica)
+    # Actualizar densidad
     density += gravity - 0.1 * (grad_x + grad_y)
     density[density < 0] = 0  # Evitar densidades negativas
     
@@ -65,7 +68,6 @@ with st.spinner("Generando animación..."):
 
 # Mostrar la animación en Streamlit
 st.image("colapso_jeans.gif", caption="Colapso Gravitacional de Jeans")
-
 
 #################
 
