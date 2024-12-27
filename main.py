@@ -1,13 +1,13 @@
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
+from noise import pnoise2
 
 # Parámetros iniciales
 nx, ny = 100, 100  # Tamaño de la malla
 lx, ly = 1.0, 1.0  # Dimensiones físicas de la malla (en unidades arbitrarias)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt = 0.01  # Paso de tiempo
-nt = 500  # Número de pasos de tiempo
 c = 0.1  # Velocidad de advección constante
 
 # Crear la malla y el campo inicial
@@ -16,8 +16,19 @@ def create_initial_conditions(nx, ny, lx, ly):
     y = np.linspace(0, ly, ny)
     X, Y = np.meshgrid(x, y)
 
-    # Campo de densidad inicial (distribución gaussiana)
-    rho0 = np.exp(-((X - lx / 2) ** 2 + (Y - ly / 2) ** 2) / (2 * (0.1 ** 2)))
+    # Generar densidad inicial basada en ruido Perlin
+    rho0 = np.zeros((nx, ny))
+    scale = 10.0  # Escala del ruido
+    octaves = 4  # Detalle del ruido
+    persistence = 0.5  # Persistencia del ruido
+    lacunarity = 2.0  # Lacunaridad del ruido
+
+    for i in range(nx):
+        for j in range(ny):
+            rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
+
+    # Normalizar la densidad para que sea positiva y esté entre 0 y 1
+    rho0 = (rho0 - rho0.min()) / (rho0.max() - rho0.min())
 
     # Campos de velocidad (en este caso, flujo constante hacia la derecha)
     v_x = np.ones((nx, ny)) * c
@@ -25,133 +36,21 @@ def create_initial_conditions(nx, ny, lx, ly):
 
     return rho0, v_x, v_y
 
-# Método de advección (upwind)
-def advect(rho, v_x, v_y, dx, dy, dt):
-    rho_new = rho.copy()
-
-    # Advección en x
-    for i in range(1, rho.shape[0] - 1):
-        for j in range(1, rho.shape[1] - 1):
-            rho_new[i, j] -= dt / dx * (v_x[i, j] * (rho[i, j] - rho[i - 1, j]))
-
-    # Advección en y
-    for i in range(1, rho.shape[0] - 1):
-        for j in range(1, rho.shape[1] - 1):
-            rho_new[i, j] -= dt / dy * (v_y[i, j] * (rho[i, j] - rho[i, j - 1]))
-
-    return rho_new
-
 # Inicializar los campos
 rho, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 
 # Interfaz de Streamlit
-st.title("Simulación de Advección 2D")
+st.title("Distribución inicial de la nube de gas")
 
-# Parámetros ajustables
-nt = st.sidebar.slider("Número de pasos de tiempo", min_value=1, max_value=500, value=500, step=10)
-c = st.sidebar.slider("Velocidad de advección", min_value=0.01, max_value=1.0, value=0.1, step=0.01)
+# Mostrar la densidad inicial
+fig, ax = plt.subplots()
+cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
+ax.set_title("Densidad inicial de la nube")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+fig.colorbar(cax, label="Densidad")
 
-# Actualizar las condiciones iniciales con la nueva velocidad
-rho, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
-v_x *= c
-
-# Bucle principal de la simulación
-progress_bar = st.progress(0)
-frames = []
-for t in range(nt):
-    rho = advect(rho, v_x, v_y, dx, dy, dt)
-    
-    if t % 50 == 0 or t == nt - 1:  # Guardar cuadros para visualización
-        fig, ax = plt.subplots()
-        cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
-        ax.set_title(f"Paso de tiempo {t}")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        fig.colorbar(cax, label="Densidad")
-        frames.append(fig)
-        plt.close(fig)
-    
-    progress_bar.progress((t + 1) / nt)
-
-# Mostrar resultados
-for frame in frames:
-    st.pyplot(frame)
-
-# Identificar zonas de densidad más alta
-st.header("Zonas de densidad más alta")
-
-# Obtener los índices de las 3 zonas con densidad más alta
-highest_densities = np.unravel_index(np.argsort(rho.ravel())[-3:], rho.shape)
-zones = []
-for i in range(3):
-    x_idx, y_idx = highest_densities[0][i], highest_densities[1][i]
-    density = rho[x_idx, y_idx]
-    position = (x_idx * dx, y_idx * dy)
-    zones.append({"posición": position, "densidad": density})
-
-for i, zone in enumerate(zones):
-    st.write(f"Zona {i + 1}: Posición {zone['posición']}, Densidad {zone['densidad']:.4f}")
-
-# Crear partículas en las zonas seleccionadas
-st.header("Simulación de partículas")
-particles = []
-for zone in zones:
-    num_particles = max(10, int(zone['densidad'] * 100))  # Garantizar al menos 10 partículas
-    for _ in range(num_particles):
-        x = zone['posición'][0] + np.random.uniform(-dx * 5, dx * 5)  # Expandir rango de dispersión
-        y = zone['posición'][1] + np.random.uniform(-dy * 5, dy * 5)
-        particles.append({"posición": (x, y), "velocidad": (0.0, 0.0)})
-
-# Asignar velocidades iniciales
-for particle in particles:
-    x_idx = int(min(max(particle['posición'][0] / dx, 0), nx - 1))
-    y_idx = int(min(max(particle['posición'][1] / dy, 0), ny - 1))
-    particle['velocidad'] = (v_x[x_idx, y_idx], v_y[x_idx, y_idx])
-
-# Calcular fuerzas gravitatorias
-G = 1.0  # Constante gravitacional arbitraria
-for i, p1 in enumerate(particles):
-    fx, fy = 0.0, 0.0
-    for j, p2 in enumerate(particles):
-        if i != j:
-            dx = p2['posición'][0] - p1['posición'][0]
-            dy = p2['posición'][1] - p1['posición'][1]
-            r = np.sqrt(dx**2 + dy**2) + 1e-5  # Distancia con corrección para evitar división por cero
-            f = G / r**2
-            fx += f * dx / r
-            fy += f * dy / r
-    p1['fuerza'] = (fx, fy)
-
-# Integrar las ecuaciones de movimiento
-for t in range(100):  # 100 pasos de simulación
-    for particle in particles:
-        fx, fy = particle['fuerza']
-        vx, vy = particle['velocidad']
-        x, y = particle['posición']
-
-        # Actualizar velocidad y posición
-        vx += fx * dt
-        vy += fy * dt
-        x += vx * dt
-        y += vy * dt
-
-        particle['velocidad'] = (vx, vy)
-        particle['posición'] = (x, y)
-
-# Mostrar partículas finales
-final_positions = np.array([p['posición'] for p in particles if 0 <= p['posición'][0] <= lx and 0 <= p['posición'][1] <= ly])
-if final_positions.size == 0:
-    st.write("No se generaron partículas válidas dentro del dominio.")
-else:
-    final_positions = final_positions.reshape(-1, 2)
-    plt.figure(figsize=(8, 8))
-    plt.scatter(final_positions[:, 0], final_positions[:, 1], s=1, c="red")
-    plt.title("Distribución final de partículas")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.xlim(0, lx)
-    plt.ylim(0, ly)
-    st.pyplot(plt)
+st.pyplot(fig)
 
 ##############
 
