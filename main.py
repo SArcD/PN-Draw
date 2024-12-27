@@ -17,7 +17,7 @@ cloud_mass = st.sidebar.slider(
 
 star_mass = st.sidebar.slider(
     "Masa de la estrella central (en masas solares)", 
-    0.1, 100, 1.0, step=0.1
+    0.1, 100.0, 1.0, step=0.1
 ) * 1.989e30  # Conversión a kg
 
 temperature = st.sidebar.slider(
