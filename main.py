@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Colapso de una Nube Molecular con Densidad No Uniforme")
+st.title("Simulación de Colapso de una Nube Molecular")
 st.sidebar.header("Parámetros de la nube")
 
 # Parámetros ajustables
@@ -70,19 +70,24 @@ else:
             return x, y
 
         # Función para generar un frame del colapso
-        def generate_collapse_frame(x, y, radius, frame_number):
+        def generate_collapse_frame(x, y, frame_number, num_particles, initial_radius):
+            # Proporción de colapso hacia el centro
+            collapse_factor = 1 - (frame_number / 50)
+
+            # Mover las partículas hacia el centro
+            x_moving = x * collapse_factor
+            y_moving = y * collapse_factor
+
             # Crear imagen RGB
             image = np.zeros((500, 500, 3), dtype=np.uint8)
-            #x_mapped = ((x / (2 * radius)) + 0.5) * image.shape[1]
-            #y_mapped = ((y / (2 * radius)) + 0.5) * image.shape[0]
-            x_mapped = ((x / (2 * initial_radius)) + 0.5) * image.shape[1]
-            y_mapped = ((y / (2 * initial_radius)) + 0.5) * image.shape[0]
+            x_mapped = ((x_moving / (2 * initial_radius)) + 0.5) * image.shape[1]
+            y_mapped = ((y_moving / (2 * initial_radius)) + 0.5) * image.shape[0]
 
             # Simular temperatura por densidad local
-            density_local = np.zeros(len(x))
-            for i in range(len(x)):
-                dist = np.sqrt((x - x[i])**2 + (y - y[i])**2)
-                density_local[i] = np.sum(dist < (radius / 20))
+            density_local = np.zeros(num_particles)
+            for i in range(num_particles):
+                dist = np.sqrt((x_moving - x_moving[i])**2 + (y_moving - y_moving[i])**2)
+                density_local[i] = np.sum(dist < (initial_radius / 20))
 
             temperature_profile = temperature * (1 + density_local / np.max(density_local))
             temperature_profile = np.clip(temperature_profile, temperature, 5 * temperature)
@@ -104,11 +109,7 @@ else:
         steps = 50
         frames = []
         for frame_number in range(steps):
-            # Reducir el radio dinámicamente
-            radius = initial_radius * (1 - frame_number / steps)
-            if radius < 0:
-                radius = 1e-3  # Evitar radios negativos
-            frame = generate_collapse_frame(x, y, radius, frame_number)
+            frame = generate_collapse_frame(x, y, frame_number, num_particles, initial_radius)
             frames.append(frame)
 
         # Guardar el video usando MoviePy
