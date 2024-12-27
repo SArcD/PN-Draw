@@ -28,10 +28,10 @@ R = np.sqrt(X**2 + Y**2)
 # Inicializar densidad de la nube
 density = np.exp(-R / (initial_radius / 2))  # Densidad mayor en el centro
 random_zones = np.random.uniform(size=(grid_size, grid_size)) < 0.02  # Zonas de alta densidad
-density[random_zones] += np.random.uniform(0.5, 1.0, size=random_zones.sum())  # Incremento en zonas frías
+density[random_zones] += np.random.uniform(5, 10, size=random_zones.sum())  # Incremento en zonas frías
 
-# Coordenadas de la estrella
-star_x, star_y = grid_size // 2, grid_size // 2
+# Escala de densidad para la estrella
+density[grid_size // 2, grid_size // 2] += 50  # Mayor densidad en la estrella
 
 # Función para calcular la presión de radiación
 def pressure_radiation(luminosity, distance):
@@ -42,7 +42,7 @@ def update_density(density, star_mass, luminosity, dt):
     new_density = np.copy(density)
     for i in range(grid_size):
         for j in range(grid_size):
-            r = np.sqrt((i - star_x)**2 + (j - star_y)**2)
+            r = np.sqrt((i - grid_size // 2)**2 + (j - grid_size // 2)**2)
             if r == 0:
                 continue
             
@@ -51,7 +51,7 @@ def update_density(density, star_mass, luminosity, dt):
             new_density[i, j] += gravitational_force * dt
             
             # Efecto de presión de radiación
-            radiation_pressure = pressure_radiation(luminosity, r)
+            radiation_pressure = pressure_radiation(luminosity, r + 1e-10)
             new_density[i, j] -= radiation_pressure * dt
 
             # Mantener densidad positiva
@@ -66,10 +66,11 @@ for t in range(time_steps):
     frames.append(np.copy(density))
 
 # Crear animación con Matplotlib
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(6, 6))
 cmap = plt.get_cmap("plasma")
 im = ax.imshow(density, cmap=cmap, extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
 plt.colorbar(im, label="Densidad")
+plt.title("Simulación de Nube Molecular con Estrella")
 
 def animate(frame):
     im.set_array(frame)
