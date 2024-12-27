@@ -1,60 +1,76 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
+from moviepy.editor import ImageSequenceClip
+import tempfile
 
-# Parámetros interactivos ajustables desde la barra lateral
-st.sidebar.header("Parámetros de la Nube de Gas")
-grid_size = st.sidebar.slider("Resolución de la cuadrícula", 50, 300, 100, step=50)
-initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 10, 100, 50, step=10)
-temperature = st.sidebar.slider("Temperatura de la nube (K)", 10, 300, 100, step=10)
+# Parámetros ajustables desde la barra lateral
+st.sidebar.header("Parámetros de la Nube")
+num_particles = st.sidebar.slider("Número de partículas", 100, 2000, 500, step=100)
+initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 50, 200, 100, step=10)
+temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 300, 100, step=10)
 time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
 gravitational_factor = st.sidebar.slider("Intensidad gravitacional", 0.1, 10.0, 1.0, step=0.1)
 
 # Constantes físicas
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas de gas (kg)
+G = 6.67430e-11  # Constante gravitacional
+k_B = 1.380649e-23  # Constante de Boltzmann
+mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas
 
-# Dimensiones de la simulación
-x = np.linspace(-initial_radius, initial_radius, grid_size)
-y = np.linspace(-initial_radius, initial_radius, grid_size)
-X, Y = np.meshgrid(x, y)
-R = np.sqrt(X**2 + Y**2)
+# Inicialización de partículas
+theta = np.random.uniform(0, 2 * np.pi, num_particles)
+r = np.random.uniform(0, initial_radius, num_particles)
+x = r * np.cos(theta)
+y = r * np.sin(theta)
+vx = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en X
+vy = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en Y
 
-# Inicializar densidad con un perfil gaussiano
-density = np.exp(-R**2 / (2 * (initial_radius / 3)**2))
-density += np.random.normal(0, 0.1, size=density.shape)  # Zonas de mayor densidad inicial
-
-# Función de presión térmica
-def calculate_pressure_gradient(density, temperature):
-    grad_x, grad_y = np.gradient(density)
-    grad_x = -k_B * temperature * grad_x
-    grad_y = -k_B * temperature * grad_y
-    return grad_x, grad_y
-
-# Simulación del colapso gravitacional
+# Simulación
 frames = []
-for step in range(time_steps):
-    # Calcular gradiente de presión
-    grad_x, grad_y = calculate_pressure_gradient(density, temperature)
+for t in range(time_steps):
+    # Calcular distancias al centro
+    r = np.sqrt(x**2 + y**2)
     
-    # Efecto gravitacional
-    gravity = gravitational_factor * G * density / (R**2 + 1e-10)
+    # Gravedad: aceleración hacia el centro
+    ax = -gravitational_factor * G * x / (r**3 + 1e-10)
+    ay = -gravitational_factor * G * y / (r**3 + 1e-10)
     
-    # Actualizar densidad
-    density += gravity - 0.1 * (grad_x + grad_y)
-    density[density < 0] = 0  # Evitar densidades negativas
+    # Efecto de presión térmica
+    pressure_factor = k_B * temperature / mu
+    vx += ax + np.random.normal(0, pressure_factor, num_particles)
+    vy += ay + np.random.normal(0, pressure_factor, num_particles)
     
-    # Normalizar densidad para visualización
-    norm_density = (density / np.max(density) * 255).astype(np.uint8)
+    # Actualizar posiciones
+    x += vx * 0.1  # Paso de tiempo
+    y += vy * 0.1
     
     # Crear un frame
-    img = Image.fromarray(norm_density, mode="L").convert("RGB")
+    img = Image.new("RGB", (500, 500), "black")
+    draw = ImageDraw.Draw(img)
+    for xi, yi in zip(x, y):
+        px = int(250 + xi / initial_radius * 250)
+        py = int(250 + yi / initial_radius * 250)
+        if 0 <= px < 500 and 0 <= py < 500:
+            draw.ellipse((px - 1, py - 1, px + 1, py + 1), fill="white")
     frames.append(img)
 
-# Mostrar frames en la interfaz interactiva
-current_frame = st.slider("Seleccionar Frame", 0, len(frames) - 1, 0)
-st.image(frames[current_frame], caption=f"Frame {current_frame + 1}/{len(frames)}", use_column_width=True)
+# Guardar el video como GIF o MP4
+with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
+    clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
+    clip.write_videofile(temp_video.name, codec="libx264")
+    video_path = temp_video.name
+
+# Mostrar el video en Streamlit
+st.video(video_path)
+
+# Descargar el video
+with open(video_path, "rb") as video_file:
+    st.download_button(
+        label="Descargar Video (Colapso Gravitacional)",
+        data=video_file,
+        file_name="colapso_gravitacional.mp4",
+        mime="video/mp4"
+    )
 
 #################
 
