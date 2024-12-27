@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+import plotly.graph_objects as go
 
 # Parámetros ajustables
 st.sidebar.header("Parámetros de la Nube")
@@ -42,28 +41,57 @@ for t in range(time_steps):
     # Guardar posiciones para animación
     positions.append((x.copy(), y.copy()))
 
-# Crear animación
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.set_xlim(-initial_radius, initial_radius)
-ax.set_ylim(-initial_radius, initial_radius)
-scatter = ax.scatter(x, y, s=1, c=np.sqrt(x**2 + y**2), cmap='plasma', alpha=0.7)
-plt.colorbar(scatter, ax=ax, label="Distancia al centro")
+# Crear figura con Plotly
+fig = go.Figure()
 
-def update(frame):
-    x, y = positions[frame]
-    scatter.set_offsets(np.c_[x, y])
-    scatter.set_array(np.sqrt(x**2 + y**2))  # Actualizar colores según distancia
-    return scatter,
+# Agregar frames
+for i, (x_frame, y_frame) in enumerate(positions):
+    fig.add_trace(go.Scatter(
+        x=x_frame,
+        y=y_frame,
+        mode='markers',
+        marker=dict(
+            size=3,
+            color=np.sqrt(x_frame**2 + y_frame**2),
+            colorscale='Plasma',
+            opacity=0.7
+        ),
+        name=f"Frame {i+1}",
+        visible=False  # Inicialmente no visible
+    ))
 
-ani = FuncAnimation(fig, update, frames=len(positions), interval=100, blit=False)
+# Configurar primer frame visible
+fig.data[0].visible = True
 
-# Guardar la animación como GIF
-from matplotlib.animation import PillowWriter
-with st.spinner("Generando animación..."):
-    ani.save("colapso_jeans.gif", writer=PillowWriter(fps=10))
+# Crear botones para la animación
+steps = []
+for i in range(len(positions)):
+    step = dict(
+        method="update",
+        args=[{"visible": [False] * len(positions)},
+              {"title": f"Frame {i+1}"}],  # Cambia el título dinámicamente
+    )
+    step["args"][0]["visible"][i] = True  # Solo el frame actual es visible
+    steps.append(step)
 
-# Mostrar la animación en Streamlit
-st.image("colapso_jeans.gif", caption="Colapso Gravitacional de Jeans")
+sliders = [dict(
+    active=0,
+    currentvalue={"prefix": "Frame: "},
+    pad={"t": 50},
+    steps=steps
+)]
+
+# Configurar layout de la figura
+fig.update_layout(
+    sliders=sliders,
+    title="Colapso Gravitacional Simulado",
+    xaxis=dict(range=[-initial_radius, initial_radius], title="X"),
+    yaxis=dict(range=[-initial_radius, initial_radius], title="Y"),
+    showlegend=False
+)
+
+# Mostrar la figura en Streamlit
+st.plotly_chart(fig)
 
 
 #################
