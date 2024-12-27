@@ -1,104 +1,86 @@
-import streamlit as st
-import numpy as np
-from PIL import Image, ImageDraw
-from moviepy.editor import ImageSequenceClip
-import tempfile
 
-# Parámetros interactivos
-st.sidebar.header("Parámetros de la Nube")
-num_particles = st.sidebar.slider("Número de partículas", 100, 10000, 2000, step=500)
-mass_total = st.sidebar.slider("Masa total de la nube (en masas solares)", 1, 1000, 10, step=10) * 1.989e30  # Convertir a kg
-initial_radius = st.sidebar.slider("Radio inicial de la nube (pc)", 0.1, 10.0, 1.0, step=0.1) * 3.086e16  # Convertir a metros
-initial_temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 500, 100, step=10)
-time_steps = st.sidebar.slider("Número de pasos de tiempo", 50, 500, 200, step=50)
-gravitational_factor = st.sidebar.slider("Intensidad gravitacional", 0.1, 10.0, 1.0, step=0.1)
-
-# Constantes físicas
-G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
-mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas (kg)
-initial_density = mass_total / (4 / 3 * np.pi * initial_radius**3)  # Densidad promedio inicial (kg/m³)
-
-# Cálculo de la masa crítica de Jeans
-jeans_mass = (5 * k_B * initial_temperature / (mu * G))**1.5 / (6 * np.sqrt(np.pi) * initial_density)
-
-# Determinar si la nube colapsa o no
-collapses = mass_total > jeans_mass
-collapse_message = "La nube colapsa" if collapses else "La nube no colapsa"
-st.write(f"**{collapse_message} según el criterio de Jeans.**")
-
-# Inicialización de partículas con perfil irregular
-np.random.seed(42)  # Fijar semilla para reproducibilidad
-theta = np.random.uniform(0, 2 * np.pi, num_particles)
-r = np.random.uniform(0, initial_radius, num_particles)
-x = r * np.cos(theta)
-y = r * np.sin(theta)
-
-# Introducir irregularidades en la distribución inicial
-noise_x = np.random.normal(0, initial_radius * 0.1, num_particles)
-noise_y = np.random.normal(0, initial_radius * 0.1, num_particles)
-x += noise_x
-y += noise_y
-
-vx = np.random.normal(0, 10, num_particles)  # Velocidad inicial en X (m/s)
-vy = np.random.normal(0, 10, num_particles)  # Velocidad inicial en Y (m/s)
-
-# Simulación
-frames = []
-for t in range(time_steps):
-    # Calcular distancias al centro
-    r = np.sqrt(x**2 + y**2)
-    
-    # Gravedad: aceleración hacia el centro
-    ax = -gravitational_factor * G * mass_total * x / (r**3 + 1e-10)
-    ay = -gravitational_factor * G * mass_total * y / (r**3 + 1e-10)
-    
-    # Efecto de presión térmica
-    pressure_factor = k_B * initial_temperature / mu
-    vx += ax + np.random.normal(0, pressure_factor / 1e5, num_particles)
-    vy += ay + np.random.normal(0, pressure_factor / 1e5, num_particles)
-    
-    # Actualizar posiciones
-    x += vx * 1e12  # Factor de tiempo para hacer más visibles los movimientos
-    y += vy * 1e12
-    
-    # Calcular densidad local para colorear partículas
-    density = np.histogram2d(x, y, bins=(50, 50), range=[[-initial_radius, initial_radius]]*2)[0]
-    density_norm = (density / np.max(density))  # Normalizar densidad
-    
-    # Crear un frame
-    img = Image.new("RGB", (500, 500), "black")
-    draw = ImageDraw.Draw(img)
-    for xi, yi, d in zip(x, y, density_norm.flatten()):
-        px = int(250 + xi / initial_radius * 250)
-        py = int(250 + yi / initial_radius * 250)
-        if 0 <= px < 500 and 0 <= py < 500:
-            color = int(d * 255)
-            draw.ellipse((px - 2, py - 2, px + 2, py + 2), fill=(color, color, 255))  # Azul para densidad alta
-    frames.append(img)
-
-# Guardar el video como MP4
-with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-    clip = ImageSequenceClip([np.array(frame) for frame in frames], fps=20)
-    clip.write_videofile(temp_video.name, codec="libx264")
-    video_path = temp_video.name
-
-# Mostrar el video en Streamlit
-st.video(video_path)
-
-# Descargar el video
-with open(video_path, "rb") as video_file:
-    st.download_button(
-        label="Descargar Video (Colapso Gravitacional)",
-        data=video_file,
-        file_name="colapso_gravitacional.mp4",
-        mime="video/mp4"
-    )
 
 #################
+import numpy as np
+import streamlit as st
+import matplotlib.pyplot as plt
 
+# Parámetros iniciales
+nx, ny = 100, 100  # Tamaño de la malla
+lx, ly = 1.0, 1.0  # Dimensiones físicas de la malla (en unidades arbitrarias)
+dx, dy = lx / nx, ly / ny  # Tamaño de celda
+dt = 0.01  # Paso de tiempo
+nt = 500  # Número de pasos de tiempo
+c = 0.1  # Velocidad de advección constante
 
+# Crear la malla y el campo inicial
+def create_initial_conditions(nx, ny, lx, ly):
+    x = np.linspace(0, lx, nx)
+    y = np.linspace(0, ly, ny)
+    X, Y = np.meshgrid(x, y)
 
+    # Campo de densidad inicial (distribución gaussiana)
+    rho0 = np.exp(-((X - lx / 2) ** 2 + (Y - ly / 2) ** 2) / (2 * (0.1 ** 2)))
+
+    # Campos de velocidad (en este caso, flujo constante hacia la derecha)
+    v_x = np.ones((nx, ny)) * c
+    v_y = np.zeros((nx, ny))
+
+    return rho0, v_x, v_y
+
+# Método de advección (upwind)
+def advect(rho, v_x, v_y, dx, dy, dt):
+    rho_new = rho.copy()
+
+    # Advección en x
+    for i in range(1, rho.shape[0] - 1):
+        for j in range(1, rho.shape[1] - 1):
+            rho_new[i, j] -= dt / dx * (v_x[i, j] * (rho[i, j] - rho[i - 1, j]))
+
+    # Advección en y
+    for i in range(1, rho.shape[0] - 1):
+        for j in range(1, rho.shape[1] - 1):
+            rho_new[i, j] -= dt / dy * (v_y[i, j] * (rho[i, j] - rho[i, j - 1]))
+
+    return rho_new
+
+# Inicializar los campos
+rho, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
+
+# Interfaz de Streamlit
+st.title("Simulación de Advección 2D")
+
+# Parámetros ajustables
+nt = st.sidebar.slider("Número de pasos de tiempo", min_value=1, max_value=500, value=500, step=10)
+c = st.sidebar.slider("Velocidad de advección", min_value=0.01, max_value=1.0, value=0.1, step=0.01)
+
+# Actualizar las condiciones iniciales con la nueva velocidad
+rho, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
+v_x *= c
+
+# Bucle principal de la simulación
+progress_bar = st.progress(0)
+frames = []
+for t in range(nt):
+    rho = advect(rho, v_x, v_y, dx, dy, dt)
+    
+    if t % 50 == 0 or t == nt - 1:  # Guardar cuadros para visualización
+        fig, ax = plt.subplots()
+        cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
+        ax.set_title(f"Paso de tiempo {t}")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        fig.colorbar(cax, label="Densidad")
+        frames.append(fig)
+        plt.close(fig)
+    
+    progress_bar.progress((t + 1) / nt)
+
+# Mostrar resultados
+for frame in frames:
+    st.pyplot(frame)
+
+##############
 
 
 
