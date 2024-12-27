@@ -46,14 +46,19 @@ else:
 
     if generate_collapse_animation:
         # Generar frames de colapso
+
+
+
         def generate_collapse_frame(radius, frame_number, num_particles=1000):
+            # Generar posiciones de partículas
             angles = np.random.uniform(0, 2 * np.pi, num_particles)
             radii = np.random.uniform(0, radius, num_particles)
             x = radii * np.cos(angles)
             y = radii * np.sin(angles)
 
             # Simular temperatura por densidad
-            temperature_profile = np.clip(temperature * (radius / initial_radius)**(-1.5), temperature, 5 * temperature)
+            temperature_profile = temperature * (radii / radius)**(-1.5)  # Perfil dinámico
+            temperature_profile = np.clip(temperature_profile, temperature, 5 * temperature)  # Límite superior
 
             # Color por temperatura (rojo para caliente, azul para frío)
             colors = np.interp(temperature_profile, [temperature, 5 * temperature], [50, 255]).astype(np.uint8)
@@ -69,6 +74,7 @@ else:
                     image[yi, xi] = [ci, 255 - ci, 255 - ci]  # Rojo-amarillo para regiones calientes
 
             return Image.fromarray(image)
+
 
         # Generar todos los frames para el colapso
         steps = 50
