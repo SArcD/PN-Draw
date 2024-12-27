@@ -1,3 +1,4 @@
+
 import streamlit as st
 import numpy as np
 from moviepy.editor import ImageSequenceClip
@@ -5,22 +6,27 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Nube Molecular Oscilante")
-st.sidebar.header("Parámetros de la nube")
+st.title("Simulación de Nube Molecular con Interacción Estelar")
+st.sidebar.header("Parámetros de la Nube y Estrella")
 
 # Parámetros ajustables
-mass = st.sidebar.slider(
-    "Masa inicial (en masas solares)", 
+cloud_mass = st.sidebar.slider(
+    "Masa inicial de la nube (en masas solares)", 
     1, 100000, 1000, step=10
 ) * 1.989e30  # Conversión a kg
 
+star_mass = st.sidebar.slider(
+    "Masa de la estrella central (en masas solares)", 
+    0.1, 100, 1.0, step=0.1
+) * 1.989e30  # Conversión a kg
+
 temperature = st.sidebar.slider(
-    "Temperatura inicial (K)", 
+    "Temperatura inicial de la nube (K)", 
     10, 500, 100, step=10
 )
 
 density = st.sidebar.slider(
-    "Densidad inicial (kg/m³)", 
+    "Densidad inicial de la nube (kg/m³)", 
     1e-26, 1e-17, 1e-19, format="%.1e"
 )
 
@@ -39,8 +45,12 @@ G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Calcular la frecuencia angular
-omega = np.sqrt((4 * np.pi * G * density) / (15 * k_B * temperature / mu))
+# Calcular la presión térmica y la fuerza gravitacional
+pressure = density * k_B * temperature / mu
+gravity = G * (cloud_mass + star_mass) / initial_radius**2
+
+# Calcular frecuencia angular ajustada por presión y gravedad
+omega = np.sqrt(gravity / (15 * pressure))
 
 # Generar posiciones iniciales de partículas
 def generate_particles(num_particles, radius):
@@ -52,15 +62,12 @@ def generate_particles(num_particles, radius):
 
 # Función para generar un frame de la oscilación
 def generate_oscillation_frame(x_initial, y_initial, t, radius, num_particles):
-    # Calcular el factor de oscilación
     amplitude = radius * np.exp(-beta * t)
     oscillation_factor = amplitude * np.cos(omega * t)
 
-    # Aplicar la oscilación
     x_moving = x_initial * (1 + oscillation_factor / radius)
     y_moving = y_initial * (1 + oscillation_factor / radius)
 
-    # Crear imagen RGB
     image = np.zeros((500, 500, 3), dtype=np.uint8)
     x_mapped = ((x_moving / (2 * initial_radius)) + 0.5) * image.shape[1]
     y_mapped = ((y_moving / (2 * initial_radius)) + 0.5) * image.shape[0]
@@ -68,7 +75,14 @@ def generate_oscillation_frame(x_initial, y_initial, t, radius, num_particles):
     # Dibujar partículas
     for xi, yi in zip(x_mapped.astype(int), y_mapped.astype(int)):
         if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
-            image[yi, xi] = [255, 255, 255]  # Blanco para partículas
+            image[yi, xi] = [255, 255, 255]
+
+    # Dibujar estrella en el centro
+    star_x, star_y = image.shape[1] // 2, image.shape[0] // 2
+    for i in range(-5, 6):
+        for j in range(-5, 6):
+            if 0 <= star_x + i < image.shape[1] and 0 <= star_y + j < image.shape[0]:
+                image[star_y + j, star_x + i] = [255, 255, 0]  # Amarillo para la estrella
 
     return Image.fromarray(image)
 
@@ -79,7 +93,7 @@ x_initial, y_initial = generate_particles(num_particles, initial_radius)
 # Generar todos los frames de la oscilación
 steps = 100
 frames = []
-time = np.linspace(0, 10, steps)  # Tiempo en segundos
+time = np.linspace(0, 10, steps)
 for t in time:
     frame = generate_oscillation_frame(x_initial, y_initial, t, initial_radius, num_particles)
     frames.append(frame)
@@ -96,12 +110,11 @@ st.video(video_path)
 # Botón para descargar el video
 with open(video_path, "rb") as video_file:
     st.download_button(
-        label="Descargar Video (Oscilación de Nube Molecular)",
+        label="Descargar Video (Interacción Estrella-Nube)",
         data=video_file,
-        file_name="nube_oscilante.mp4",
+        file_name="estrella_nube.mp4",
         mime="video/mp4"
     )
-
 
 
 #################
