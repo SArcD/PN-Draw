@@ -11,17 +11,17 @@ st.sidebar.header("Parámetros de la nube")
 # Parámetros ajustables
 mass = st.sidebar.slider(
     "Masa inicial (en masas solares)", 
-    10, 100000, 1000, step=10
+    1, 100000, 1000, step=10
 ) * 1.989e30  # Conversión a kg
 
 temperature = st.sidebar.slider(
     "Temperatura inicial (K)", 
-    10, 500, 20, step=10  # Expandimos el rango a 500 K
+    00, 500, 20, step=10  # Expandimos el rango a 500 K
 )
 
 density = st.sidebar.slider(
     "Densidad inicial (kg/m³)", 
-    1e-22, 1e-17, 1e-19, format="%.1e"
+    1e-26, 1e-17, 1e-19, format="%.1e"
 )
 
 # Constantes
