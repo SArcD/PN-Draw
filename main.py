@@ -1,15 +1,16 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
+from PIL import Image
 
-# Parámetros ajustables
-st.sidebar.header("Parámetros de la Simulación")
+# Parámetros interactivos ajustables desde la barra lateral
+st.sidebar.header("Parámetros de la Nube de Gas")
 grid_size = st.sidebar.slider("Resolución de la cuadrícula", 50, 300, 100, step=50)
 initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 10, 100, 50, step=10)
 temperature = st.sidebar.slider("Temperatura de la nube (K)", 10, 300, 100, step=10)
-time_steps = st.sidebar.slider("Número de pasos de tiempo (visualización)", 1, 50, 10, step=1)
+time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
+gravitational_factor = st.sidebar.slider("Intensidad gravitacional", 0.1, 10.0, 1.0, step=0.1)
 
-# Constantes
+# Constantes físicas
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas de gas (kg)
@@ -22,38 +23,38 @@ R = np.sqrt(X**2 + Y**2)
 
 # Inicializar densidad con un perfil gaussiano
 density = np.exp(-R**2 / (2 * (initial_radius / 3)**2))
-density += np.random.normal(0, 0.1, size=density.shape)  # Agregar ruido para zonas densas
+density += np.random.normal(0, 0.1, size=density.shape)  # Zonas de mayor densidad inicial
 
 # Función de presión térmica
-def pressure_gradient(density, temperature):
+def calculate_pressure_gradient(density, temperature):
     grad_x, grad_y = np.gradient(density)
     grad_x = -k_B * temperature * grad_x
     grad_y = -k_B * temperature * grad_y
     return grad_x, grad_y
 
-# Simulación del colapso interactivo
-st.title("Colapso Gravitacional Interactivo (Criterio de Jeans)")
-
-for t in range(time_steps):
-    # Calcular el gradiente de presión
-    grad_x, grad_y = pressure_gradient(density, temperature)
+# Simulación del colapso gravitacional
+frames = []
+for step in range(time_steps):
+    # Calcular gradiente de presión
+    grad_x, grad_y = calculate_pressure_gradient(density, temperature)
     
     # Efecto gravitacional
-    gravity = G * density / (R**2 + 1e-10)
+    gravity = gravitational_factor * G * density / (R**2 + 1e-10)
     
     # Actualizar densidad
     density += gravity - 0.1 * (grad_x + grad_y)
     density[density < 0] = 0  # Evitar densidades negativas
     
-    # Normalizar densidad para representación
+    # Normalizar densidad para visualización
     norm_density = (density / np.max(density) * 255).astype(np.uint8)
     
-    # Mostrar el estado actual
-    fig, ax = plt.subplots(figsize=(6, 6))
-    im = ax.imshow(norm_density, cmap="plasma", extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
-    plt.colorbar(im, ax=ax, label="Densidad")
-    ax.set_title(f"Paso de Tiempo: {t + 1}")
-    st.pyplot(fig)
+    # Crear un frame
+    img = Image.fromarray(norm_density, mode="L").convert("RGB")
+    frames.append(img)
+
+# Mostrar frames en la interfaz interactiva
+current_frame = st.slider("Seleccionar Frame", 0, len(frames) - 1, 0)
+st.image(frames[current_frame], caption=f"Frame {current_frame + 1}/{len(frames)}", use_column_width=True)
 
 #################
 
