@@ -18,8 +18,8 @@ theta = np.random.uniform(0, 2 * np.pi, num_particles)
 r = np.random.uniform(0, initial_radius, num_particles)
 x = r * np.cos(theta)
 y = r * np.sin(theta)
-vx = np.random.normal(0, 10, num_particles)  # Velocidad inicial en X
-vy = np.random.normal(0, 10, num_particles)  # Velocidad inicial en Y
+vx = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en X
+vy = np.random.normal(0, 0.1, num_particles)  # Velocidad inicial en Y
 
 # Simulación del colapso
 positions = []
@@ -32,12 +32,12 @@ for t in range(time_steps):
     ay = -G * star_mass * y / (r**3 + 1e-10)
     
     # Actualizar velocidades
-    vx += ax
-    vy += ay
+    vx += ax * 0.1  # Factor de tiempo
+    vy += ay * 0.1
     
     # Actualizar posiciones
-    x += vx
-    y += vy
+    x += vx * 0.1
+    y += vy * 0.1
     
     # Guardar posiciones para animación
     positions.append((x.copy(), y.copy()))
@@ -46,7 +46,7 @@ for t in range(time_steps):
 fig, ax = plt.subplots(figsize=(6, 6))
 ax.set_xlim(-initial_radius, initial_radius)
 ax.set_ylim(-initial_radius, initial_radius)
-scatter = ax.scatter(x, y, s=1, c=r, cmap='plasma', alpha=0.7)
+scatter = ax.scatter(x, y, s=1, c=np.sqrt(x**2 + y**2), cmap='plasma', alpha=0.7)
 plt.colorbar(scatter, ax=ax, label="Distancia al centro")
 
 def update(frame):
@@ -64,6 +64,7 @@ with st.spinner("Generando animación..."):
 
 # Mostrar la animación en Streamlit
 st.image("colapso_jeans.gif", caption="Colapso Gravitacional de Jeans")
+
 
 #################
 
