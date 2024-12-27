@@ -140,14 +140,18 @@ for t in range(100):  # 100 pasos de simulación
 
 # Mostrar partículas finales
 final_positions = np.array([p['posición'] for p in particles if 0 <= p['posición'][0] <= lx and 0 <= p['posición'][1] <= ly])
-plt.figure(figsize=(8, 8))
-plt.scatter(final_positions[:, 0], final_positions[:, 1], s=1, c="red")
-plt.title("Distribución final de partículas")
-plt.xlabel("x")
-plt.ylabel("y")
-plt.xlim(0, lx)
-plt.ylim(0, ly)
-st.pyplot(plt)
+if final_positions.size == 0:
+    st.write("No se generaron partículas válidas dentro del dominio.")
+else:
+    final_positions = final_positions.reshape(-1, 2)
+    plt.figure(figsize=(8, 8))
+    plt.scatter(final_positions[:, 0], final_positions[:, 1], s=1, c="red")
+    plt.title("Distribución final de partículas")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.xlim(0, lx)
+    plt.ylim(0, ly)
+    st.pyplot(plt)
 
 ##############
 
