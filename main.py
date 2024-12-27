@@ -1,42 +1,89 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
-# Parámetros iniciales
+# Parámetros ajustables
+st.sidebar.header("Parámetros de la Simulación")
+star_mass = st.sidebar.slider("Masa de la estrella (en masas solares)", 0.1, 50.0, 1.0, step=0.1) * 1.989e30
+initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 100, 1000, 300, step=50)
 grid_size = st.sidebar.slider("Resolución de la cuadrícula", 100, 500, 300, step=50)
-initial_radius = st.sidebar.slider("Radio inicial", 100, 500, 300, step=10)
-time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
+time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 100, 50, step=10)
 
+# Constantes
+G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
+sigma = 5.670374419e-8  # Constante de Stefan-Boltzmann (W/m²K⁴)
+solar_luminosity = 3.828e26  # Luminosidad solar (W)
+
+# Calcular la luminosidad y temperatura de la estrella
+luminosity = solar_luminosity * (star_mass / 1.989e30) ** 3.5
+temperature = (luminosity / (4 * np.pi * (695700e3)**2 * sigma))**0.25
+
+# Inicializar la cuadrícula
 x = np.linspace(-initial_radius, initial_radius, grid_size)
 y = np.linspace(-initial_radius, initial_radius, grid_size)
 X, Y = np.meshgrid(x, y)
 R = np.sqrt(X**2 + Y**2)
 
-# Inicializar densidad
-density = np.exp(-R / initial_radius)
+# Inicializar densidad de la nube
+density = np.exp(-R / (initial_radius / 2))  # Densidad mayor en el centro
+random_zones = np.random.uniform(size=(grid_size, grid_size)) < 0.02  # Zonas de alta densidad
+density[random_zones] += np.random.uniform(0.5, 1.0, size=random_zones.sum())  # Incremento en zonas frías
 
-# Función para actualizar la densidad
-def update_density(density, star_mass, dt):
-    G = 6.67430e-11  # Constante gravitacional
-    star_gravity = G * star_mass / (R**2 + 1e-10)
-    density_change = star_gravity * density * dt
-    density -= density_change
-    density[density < 0] = 0
-    return density
+# Coordenadas de la estrella
+star_x, star_y = grid_size // 2, grid_size // 2
 
-# Visualizar cada paso
+# Función para calcular la presión de radiación
+def pressure_radiation(luminosity, distance):
+    return luminosity / (4 * np.pi * distance**2 * 3e8)
+
+# Simulación de evolución de densidad
+def update_density(density, star_mass, luminosity, dt):
+    new_density = np.copy(density)
+    for i in range(grid_size):
+        for j in range(grid_size):
+            r = np.sqrt((i - star_x)**2 + (j - star_y)**2)
+            if r == 0:
+                continue
+            
+            # Efecto gravitacional
+            gravitational_force = G * star_mass / (r**2 + 1e-10)
+            new_density[i, j] += gravitational_force * dt
+            
+            # Efecto de presión de radiación
+            radiation_pressure = pressure_radiation(luminosity, r)
+            new_density[i, j] -= radiation_pressure * dt
+
+            # Mantener densidad positiva
+            if new_density[i, j] < 0:
+                new_density[i, j] = 0
+    return new_density
+
+# Crear animación de densidad
+frames = []
 for t in range(time_steps):
-    star_mass = 1.989e30  # Masa de la estrella en kg
-    density = update_density(density, star_mass, 0.1)
-    plt.figure(figsize=(6, 6))
-    plt.imshow(density, cmap="inferno", extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
-    plt.title(f"Paso {t + 1}")
-    plt.colorbar(label="Densidad")
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.tight_layout()
-    st.pyplot(plt)
+    density = update_density(density, star_mass, luminosity, 0.1)
+    frames.append(np.copy(density))
 
+# Crear animación con Matplotlib
+fig, ax = plt.subplots()
+cmap = plt.get_cmap("plasma")
+im = ax.imshow(density, cmap=cmap, extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
+plt.colorbar(im, label="Densidad")
+
+def animate(frame):
+    im.set_array(frame)
+    return [im]
+
+ani = FuncAnimation(fig, animate, frames=frames, interval=100, blit=True)
+
+# Mostrar animación en Streamlit
+from matplotlib.animation import PillowWriter
+
+with st.spinner("Generando animación..."):
+    ani.save("nube_simulacion.gif", writer=PillowWriter(fps=10))
+
+st.image("nube_simulacion.gif", caption="Simulación de Nube Molecular con Estrella")
 
 
 #################
