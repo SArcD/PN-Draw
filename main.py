@@ -5,7 +5,7 @@ from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Colapso de una Nube Molecular")
+st.title("Simulación de Colapso de una Nube Molecular con Presión Térmica")
 st.sidebar.header("Parámetros de la nube")
 
 # Parámetros ajustables
@@ -51,7 +51,12 @@ else:
             radii = np.random.uniform(0, radius, num_particles)
             x = radii * np.cos(angles)
             y = radii * np.sin(angles)
-            colors = np.linspace(50, 255, num_particles).astype(np.uint8)
+
+            # Simular temperatura por densidad
+            temperature_profile = np.clip(temperature * (radius / initial_radius)**(-1.5), temperature, 5 * temperature)
+
+            # Color por temperatura (rojo para caliente, azul para frío)
+            colors = np.interp(temperature_profile, [temperature, 5 * temperature], [50, 255]).astype(np.uint8)
 
             # Crear imagen RGB
             image = np.zeros((500, 500, 3), dtype=np.uint8)
@@ -61,7 +66,7 @@ else:
             # Dibujar partículas en la imagen
             for xi, yi, ci in zip(x_mapped.astype(int), y_mapped.astype(int), colors):
                 if 0 <= xi < image.shape[1] and 0 <= yi < image.shape[0]:
-                    image[yi, xi] = [ci, 255 - ci, 128]  # Color dinámico (rojo-verde)
+                    image[yi, xi] = [ci, 255 - ci, 255 - ci]  # Rojo-amarillo para regiones calientes
 
             return Image.fromarray(image)
 
@@ -87,11 +92,12 @@ else:
         # Botón para descargar el video
         with open(video_path, "rb") as video_file:
             st.download_button(
-                label="Descargar Video (Colapso)",
+                label="Descargar Video (Colapso con Presión Térmica)",
                 data=video_file,
-                file_name="colapso_nube.mp4",
+                file_name="colapso_nube_presion.mp4",
                 mime="video/mp4"
             )
+
 
 #################
 
