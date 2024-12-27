@@ -7,6 +7,7 @@ import tempfile
 # Parámetros interactivos
 st.sidebar.header("Parámetros de la Nube")
 num_particles = st.sidebar.slider("Número de partículas", 100, 10000, 2000, step=500)
+mass_total = st.sidebar.slider("Masa total de la nube (en masas solares)", 1, 1000, 10, step=10) * 1.989e30  # Convertir a kg
 initial_radius = st.sidebar.slider("Radio inicial de la nube (pc)", 0.1, 10.0, 1.0, step=0.1) * 3.086e16  # Convertir a metros
 initial_temperature = st.sidebar.slider("Temperatura inicial (K)", 10, 500, 100, step=10)
 time_steps = st.sidebar.slider("Número de pasos de tiempo", 50, 500, 200, step=50)
@@ -16,15 +17,13 @@ gravitational_factor = st.sidebar.slider("Intensidad gravitacional", 0.1, 10.0, 
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partículas (kg)
-solar_mass = 1.989e30  # Masa solar (kg)
-cloud_mass = 10 * solar_mass  # Masa total de la nube (kg)
-initial_density = cloud_mass / (4 / 3 * np.pi * initial_radius**3)  # Densidad promedio inicial (kg/m³)
+initial_density = mass_total / (4 / 3 * np.pi * initial_radius**3)  # Densidad promedio inicial (kg/m³)
 
 # Cálculo de la masa crítica de Jeans
 jeans_mass = (5 * k_B * initial_temperature / (mu * G))**1.5 / (6 * np.sqrt(np.pi) * initial_density)
 
 # Determinar si la nube colapsa o no
-collapses = cloud_mass > jeans_mass
+collapses = mass_total > jeans_mass
 collapse_message = "La nube colapsa" if collapses else "La nube no colapsa"
 st.write(f"**{collapse_message} según el criterio de Jeans.**")
 
@@ -51,8 +50,8 @@ for t in range(time_steps):
     r = np.sqrt(x**2 + y**2)
     
     # Gravedad: aceleración hacia el centro
-    ax = -gravitational_factor * G * cloud_mass * x / (r**3 + 1e-10)
-    ay = -gravitational_factor * G * cloud_mass * y / (r**3 + 1e-10)
+    ax = -gravitational_factor * G * mass_total * x / (r**3 + 1e-10)
+    ay = -gravitational_factor * G * mass_total * y / (r**3 + 1e-10)
     
     # Efecto de presión térmica
     pressure_factor = k_B * initial_temperature / mu
@@ -95,6 +94,7 @@ with open(video_path, "rb") as video_file:
         file_name="colapso_gravitacional.mp4",
         mime="video/mp4"
     )
+
 
 #################
 
