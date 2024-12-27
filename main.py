@@ -1,11 +1,11 @@
 import streamlit as st
 import numpy as np
 from moviepy.editor import ImageSequenceClip
-from PIL import Image, ImageDraw
+from PIL import Image
 import tempfile
 
 # Configuración inicial
-st.title("Simulación de Nube Molecular con Estrella Local")
+st.title("Simulación de Densidad de Nube Molecular")
 st.sidebar.header("Parámetros de la Nube y Estrella")
 
 # Parámetros ajustables
@@ -24,19 +24,14 @@ temperature = st.sidebar.slider(
     10, 500, 100, step=10
 )
 
-density = st.sidebar.slider(
-    "Densidad inicial de la nube (kg/m³)", 
-    1e-26, 1e-17, 1e-19, format="%.1e"
-)
-
 initial_radius = st.sidebar.slider(
-    "Radio inicial de la nube (m)", 
-    1e15, 1e18, 1e16, format="%.1e"
+    "Radio inicial de la nube (en unidades arbitrarias)", 
+    100, 500, 300, step=10
 )
 
-beta = st.sidebar.slider(
-    "Coeficiente de amortiguamiento (\u03B2)", 
-    0.0, 2.0, 0.1, step=0.1
+time_steps = st.sidebar.slider(
+    "Número de pasos de tiempo", 
+    50, 200, 100, step=10
 )
 
 # Constantes
@@ -44,67 +39,39 @@ G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
 k_B = 1.380649e-23  # Constante de Boltzmann (J/K)
 mu = 2.8 * 1.66053906660e-27  # Masa promedio de partícula (kg)
 
-# Gravedad de la estrella y oscilaciones locales
-def calculate_gravity(x, y, star_x, star_y, star_mass):
-    r = np.sqrt((x - star_x)**2 + (y - star_y)**2)
-    return -G * star_mass / (r**2 + 1e10)  # Evitar división por cero
+# Dimensiones de la simulación
+grid_size = 500
+density = np.zeros((grid_size, grid_size))
 
-# Generar partículas con gradientes de densidad
-def generate_particles(num_particles, radius):
-    r = np.random.uniform(0, radius, num_particles)
-    theta = np.random.uniform(0, 2 * np.pi, num_particles)
-    density_gradient = np.exp(-r / radius)  # Zonas densas en el centro
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    return x, y, density_gradient
-
-# Generar un frame de la simulación
-def generate_simulation_frame(x, y, density_gradient, star_x, star_y, t, radius, beta, num_particles):
-    amplitude = radius * np.exp(-beta * t)
-    oscillation_factor = amplitude * np.cos(t * 2 * np.pi / 10)  # Oscilación temporal
-
-    # Aplicar fuerzas gravitacionales y térmicas
-    for i in range(num_particles):
-        gravity = calculate_gravity(x[i], y[i], star_x, star_y, star_mass)
-        pressure = density_gradient[i] * k_B * temperature / mu
-        x[i] += gravity * oscillation_factor + pressure * np.random.normal(0, 0.1)
-        y[i] += gravity * oscillation_factor + pressure * np.random.normal(0, 0.1)
-
-    # Crear imagen
-    image = Image.new("RGB", (500, 500), "black")
-    draw = ImageDraw.Draw(image)
-
-    # Dibujar estrella como círculo amarillo
-    star_radius = 10
-    draw.ellipse(
-        [
-            (star_x - star_radius, star_y - star_radius),
-            (star_x + star_radius, star_y + star_radius),
-        ],
-        fill="yellow",
-    )
-
-    # Dibujar partículas
-    for xi, yi in zip(x, y):
-        px = int((xi / (2 * initial_radius) + 0.5) * image.width)
-        py = int((yi / (2 * initial_radius) + 0.5) * image.height)
-        if 0 <= px < image.width and 0 <= py < image.height:
-            draw.point((px, py), fill="white")
-
-    return image
-
-# Generar partículas
-num_particles = 5000
-x, y, density_gradient = generate_particles(num_particles, initial_radius)
+# Inicializar densidad con gradiente radial
+x = np.linspace(-initial_radius, initial_radius, grid_size)
+y = np.linspace(-initial_radius, initial_radius, grid_size)
+X, Y = np.meshgrid(x, y)
+R = np.sqrt(X**2 + Y**2)
+density = np.exp(-R / initial_radius)  # Mayor densidad en el centro
 
 # Coordenadas de la estrella
-star_x, star_y = 250, 250  # Centro de la imagen
+star_x, star_y = grid_size // 2, grid_size // 2
 
-# Generar frames de la simulación
+# Función para calcular fuerzas gravitacionales locales
+def calculate_gravity_density(density, star_mass, cloud_mass, radius, dt):
+    global grid_size
+    new_density = np.copy(density)
+    for i in range(grid_size):
+        for j in range(grid_size):
+            r = np.sqrt((i - star_x)**2 + (j - star_y)**2) + 1e-10
+            gravity_effect = G * (star_mass + cloud_mass * density[i, j]) / r**2
+            new_density[i, j] += -gravity_effect * dt
+            new_density[i, j] = max(new_density[i, j], 0)  # Evitar valores negativos
+    return new_density
+
+# Generar frames de simulación
 frames = []
-time_steps = 100
-for t in np.linspace(0, 10, time_steps):
-    frame = generate_simulation_frame(x, y, density_gradient, star_x, star_y, t, initial_radius, beta, num_particles)
+dt = 0.1  # Paso de tiempo
+for t in range(time_steps):
+    density = calculate_gravity_density(density, star_mass, cloud_mass, initial_radius, dt)
+    normalized_density = (density / np.max(density) * 255).astype(np.uint8)
+    frame = Image.fromarray(normalized_density).convert("RGB")
     frames.append(frame)
 
 # Crear video usando MoviePy
@@ -119,12 +86,11 @@ st.video(video_path)
 # Botón para descargar el video
 with open(video_path, "rb") as video_file:
     st.download_button(
-        label="Descargar Video (Nube Molecular con Estrella)",
+        label="Descargar Video (Mapa de Densidad)",
         data=video_file,
-        file_name="estrella_nube.mp4",
+        file_name="nube_densidad.mp4",
         mime="video/mp4"
     )
-
 
 
 #################
