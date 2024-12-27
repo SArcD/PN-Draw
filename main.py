@@ -1,6 +1,7 @@
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 from noise import pnoise2
 
 # Parámetros iniciales
@@ -48,20 +49,40 @@ def calculate_pressure(rho, temperature, R_gas, M_mol):
     pressure = (rho * R_gas * temperature) / M_mol  # Presión en Pascales
     return pressure
 
+# Identificar regiones con alta densidad y baja temperatura
+def find_high_density_low_temp_regions(rho, temperature, n_regions=3):
+    flattened_indices = np.argsort(-rho.ravel() / temperature.ravel())  # Ordenar por densidad/temperatura
+    selected_indices = flattened_indices[:n_regions]
+    regions = []
+    for idx in selected_indices:
+        x_idx = idx // ny
+        y_idx = idx % ny
+        regions.append((x_idx, y_idx))
+    return regions
+
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
+regions = find_high_density_low_temp_regions(rho, temperature)
 
 # Interfaz de Streamlit
 st.title("Distribución inicial de la nube de gas")
 
-# Mostrar la densidad inicial
+# Mostrar la densidad inicial con regiones destacadas
 fig, ax = plt.subplots()
 cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
 ax.set_title("Densidad inicial de la nube (kg/m³)")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Densidad (kg/m³)")
+
+# Agregar círculos para las regiones destacadas
+for region in regions:
+    x_center = region[1] * dx
+    y_center = region[0] * dy
+    circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
+    ax.add_patch(circle)
+
 st.pyplot(fig)
 
 # Mostrar el campo de temperatura
