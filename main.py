@@ -4,88 +4,66 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 # Parámetros ajustables
-st.sidebar.header("Parámetros de la Simulación")
-star_mass = st.sidebar.slider("Masa de la estrella (en masas solares)", 0.1, 50.0, 1.0, step=0.1) * 1.989e30
-initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 100, 1000, 300, step=50)
-grid_size = st.sidebar.slider("Resolución de la cuadrícula", 100, 500, 300, step=50)
-time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 100, 50, step=10)
+st.sidebar.header("Parámetros de la Nube")
+num_particles = st.sidebar.slider("Número de partículas", 100, 5000, 1000, step=100)
+initial_radius = st.sidebar.slider("Radio inicial de la nube (en unidades arbitrarias)", 100, 500, 300, step=50)
+star_mass = st.sidebar.slider("Masa de la estrella central (en masas solares)", 0.1, 50.0, 1.0, step=0.1) * 1.989e30
+time_steps = st.sidebar.slider("Número de pasos de tiempo", 10, 200, 50, step=10)
 
 # Constantes
 G = 6.67430e-11  # Constante gravitacional (m³/kg/s²)
-sigma = 5.670374419e-8  # Constante de Stefan-Boltzmann (W/m²K⁴)
-solar_luminosity = 3.828e26  # Luminosidad solar (W)
 
-# Calcular la luminosidad y temperatura de la estrella
-luminosity = solar_luminosity * (star_mass / 1.989e30) ** 3.5
-temperature = (luminosity / (4 * np.pi * (695700e3)**2 * sigma))**0.25
+# Inicializar partículas
+theta = np.random.uniform(0, 2 * np.pi, num_particles)
+r = np.random.uniform(0, initial_radius, num_particles)
+x = r * np.cos(theta)
+y = r * np.sin(theta)
+vx = np.random.normal(0, 10, num_particles)  # Velocidad inicial en X
+vy = np.random.normal(0, 10, num_particles)  # Velocidad inicial en Y
 
-# Inicializar la cuadrícula
-x = np.linspace(-initial_radius, initial_radius, grid_size)
-y = np.linspace(-initial_radius, initial_radius, grid_size)
-X, Y = np.meshgrid(x, y)
-R = np.sqrt(X**2 + Y**2)
-
-# Inicializar densidad de la nube
-density = np.exp(-R / (initial_radius / 2))  # Densidad mayor en el centro
-random_zones = np.random.uniform(size=(grid_size, grid_size)) < 0.02  # Zonas de alta densidad
-density[random_zones] += np.random.uniform(5, 10, size=random_zones.sum())  # Incremento en zonas frías
-
-# Escala de densidad para la estrella
-density[grid_size // 2, grid_size // 2] += 50  # Mayor densidad en la estrella
-
-# Función para calcular la presión de radiación
-def pressure_radiation(luminosity, distance):
-    return luminosity / (4 * np.pi * distance**2 * 3e8)
-
-# Simulación de evolución de densidad
-def update_density(density, star_mass, luminosity, dt):
-    new_density = np.copy(density)
-    for i in range(grid_size):
-        for j in range(grid_size):
-            r = np.sqrt((i - grid_size // 2)**2 + (j - grid_size // 2)**2)
-            if r == 0:
-                continue
-            
-            # Efecto gravitacional
-            gravitational_force = G * star_mass / (r**2 + 1e-10)
-            new_density[i, j] += gravitational_force * dt
-            
-            # Efecto de presión de radiación
-            radiation_pressure = pressure_radiation(luminosity, r + 1e-10)
-            new_density[i, j] -= radiation_pressure * dt
-
-            # Mantener densidad positiva
-            if new_density[i, j] < 0:
-                new_density[i, j] = 0
-    return new_density
-
-# Crear animación de densidad
-frames = []
+# Simulación del colapso
+positions = []
 for t in range(time_steps):
-    density = update_density(density, star_mass, luminosity, 0.1)
-    frames.append(np.copy(density))
+    # Calcular la distancia de cada partícula al centro
+    r = np.sqrt(x**2 + y**2)
+    
+    # Gravedad: aceleración hacia el centro
+    ax = -G * star_mass * x / (r**3 + 1e-10)
+    ay = -G * star_mass * y / (r**3 + 1e-10)
+    
+    # Actualizar velocidades
+    vx += ax
+    vy += ay
+    
+    # Actualizar posiciones
+    x += vx
+    y += vy
+    
+    # Guardar posiciones para animación
+    positions.append((x.copy(), y.copy()))
 
-# Crear animación con Matplotlib
+# Crear animación
 fig, ax = plt.subplots(figsize=(6, 6))
-cmap = plt.get_cmap("plasma")
-im = ax.imshow(density, cmap=cmap, extent=(-initial_radius, initial_radius, -initial_radius, initial_radius))
-plt.colorbar(im, label="Densidad")
-plt.title("Simulación de Nube Molecular con Estrella")
+ax.set_xlim(-initial_radius, initial_radius)
+ax.set_ylim(-initial_radius, initial_radius)
+scatter = ax.scatter(x, y, s=1, c=r, cmap='plasma', alpha=0.7)
+plt.colorbar(scatter, ax=ax, label="Distancia al centro")
 
-def animate(frame):
-    im.set_array(frame)
-    return [im]
+def update(frame):
+    x, y = positions[frame]
+    scatter.set_offsets(np.c_[x, y])
+    scatter.set_array(np.sqrt(x**2 + y**2))  # Actualizar colores según distancia
+    return scatter,
 
-ani = FuncAnimation(fig, animate, frames=frames, interval=100, blit=True)
+ani = FuncAnimation(fig, update, frames=len(positions), interval=100, blit=False)
 
-# Mostrar animación en Streamlit
+# Guardar la animación como GIF
 from matplotlib.animation import PillowWriter
-
 with st.spinner("Generando animación..."):
-    ani.save("nube_simulacion.gif", writer=PillowWriter(fps=10))
+    ani.save("colapso_jeans.gif", writer=PillowWriter(fps=10))
 
-st.image("nube_simulacion.gif", caption="Simulación de Nube Molecular con Estrella")
-
+# Mostrar la animación en Streamlit
+st.image("colapso_jeans.gif", caption="Colapso Gravitacional de Jeans")
 
 #################
 
