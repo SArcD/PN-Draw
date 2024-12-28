@@ -207,7 +207,41 @@ st.plotly_chart(fig_temperature, use_container_width=True)
 
 # Mostrar gráfica de presión
 fig_pressure = go.Figure(data=go.Heatmap(
-    z
+    z=pressure,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Inferno",
+    colorbar=dict(title="Presión (Pa)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Presión:</b> %{z:.2e} Pa"
+    )
+))
+fig_pressure.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada"
+))
+fig_pressure.update_layout(
+    title="Presión inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_pressure, use_container_width=True)
+
+# Mostrar resultados del criterio de Jeans
+st.subheader("Criterio de Jeans para la región destacada")
+st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
+st.write(f"Temperatura de la región: {temp_region:.2f} K")
+st.write(f"Masa de la región: {M_region:.2e} kg")
+st.write(f"Masa de Jeans: {M_J:.2e} kg")
+if collapses:
+    st.write("La región cumple con el criterio de colapso gravitacional.")
+else:
+    st.write("La región **no** cumple con el criterio de colapso gravitacional.")
 
 
 
