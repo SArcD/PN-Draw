@@ -9,7 +9,7 @@ from matplotlib.animation import PillowWriter
 nx, ny = 100, 100  # Tamaño de la malla
 lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt = 0.01  # Paso de tiempo
+dt = 0.1  # Paso de tiempo
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
@@ -104,6 +104,7 @@ def create_density_evolution_gif(rho, dx, dy, steps, output_path="density_collap
 
 # Inicializar los campos
 rho, temperature = create_initial_conditions(nx, ny, lx, ly)
+pressure = (rho * R_gas * temperature) / M_mol  # Calcular presión inicial
 
 # Calcular la región de interés
 x_idx, y_idx = np.unravel_index(np.argmax(rho), rho.shape)
@@ -139,6 +140,47 @@ fig_density.update_layout(
 )
 st.plotly_chart(fig_density)
 
+fig_temperature = go.Figure(data=go.Heatmap(
+    z=temperature,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Plasma",
+    colorbar=dict(title="Temperatura (K)")
+))
+fig_temperature.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red"),
+    name="Región de interés"
+))
+fig_temperature.update_layout(
+    title="Temperatura inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_temperature)
+
+fig_pressure = go.Figure(data=go.Heatmap(
+    z=pressure,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Inferno",
+    colorbar=dict(title="Presión (Pa)")
+))
+fig_pressure.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red"),
+    name="Región de interés"
+))
+fig_pressure.update_layout(
+    title="Presión inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_pressure)
 
 
 ##############
