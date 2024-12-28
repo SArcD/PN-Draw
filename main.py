@@ -3,8 +3,7 @@ import streamlit as st
 import plotly.graph_objects as go
 from noise import pnoise2
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import matplotlib.animation as animation
+from moviepy.editor import VideoClip
 
 # Parámetros iniciales
 nx, ny = 100, 100  # Tamaño de la malla
@@ -111,6 +110,30 @@ def simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100):
 
     return trajectory
 
+# Crear el video con MoviePy
+def create_video(trajectory, xlim, ylim, output_path="collapse_simulation.mp4"):
+    def make_frame(t):
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
+        ax.set_title("Simulación del colapso gravitacional")
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+
+        step = min(int(t * 10), len(trajectory) - 1)
+        positions = trajectory[step]
+        ax.scatter(positions[:, 0], positions[:, 1], s=10)
+
+        fig.canvas.draw()
+        image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        plt.close(fig)
+        return image
+
+    duration = len(trajectory) / 10  # 10 frames por segundo
+    animation = VideoClip(make_frame, duration=duration)
+    animation.write_videofile(output_path, fps=10)
+
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
@@ -124,130 +147,16 @@ temp_region = temperature[x_idx, y_idx]
 # Calcular el criterio de Jeans
 M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
 
-# Crear gráficas interactivas con Plotly
-fig_density = go.Figure(data=go.Heatmap(
-    z=rho,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Viridis",
-    colorbar=dict(title="Densidad (kg/m³)"),
-    hovertemplate=(
-        "<b>x:</b> %{x:.2e} m<br>"
-        "<b>y:</b> %{y:.2e} m<br>"
-        "<b>Densidad:</b> %{z:.3f} kg/m³"
-    )
-))
-fig_density.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red", symbol="circle"),
-    name="Región destacada",
-    hovertemplate=(
-        "<b>Región destacada</b><br>"
-        f"Densidad: {rho_region:.3f} kg/m³<br>"
-        f"Temperatura: {temp_region:.2f} K<br>"
-        f"Masa región: {M_region:.2e} kg<br>"
-        f"Masa de Jeans: {M_J:.2e} kg<br>"
-        f"Colapsa: {'Sí' if collapses else 'No'}"
-    )
-))
-fig_density.update_layout(
-    title="Densidad inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-st.plotly_chart(fig_density, use_container_width=True)
-
-# Mostrar gráfica de temperatura
-fig_temperature = go.Figure(data=go.Heatmap(
-    z=temperature,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Plasma",
-    colorbar=dict(title="Temperatura (K)"),
-    hovertemplate=(
-        "<b>x:</b> %{x:.2e} m<br>"
-        "<b>y:</b> %{y:.2e} m<br>"
-        "<b>Temperatura:</b> %{z:.2f} K"
-    )
-))
-fig_temperature.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red", symbol="circle"),
-    name="Región destacada"
-))
-fig_temperature.update_layout(
-    title="Temperatura inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-st.plotly_chart(fig_temperature, use_container_width=True)
-
-# Mostrar gráfica de presión
-fig_pressure = go.Figure(data=go.Heatmap(
-    z=pressure,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Inferno",
-    colorbar=dict(title="Presión (Pa)"),
-    hovertemplate=(
-        "<b>x:</b> %{x:.2e} m<br>"
-        "<b>y:</b> %{y:.2e} m<br>"
-        "<b>Presión:</b> %{z:.2e} Pa"
-    )
-))
-fig_pressure.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red", symbol="circle"),
-    name="Región destacada"
-))
-fig_pressure.update_layout(
-    title="Presión inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-st.plotly_chart(fig_pressure, use_container_width=True)
-
-# Mostrar resultados del criterio de Jeans
-st.subheader("Criterio de Jeans para la región destacada")
-st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
-st.write(f"Temperatura de la región: {temp_region:.2f} K")
-st.write(f"Masa de la región: {M_region:.2e} kg")
-st.write(f"Masa de Jeans: {M_J:.2e} kg")
+# Mostrar resultados
 if collapses:
     st.write("La región cumple con el criterio de colapso gravitacional.")
-
-    # Generar animación del colapso gravitacional
     trajectory = simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100)
-
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.set_xlim(x_idx * dx - dx, x_idx * dx + dx)
-    ax.set_ylim(y_idx * dy - dy, y_idx * dy + dy)
-    ax.set_title("Simulación del colapso gravitacional")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-
-    scatter = ax.scatter([], [], s=10)
-
-    def update(frame):
-        scatter.set_offsets(trajectory[frame])
-        return scatter,
-
-    ani = FuncAnimation(fig, update, frames=len(trajectory), interval=50, blit=True)
-
-    video_path = "collapse_simulation.mp4"
-    ani.save(video_path, writer="ffmpeg")
-
-    st.video(video_path)
+    xlim = (x_idx * dx - dx, x_idx * dx + dx)
+    ylim = (y_idx * dy - dy, y_idx * dy + dy)
+    create_video(trajectory, xlim, ylim)
+    st.video("collapse_simulation.mp4")
 else:
-    st.write("La región **no** cumple con el criterio de colapso gravitacional.")
-
-
+    st.write("La región no cumple con el criterio de colapso gravitacional.")
 
 ##############
 
