@@ -125,7 +125,7 @@ def create_video(trajectory, xlim, ylim, output_path="collapse_simulation.mp4"):
         ax.scatter(positions[:, 0], positions[:, 1], s=10)
 
         fig.canvas.draw()
-        image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+        image = np.frombuffer(fig.canvas.tostring_argb(), dtype='uint8')
         image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         plt.close(fig)
         return image
