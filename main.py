@@ -76,6 +76,38 @@ def find_highest_density_lowest_temp_region(rho, temperature):
     y_idx = index % ny
     return x_idx, y_idx
 
+# Simular el colapso gravitacional
+def simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100):
+    # Inicializar partículas en la región
+    num_particles = 50
+    x_positions = np.random.uniform(x_idx * dx - dx / 2, x_idx * dx + dx / 2, num_particles)
+    y_positions = np.random.uniform(y_idx * dy - dy / 2, y_idx * dy + dy / 2, num_particles)
+    masses = np.ones(num_particles) * (rho[x_idx, y_idx] * dx * dy / num_particles)
+    velocities = np.zeros((num_particles, 2))
+
+    positions = np.column_stack((x_positions, y_positions))
+
+    trajectory = [positions.copy()]
+
+    for _ in range(steps):
+        forces = np.zeros_like(positions)
+        for i in range(num_particles):
+            for j in range(num_particles):
+                if i != j:
+                    r_vector = positions[j] - positions[i]
+                    r_magnitude = np.sqrt(np.sum(r_vector**2)) + 1e-5  # Evitar división por cero
+                    f_magnitude = G * masses[i] * masses[j] / r_magnitude**2
+                    forces[i] += f_magnitude * r_vector / r_magnitude
+
+        # Actualizar posiciones y velocidades
+        accelerations = forces / masses[:, np.newaxis]
+        velocities += accelerations * dt
+        positions += velocities * dt
+
+        trajectory.append(positions.copy())
+
+    return trajectory
+
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
@@ -89,7 +121,29 @@ temp_region = temperature[x_idx, y_idx]
 # Calcular el criterio de Jeans
 M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
 
-# Crear gráficas interactivas con Plotly
+# Simular colapso si es posible
+if collapses:
+    trajectory = simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100)
+    fig_collapse = go.Figure()
+    for step, positions in enumerate(trajectory):
+        fig_collapse.add_trace(go.Scatter(
+            x=positions[:, 0],
+            y=positions[:, 1],
+            mode='markers',
+            marker=dict(size=5),
+            name=f'Step {step}'
+        ))
+    fig_collapse.update_layout(
+        title="Simulación del colapso gravitacional",
+        xaxis_title="x (m)",
+        yaxis_title="y (m)"
+    )
+    st.plotly_chart(fig_collapse, use_container_width=True)
+
+# Interfaz de Streamlit
+st.title("Simulación interactiva de la nube de gas molecular")
+
+# Mostrar gráfica de densidad
 fig_density = go.Figure(data=go.Heatmap(
     z=rho,
     x=np.linspace(0, lx, nx),
@@ -122,7 +176,9 @@ fig_density.update_layout(
     xaxis_title="x (m)",
     yaxis_title="y (m)"
 )
+st.plotly_chart(fig_density, use_container_width=True)
 
+# Mostrar gráfica de temperatura
 fig_temperature = go.Figure(data=go.Heatmap(
     z=temperature,
     x=np.linspace(0, lx, nx),
@@ -147,54 +203,13 @@ fig_temperature.update_layout(
     xaxis_title="x (m)",
     yaxis_title="y (m)"
 )
-
-fig_pressure = go.Figure(data=go.Heatmap(
-    z=pressure,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Inferno",
-    colorbar=dict(title="Presión (Pa)"),
-    hovertemplate=(
-        "<b>x:</b> %{x:.2e} m<br>"
-        "<b>y:</b> %{y:.2e} m<br>"
-        "<b>Presión:</b> %{z:.2e} Pa"
-    )
-))
-fig_pressure.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red", symbol="circle"),
-    name="Región destacada"
-))
-fig_pressure.update_layout(
-    title="Presión inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-
-# Interfaz de Streamlit
-st.title("Simulación interactiva de la nube de gas molecular")
-
-# Mostrar gráfica de densidad
-st.plotly_chart(fig_density, use_container_width=True)
-
-# Mostrar gráfica de temperatura
 st.plotly_chart(fig_temperature, use_container_width=True)
 
 # Mostrar gráfica de presión
-st.plotly_chart(fig_pressure, use_container_width=True)
+fig_pressure = go.Figure(data=go.Heatmap(
+    z
 
-# Mostrar resultados del criterio de Jeans
-st.subheader("Criterio de Jeans para la región destacada")
-st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
-st.write(f"Temperatura de la región: {temp_region:.2f} K")
-st.write(f"Masa de la región: {M_region:.2e} kg")
-st.write(f"Masa de Jeans: {M_J:.2e} kg")
-if collapses:
-    st.write("La región cumple con el criterio de colapso gravitacional.")
-else:
-    st.write("La región **no** cumple con el criterio de colapso gravitacional.")
+
 
 
 ##############
