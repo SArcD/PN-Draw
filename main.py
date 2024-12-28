@@ -117,7 +117,9 @@ rho_region = rho[
 # Configurar el deslizador en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.slider("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=100, step=10)
+#G_multiplier = st.sidebar.slider("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=100, step=10)
+#G = G_default * G_multiplier
+G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000, value=100, step=10)
 G = G_default * G_multiplier
 steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=100, step=10)
 
