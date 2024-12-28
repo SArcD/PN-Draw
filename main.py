@@ -113,7 +113,7 @@ def simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100):
 # Crear el video con MoviePy
 def create_video(trajectory, xlim, ylim, output_path="collapse_simulation.mp4"):
     def make_frame(t):
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
         ax.set_xlim(*xlim)
         ax.set_ylim(*ylim)
         ax.set_title("Simulación del colapso gravitacional")
@@ -125,7 +125,7 @@ def create_video(trajectory, xlim, ylim, output_path="collapse_simulation.mp4"):
         ax.scatter(positions[:, 0], positions[:, 1], s=10)
 
         fig.canvas.draw()
-        image = np.frombuffer(fig.canvas.tostring_argb(), dtype='uint8')
+        image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
         image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         plt.close(fig)
         return image
