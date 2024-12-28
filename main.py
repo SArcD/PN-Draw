@@ -12,6 +12,10 @@ dt = 0.01  # Paso de tiempo
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
+k_B = 1.38e-23  # Constante de Boltzmann (J/K)
+m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
+G = 6.674e-11  # Constante gravitacional (m^3 kg^-1 s^-2)
+mu = 2.33  # Peso molecular medio para gas molecular
 
 # Crear la malla y el campo inicial
 def create_initial_conditions(nx, ny, lx, ly):
@@ -56,10 +60,35 @@ def find_highest_density_lowest_temp_region(rho, temperature):
     y_idx = index % ny
     return x_idx, y_idx
 
+# Calcular el criterio de Jeans
+def calculate_jeans_criterion(rho, temperature, dx, dy):
+    # Velocidad del sonido
+    c_s = np.sqrt(k_B * temperature / (mu * m_H))
+
+    # Masa de Jeans
+    M_J = (np.pi**(5/2) * c_s**3) / (6 * G**(3/2) * rho**(1/2))
+
+    # Volumen de la región
+    volume = dx * dy * dx  # Suponiendo un espesor igual a dx
+
+    # Masa de la región
+    M_region = rho * volume
+
+    # Comparar las masas
+    return M_region, M_J, M_region > M_J
+
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
 highest_region = find_highest_density_lowest_temp_region(rho, temperature)
+
+# Obtener los valores de la región destacada
+x_idx, y_idx = highest_region
+rho_region = rho[x_idx, y_idx]
+temp_region = temperature[x_idx, y_idx]
+
+# Calcular el criterio de Jeans
+M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
 
 # Interfaz de Streamlit
 st.title("Distribución inicial de la nube de gas")
@@ -73,8 +102,8 @@ ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Densidad (kg/m³)")
 
 # Agregar un círculo para la región destacada
-x_center = highest_region[1] * dx
-y_center = highest_region[0] * dy
+x_center = y_idx * dx
+y_center = x_idx * dy
 circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
 ax.add_patch(circle)
 
@@ -107,6 +136,17 @@ circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False,
 ax.add_patch(circle)
 
 st.pyplot(fig)
+
+# Mostrar resultados del criterio de Jeans
+st.subheader("Criterio de Jeans para la región destacada")
+st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
+st.write(f"Temperatura de la región: {temp_region:.2f} K")
+st.write(f"Masa de la región: {M_region:.2e} kg")
+st.write(f"Masa de Jeans: {M_J:.2e} kg")
+if collapses:
+    st.write("La región cumple con el criterio de colapso gravitacional.")
+else:
+    st.write("La región **no** cumple con el criterio de colapso gravitacional.")
 
 
 ##############
