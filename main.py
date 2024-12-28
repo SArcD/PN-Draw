@@ -15,7 +15,7 @@ R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
 k_B = 1.38e-23  # Constante de Boltzmann (J/K)
 m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
-G = 6.674e-11 * 100  # Constante gravitacional amplificada para intensificar el colapso
+G_default = 6.674e-11 * 100  # Constante gravitacional inicial
 mu = 2.33  # Peso molecular medio para gas molecular
 
 # Crear la malla y el campo inicial
@@ -46,7 +46,7 @@ def create_initial_conditions(nx, ny, lx, ly):
     return rho0, temperature
 
 # Calcular el potencial gravitacional
-def calculate_gravitational_potential(rho, dx, dy):
+def calculate_gravitational_potential(rho, dx, dy, G):
     from scipy.fft import fft2, ifft2, fftfreq
 
     kx = 2 * np.pi * fftfreq(rho.shape[0], dx)
@@ -79,7 +79,7 @@ def update_density(rho, phi, dx, dy, dt):
     return np.maximum(rho_new, 0)  # Evitar valores negativos
 
 # Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, dx, dy, steps, dt, output_path="density_collapse.gif"):
+def create_density_evolution_gif(rho, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
     x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
@@ -91,7 +91,7 @@ def create_density_evolution_gif(rho, dx, dy, steps, dt, output_path="density_co
 
     def update(frame):
         nonlocal rho
-        phi = calculate_gravitational_potential(rho, dx, dy)
+        phi = calculate_gravitational_potential(rho, dx, dy, G)
         rho = update_density(rho, phi, dx, dy, dt)
         im.set_array(rho.ravel())
         ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
@@ -117,10 +117,12 @@ rho_region = rho[
 # Configurar el deslizador en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=10.0, value=dt_default, step=0.1)
+G_multiplier = st.sidebar.slider("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000, value=100, step=10)
+G = G_default * G_multiplier
 steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=200, value=100, step=10)
 
 # Generar el GIF
-create_density_evolution_gif(rho_region, dx, dy, steps, dt, output_path="density_collapse.gif")
+create_density_evolution_gif(rho_region, dx, dy, steps, dt, G, output_path="density_collapse.gif")
 st.image("density_collapse.gif")
 
 # Crear gráficas iniciales
