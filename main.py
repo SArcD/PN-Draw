@@ -3,6 +3,7 @@ import streamlit as st
 import plotly.graph_objects as go
 from noise import pnoise2
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from moviepy.editor import VideoClip
 
 # Parámetros iniciales
@@ -124,9 +125,10 @@ def create_video(trajectory, xlim, ylim, output_path="collapse_simulation.mp4"):
         positions = trajectory[step]
         ax.scatter(positions[:, 0], positions[:, 1], s=10)
 
-        fig.canvas.draw()
-        image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        canvas = FigureCanvas(fig)
+        canvas.draw()
+        image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
+        image = image.reshape(canvas.get_width_height()[::-1] + (3,))
         plt.close(fig)
         return image
 
@@ -157,6 +159,8 @@ if collapses:
     st.video("collapse_simulation.mp4")
 else:
     st.write("La región no cumple con el criterio de colapso gravitacional.")
+
+
 
 ##############
 
