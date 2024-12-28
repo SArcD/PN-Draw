@@ -9,13 +9,13 @@ from matplotlib.animation import PillowWriter
 nx, ny = 100, 100  # Tamaño de la malla
 lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt = 0.5  # Paso de tiempo ampliado para cambios visibles
+dt = 1.0  # Paso de tiempo ampliado para cambios visibles
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
 k_B = 1.38e-23  # Constante de Boltzmann (J/K)
 m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
-G = 6.674e-11 * 10  # Constante gravitacional ampliada para efecto visible
+G = 6.674e-11 * 50  # Constante gravitacional amplificada
 mu = 2.33  # Peso molecular medio para gas molecular
 
 # Crear la malla y el campo inicial
@@ -35,8 +35,8 @@ def create_initial_conditions(nx, ny, lx, ly):
         for j in range(ny):
             rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
 
-    # Normalizar la densidad para que sea positiva y esté entre un rango físico
-    rho_min, rho_max = 0.5, 1.5  # Densidad mínima y máxima en kg/m³
+    # Normalizar la densidad para que sea positiva y esté entre un rango físico amplio
+    rho_min, rho_max = 0.5, 3.0  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
     # Generar un campo de temperatura inversamente proporcional a la densidad
@@ -86,7 +86,7 @@ def create_density_evolution_gif(rho, dx, dy, steps, output_path="density_collap
     X, Y = np.meshgrid(x, y)
 
     # Crear un único mapa de colores
-    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis")
+    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
     cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
     def update(frame):
@@ -181,7 +181,6 @@ fig_pressure.update_layout(
     yaxis_title="y (m)"
 )
 st.plotly_chart(fig_pressure)
-
 
 
 ##############
