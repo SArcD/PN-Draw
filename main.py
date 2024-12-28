@@ -2,6 +2,9 @@ import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 from noise import pnoise2
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import matplotlib.animation as animation
 
 # Parámetros iniciales
 nx, ny = 100, 100  # Tamaño de la malla
@@ -121,29 +124,7 @@ temp_region = temperature[x_idx, y_idx]
 # Calcular el criterio de Jeans
 M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
 
-# Simular colapso si es posible
-if collapses:
-    trajectory = simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100)
-    fig_collapse = go.Figure()
-    for step, positions in enumerate(trajectory):
-        fig_collapse.add_trace(go.Scatter(
-            x=positions[:, 0],
-            y=positions[:, 1],
-            mode='markers',
-            marker=dict(size=5),
-            name=f'Step {step}'
-        ))
-    fig_collapse.update_layout(
-        title="Simulación del colapso gravitacional",
-        xaxis_title="x (m)",
-        yaxis_title="y (m)"
-    )
-    st.plotly_chart(fig_collapse, use_container_width=True)
-
-# Interfaz de Streamlit
-st.title("Simulación interactiva de la nube de gas molecular")
-
-# Mostrar gráfica de densidad
+# Crear gráficas interactivas con Plotly
 fig_density = go.Figure(data=go.Heatmap(
     z=rho,
     x=np.linspace(0, lx, nx),
@@ -240,9 +221,31 @@ st.write(f"Masa de la región: {M_region:.2e} kg")
 st.write(f"Masa de Jeans: {M_J:.2e} kg")
 if collapses:
     st.write("La región cumple con el criterio de colapso gravitacional.")
+
+    # Generar animación del colapso gravitacional
+    trajectory = simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.set_xlim(x_idx * dx - dx, x_idx * dx + dx)
+    ax.set_ylim(y_idx * dy - dy, y_idx * dy + dy)
+    ax.set_title("Simulación del colapso gravitacional")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+
+    scatter = ax.scatter([], [], s=10)
+
+    def update(frame):
+        scatter.set_offsets(trajectory[frame])
+        return scatter,
+
+    ani = FuncAnimation(fig, update, frames=len(trajectory), interval=50, blit=True)
+
+    video_path = "collapse_simulation.mp4"
+    ani.save(video_path, writer="ffmpeg")
+
+    st.video(video_path)
 else:
     st.write("La región **no** cumple con el criterio de colapso gravitacional.")
-
 
 
 
