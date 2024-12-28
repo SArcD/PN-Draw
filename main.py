@@ -9,7 +9,7 @@ from matplotlib.animation import PillowWriter
 nx, ny = 100, 100  # Tamaño de la malla
 lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt = 2.0  # Paso de tiempo ampliado para cambios visibles
+dt_default = 2.0  # Paso de tiempo por defecto
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
@@ -38,14 +38,6 @@ def create_initial_conditions(nx, ny, lx, ly):
     # Normalizar la densidad para que sea positiva y esté entre un rango físico amplio
     rho_min, rho_max = 0.5, 3.0  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
-
-    # Forzar un núcleo denso en el centro de la región destacada
-    center_x, center_y = nx // 2, ny // 2
-    radius = 10
-    for i in range(nx):
-        for j in range(ny):
-            if (i - center_x)**2 + (j - center_y)**2 <= radius**2:
-                rho0[i, j] += 3.0  # Aumentar densidad en el núcleo
 
     # Generar un campo de temperatura inversamente proporcional a la densidad
     temp_min, temp_max = 200, 300  # Temperatura mínima y máxima en K
@@ -87,7 +79,7 @@ def update_density(rho, phi, dx, dy, dt):
     return np.maximum(rho_new, 0)  # Evitar valores negativos
 
 # Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, dx, dy, steps, output_path="density_collapse.gif"):
+def create_density_evolution_gif(rho, dx, dy, steps, dt, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
     x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
@@ -122,8 +114,13 @@ rho_region = rho[
     max(0, y_idx - region_size):min(ny, y_idx + region_size)
 ]
 
-# Generar el GIF si el colapso es posible
-create_density_evolution_gif(rho, dx, dy, steps=100)
+# Configurar el deslizador en Streamlit
+st.sidebar.title("Simulación de colapso gravitacional")
+dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=10.0, value=dt_default, step=0.1)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=200, value=100, step=10)
+
+# Generar el GIF
+create_density_evolution_gif(rho_region, dx, dy, steps, dt, output_path="density_collapse.gif")
 st.image("density_collapse.gif")
 
 # Crear gráficas iniciales
