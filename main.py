@@ -253,6 +253,149 @@ else:
     st.write("La región no cumple con el criterio de colapso gravitacional.")
 
 
+import numpy as np
+import streamlit as st
+import plotly.graph_objects as go
+from noise import pnoise2
+import matplotlib.pyplot as plt
+from matplotlib.animation import PillowWriter
+
+# Parámetros iniciales
+nx, ny = 100, 100  # Tamaño de la malla
+lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
+dx, dy = lx / nx, ly / ny  # Tamaño de celda
+dt = 0.01  # Paso de tiempo
+c = 0.1  # Velocidad de advección constante
+R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
+M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
+k_B = 1.38e-23  # Constante de Boltzmann (J/K)
+m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
+G = 6.674e-11  # Constante gravitacional (m^3 kg^-1 s^-2)
+mu = 2.33  # Peso molecular medio para gas molecular
+
+# Crear la malla y el campo inicial
+def create_initial_conditions(nx, ny, lx, ly):
+    x = np.linspace(0, lx, nx)
+    y = np.linspace(0, ly, ny)
+    X, Y = np.meshgrid(x, y)
+
+    # Generar densidad inicial basada en ruido Perlin
+    rho0 = np.zeros((nx, ny))
+    scale = 10.0  # Escala del ruido
+    octaves = 4  # Detalle del ruido
+    persistence = 0.5  # Persistencia del ruido
+    lacunarity = 2.0  # Lacunaridad del ruido
+
+    for i in range(nx):
+        for j in range(ny):
+            rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
+
+    # Normalizar la densidad para que sea positiva y esté entre un rango físico
+    rho_min, rho_max = 0.5, 1.5  # Densidad mínima y máxima en kg/m³
+    rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
+
+    # Generar un campo de temperatura inversamente proporcional a la densidad
+    temp_min, temp_max = 200, 300  # Temperatura mínima y máxima en K
+    temperature = temp_max - (temp_max - temp_min) * (rho0 - rho_min) / (rho_max - rho_min)
+
+    return rho0, temperature
+
+# Calcular el potencial gravitacional
+def calculate_gravitational_potential(rho, dx, dy):
+    from scipy.fft import fft2, ifft2, fftfreq
+
+    kx = 2 * np.pi * fftfreq(rho.shape[0], dx)
+    ky = 2 * np.pi * fftfreq(rho.shape[1], dy)
+    kx, ky = np.meshgrid(kx, ky, indexing="ij")
+    k_squared = kx**2 + ky**2
+    k_squared[0, 0] = 1  # Evitar división por cero
+
+    rho_ft = fft2(rho)
+    phi_ft = -4 * np.pi * G * rho_ft / k_squared
+    phi_ft[0, 0] = 0  # Normalizar el modo cero
+
+    phi = np.real(ifft2(phi_ft))
+    return phi
+
+# Actualizar el campo de densidad
+def update_density(rho, phi, dx, dy, dt):
+    grad_phi_x, grad_phi_y = np.gradient(phi, dx, dy)
+    v_x = -grad_phi_x
+    v_y = -grad_phi_y
+
+    rho_new = rho.copy()
+    for i in range(1, rho.shape[0] - 1):
+        for j in range(1, rho.shape[1] - 1):
+            rho_new[i, j] -= dt * (
+                (v_x[i + 1, j] * rho[i + 1, j] - v_x[i - 1, j] * rho[i - 1, j]) / (2 * dx)
+                + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
+            )
+
+    return np.maximum(rho_new, 0)  # Evitar valores negativos
+
+# Crear el GIF con Matplotlib
+def create_density_evolution_gif(rho, dx, dy, steps, output_path="density_collapse.gif"):
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+    x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
+    y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
+    X, Y = np.meshgrid(x, y)
+
+    def update(frame):
+        nonlocal rho
+        phi = calculate_gravitational_potential(rho, dx, dy)
+        rho = update_density(rho, phi, dx, dy, dt)
+        ax.clear()
+        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+        im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis")
+        fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
+
+    ani = plt.matplotlib.animation.FuncAnimation(
+        fig, update, frames=steps, interval=100
+    )
+    ani.save(output_path, writer=PillowWriter(fps=10))
+    plt.close(fig)
+
+# Inicializar los campos
+rho, temperature = create_initial_conditions(nx, ny, lx, ly)
+
+# Calcular la región de interés
+x_idx, y_idx = np.unravel_index(np.argmax(rho), rho.shape)
+region_size = 10
+rho_region = rho[  
+    max(0, x_idx - region_size):min(nx, x_idx + region_size),
+    max(0, y_idx - region_size):min(ny, y_idx + region_size)
+]
+
+# Generar el GIF si el colapso es posible
+create_density_evolution_gif(rho_region, dx, dy, steps=100)
+st.image("density_collapse.gif")
+
+# Crear gráficas iniciales
+fig_density = go.Figure(data=go.Heatmap(
+    z=rho,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Viridis",
+    colorbar=dict(title="Densidad (kg/m³)")
+))
+fig_density.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red"),
+    name="Región de interés"
+))
+fig_density.update_layout(
+    title="Densidad inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_density)
+
+
+
 ##############
 
 
