@@ -49,26 +49,22 @@ def calculate_pressure(rho, temperature, R_gas, M_mol):
     pressure = (rho * R_gas * temperature) / M_mol  # Presión en Pascales
     return pressure
 
-# Identificar regiones con alta densidad y baja temperatura
-def find_high_density_low_temp_regions(rho, temperature, n_regions=3):
-    flattened_indices = np.argsort(-rho.ravel() / temperature.ravel())  # Ordenar por densidad/temperatura
-    selected_indices = flattened_indices[:n_regions]
-    regions = []
-    for idx in selected_indices:
-        x_idx = idx // ny
-        y_idx = idx % ny
-        regions.append((x_idx, y_idx))
-    return regions
+# Identificar la región con mayor densidad y menor temperatura
+def find_highest_density_lowest_temp_region(rho, temperature):
+    index = np.argmax(rho.ravel() / temperature.ravel())  # Índice de la relación máxima rho/T
+    x_idx = index // ny
+    y_idx = index % ny
+    return x_idx, y_idx
 
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
-regions = find_high_density_low_temp_regions(rho, temperature)
+highest_region = find_highest_density_lowest_temp_region(rho, temperature)
 
 # Interfaz de Streamlit
 st.title("Distribución inicial de la nube de gas")
 
-# Mostrar la densidad inicial con regiones destacadas
+# Mostrar la densidad inicial con la región destacada
 fig, ax = plt.subplots()
 cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
 ax.set_title("Densidad inicial de la nube (kg/m³)")
@@ -76,12 +72,11 @@ ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Densidad (kg/m³)")
 
-# Agregar círculos para las regiones destacadas
-for region in regions:
-    x_center = region[1] * dx
-    y_center = region[0] * dy
-    circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
-    ax.add_patch(circle)
+# Agregar un círculo para la región destacada
+x_center = highest_region[1] * dx
+y_center = highest_region[0] * dy
+circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
+ax.add_patch(circle)
 
 st.pyplot(fig)
 
@@ -92,6 +87,11 @@ ax.set_title("Temperatura inicial de la nube (K)")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Temperatura (K)")
+
+# Agregar un círculo para la región destacada
+circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
+ax.add_patch(circle)
+
 st.pyplot(fig)
 
 # Mostrar el campo de presión
@@ -101,6 +101,11 @@ ax.set_title("Presión inicial de la nube (Pa)")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Presión (Pa)")
+
+# Agregar un círculo para la región destacada
+circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
+ax.add_patch(circle)
+
 st.pyplot(fig)
 
 
