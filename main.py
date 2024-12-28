@@ -149,7 +149,99 @@ temp_region = temperature[x_idx, y_idx]
 # Calcular el criterio de Jeans
 M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
 
-# Mostrar resultados
+# Crear gráficas interactivas con Plotly
+fig_density = go.Figure(data=go.Heatmap(
+    z=rho,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Viridis",
+    colorbar=dict(title="Densidad (kg/m³)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Densidad:</b> %{z:.3f} kg/m³"
+    )
+))
+fig_density.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada",
+    hovertemplate=(
+        "<b>Región destacada</b><br>"
+        f"Densidad: {rho_region:.3f} kg/m³<br>"
+        f"Temperatura: {temp_region:.2f} K<br>"
+        f"Masa región: {M_region:.2e} kg<br>"
+        f"Masa de Jeans: {M_J:.2e} kg<br>"
+        f"Colapsa: {'Sí' if collapses else 'No'}"
+    )
+))
+fig_density.update_layout(
+    title="Densidad inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_density, use_container_width=True)
+
+fig_temperature = go.Figure(data=go.Heatmap(
+    z=temperature,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Plasma",
+    colorbar=dict(title="Temperatura (K)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Temperatura:</b> %{z:.2f} K"
+    )
+))
+fig_temperature.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada"
+))
+fig_temperature.update_layout(
+    title="Temperatura inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_temperature, use_container_width=True)
+
+fig_pressure = go.Figure(data=go.Heatmap(
+    z=pressure,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Inferno",
+    colorbar=dict(title="Presión (Pa)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Presión:</b> %{z:.2e} Pa"
+    )
+))
+fig_pressure.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada"
+))
+fig_pressure.update_layout(
+    title="Presión inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+st.plotly_chart(fig_pressure, use_container_width=True)
+
+# Mostrar resultados del criterio de Jeans
+st.subheader("Criterio de Jeans para la región destacada")
+st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
+st.write(f"Temperatura de la región: {temp_region:.2f} K")
+st.write(f"Masa de la región: {M_region:.2e} kg")
+st.write(f"Masa de Jeans: {M_J:.2e} kg")
 if collapses:
     st.write("La región cumple con el criterio de colapso gravitacional.")
     trajectory = simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100)
