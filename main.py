@@ -69,9 +69,25 @@ def calculate_jeans_criterion(rho, temperature, dx, dy):
     # Comparar las masas
     return M_region, M_J, M_region > M_J
 
+# Identificar la región con mayor densidad y menor temperatura
+def find_highest_density_lowest_temp_region(rho, temperature):
+    index = np.argmax(rho.ravel() / temperature.ravel())  # Índice de la relación máxima rho/T
+    x_idx = index // ny
+    y_idx = index % ny
+    return x_idx, y_idx
+
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
+highest_region = find_highest_density_lowest_temp_region(rho, temperature)
+
+# Obtener los valores de la región destacada
+x_idx, y_idx = highest_region
+rho_region = rho[x_idx, y_idx]
+temp_region = temperature[x_idx, y_idx]
+
+# Calcular el criterio de Jeans
+M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
 
 # Crear gráficas interactivas con Plotly
 fig_density = go.Figure(data=go.Heatmap(
@@ -84,6 +100,21 @@ fig_density = go.Figure(data=go.Heatmap(
         "<b>x:</b> %{x:.2e} m<br>"
         "<b>y:</b> %{y:.2e} m<br>"
         "<b>Densidad:</b> %{z:.3f} kg/m³"
+    )
+))
+fig_density.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada",
+    hovertemplate=(
+        "<b>Región destacada</b><br>"
+        f"Densidad: {rho_region:.3f} kg/m³<br>"
+        f"Temperatura: {temp_region:.2f} K<br>"
+        f"Masa región: {M_region:.2e} kg<br>"
+        f"Masa de Jeans: {M_J:.2e} kg<br>"
+        f"Colapsa: {'Sí' if collapses else 'No'}"
     )
 ))
 fig_density.update_layout(
@@ -104,6 +135,13 @@ fig_temperature = go.Figure(data=go.Heatmap(
         "<b>Temperatura:</b> %{z:.2f} K"
     )
 ))
+fig_temperature.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada"
+))
 fig_temperature.update_layout(
     title="Temperatura inicial de la nube",
     xaxis_title="x (m)",
@@ -121,6 +159,13 @@ fig_pressure = go.Figure(data=go.Heatmap(
         "<b>y:</b> %{y:.2e} m<br>"
         "<b>Presión:</b> %{z:.2e} Pa"
     )
+))
+fig_pressure.add_trace(go.Scatter(
+    x=[y_idx * dx],
+    y=[x_idx * dy],
+    mode="markers",
+    marker=dict(size=15, color="red", symbol="circle"),
+    name="Región destacada"
 ))
 fig_pressure.update_layout(
     title="Presión inicial de la nube",
@@ -140,10 +185,16 @@ st.plotly_chart(fig_temperature, use_container_width=True)
 # Mostrar gráfica de presión
 st.plotly_chart(fig_pressure, use_container_width=True)
 
-# Agregar instrucciones interactivas
-st.markdown(
-    "**Instrucción:** Pasa el cursor sobre las gráficas para visualizar las propiedades locales de la nube."
-)
+# Mostrar resultados del criterio de Jeans
+st.subheader("Criterio de Jeans para la región destacada")
+st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
+st.write(f"Temperatura de la región: {temp_region:.2f} K")
+st.write(f"Masa de la región: {M_region:.2e} kg")
+st.write(f"Masa de Jeans: {M_J:.2e} kg")
+if collapses:
+    st.write("La región cumple con el criterio de colapso gravitacional.")
+else:
+    st.write("La región **no** cumple con el criterio de colapso gravitacional.")
 
 
 ##############
