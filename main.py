@@ -9,13 +9,13 @@ from matplotlib.animation import PillowWriter
 nx, ny = 100, 100  # Tamaño de la malla
 lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt = 1.0  # Paso de tiempo ampliado para cambios visibles
+dt = 2.0  # Paso de tiempo ampliado para cambios visibles
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
 k_B = 1.38e-23  # Constante de Boltzmann (J/K)
 m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
-G = 6.674e-11 * 50  # Constante gravitacional amplificada
+G = 6.674e-11 * 100  # Constante gravitacional amplificada para intensificar el colapso
 mu = 2.33  # Peso molecular medio para gas molecular
 
 # Crear la malla y el campo inicial
@@ -38,6 +38,14 @@ def create_initial_conditions(nx, ny, lx, ly):
     # Normalizar la densidad para que sea positiva y esté entre un rango físico amplio
     rho_min, rho_max = 0.5, 3.0  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
+
+    # Forzar un núcleo denso en el centro de la región destacada
+    center_x, center_y = nx // 2, ny // 2
+    radius = 10
+    for i in range(nx):
+        for j in range(ny):
+            if (i - center_x)**2 + (j - center_y)**2 <= radius**2:
+                rho0[i, j] += 3.0  # Aumentar densidad en el núcleo
 
     # Generar un campo de temperatura inversamente proporcional a la densidad
     temp_min, temp_max = 200, 300  # Temperatura mínima y máxima en K
@@ -115,7 +123,7 @@ rho_region = rho[
 ]
 
 # Generar el GIF si el colapso es posible
-create_density_evolution_gif(rho_region, dx, dy, steps=100)
+create_density_evolution_gif(rho, dx, dy, steps=100)
 st.image("density_collapse.gif")
 
 # Crear gráficas iniciales
