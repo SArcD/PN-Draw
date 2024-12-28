@@ -116,10 +116,10 @@ rho_region = rho[
 
 # Configurar el deslizador en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
-dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=10.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.slider("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000, value=100, step=10)
+dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
+G_multiplier = st.sidebar.slider("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=100, step=10)
 G = G_default * G_multiplier
-steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=200, value=100, step=10)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=100, step=10)
 
 # Generar el GIF
 create_density_evolution_gif(rho_region, dx, dy, steps, dt, G, output_path="density_collapse.gif")
