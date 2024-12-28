@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from noise import pnoise2
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from moviepy.editor import VideoClip
+from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
 nx, ny = 100, 100  # Tamaño de la malla
@@ -111,30 +111,30 @@ def simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100):
 
     return trajectory
 
-# Crear el video con MoviePy
-def create_video(trajectory, xlim, ylim, output_path="collapse_simulation.mp4"):
-    def make_frame(t):
-        fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+# Crear el GIF con Matplotlib
+def create_gif(trajectory, xlim, ylim, output_path="collapse_simulation.gif"):
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+    ax.set_xlim(*xlim)
+    ax.set_ylim(*ylim)
+    ax.set_title("Simulación del colapso gravitacional")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+
+    def update(frame):
+        ax.clear()
         ax.set_xlim(*xlim)
         ax.set_ylim(*ylim)
         ax.set_title("Simulación del colapso gravitacional")
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
-
-        step = min(int(t * 10), len(trajectory) - 1)
-        positions = trajectory[step]
+        positions = trajectory[frame]
         ax.scatter(positions[:, 0], positions[:, 1], s=10)
 
-        canvas = FigureCanvas(fig)
-        canvas.draw()
-        image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
-        image = image.reshape(canvas.get_width_height()[::-1] + (3,))
-        plt.close(fig)
-        return image
-
-    duration = len(trajectory) / 10  # 10 frames por segundo
-    animation = VideoClip(make_frame, duration=duration)
-    animation.write_videofile(output_path, fps=10)
+    ani = plt.matplotlib.animation.FuncAnimation(
+        fig, update, frames=len(trajectory), interval=100
+    )
+    ani.save(output_path, writer=PillowWriter(fps=10))
+    plt.close(fig)
 
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
@@ -155,11 +155,10 @@ if collapses:
     trajectory = simulate_collapse(x_idx, y_idx, rho, dx, dy, steps=100)
     xlim = (x_idx * dx - dx, x_idx * dx + dx)
     ylim = (y_idx * dy - dy, y_idx * dy + dy)
-    create_video(trajectory, xlim, ylim)
-    st.video("collapse_simulation.mp4")
+    create_gif(trajectory, xlim, ylim)
+    st.image("collapse_simulation.gif")
 else:
     st.write("La región no cumple con el criterio de colapso gravitacional.")
-
 
 
 ##############
