@@ -1,7 +1,6 @@
 import numpy as np
 import streamlit as st
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
+import plotly.graph_objects as go
 from noise import pnoise2
 
 # Parámetros iniciales
@@ -53,13 +52,6 @@ def calculate_pressure(rho, temperature, R_gas, M_mol):
     pressure = (rho * R_gas * temperature) / M_mol  # Presión en Pascales
     return pressure
 
-# Identificar la región con mayor densidad y menor temperatura
-def find_highest_density_lowest_temp_region(rho, temperature):
-    index = np.argmax(rho.ravel() / temperature.ravel())  # Índice de la relación máxima rho/T
-    x_idx = index // ny
-    y_idx = index % ny
-    return x_idx, y_idx
-
 # Calcular el criterio de Jeans
 def calculate_jeans_criterion(rho, temperature, dx, dy):
     # Velocidad del sonido
@@ -80,73 +72,78 @@ def calculate_jeans_criterion(rho, temperature, dx, dy):
 # Inicializar los campos
 rho, temperature, v_x, v_y = create_initial_conditions(nx, ny, lx, ly)
 pressure = calculate_pressure(rho, temperature, R_gas, M_mol)
-highest_region = find_highest_density_lowest_temp_region(rho, temperature)
 
-# Obtener los valores de la región destacada
-x_idx, y_idx = highest_region
-rho_region = rho[x_idx, y_idx]
-temp_region = temperature[x_idx, y_idx]
+# Crear gráficas interactivas con Plotly
+fig_density = go.Figure(data=go.Heatmap(
+    z=rho,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Viridis",
+    colorbar=dict(title="Densidad (kg/m³)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Densidad:</b> %{z:.3f} kg/m³"
+    )
+))
+fig_density.update_layout(
+    title="Densidad inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
 
-# Calcular el criterio de Jeans
-M_region, M_J, collapses = calculate_jeans_criterion(rho_region, temp_region, dx, dy)
+fig_temperature = go.Figure(data=go.Heatmap(
+    z=temperature,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Plasma",
+    colorbar=dict(title="Temperatura (K)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Temperatura:</b> %{z:.2f} K"
+    )
+))
+fig_temperature.update_layout(
+    title="Temperatura inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
+
+fig_pressure = go.Figure(data=go.Heatmap(
+    z=pressure,
+    x=np.linspace(0, lx, nx),
+    y=np.linspace(0, ly, ny),
+    colorscale="Inferno",
+    colorbar=dict(title="Presión (Pa)"),
+    hovertemplate=(
+        "<b>x:</b> %{x:.2e} m<br>"
+        "<b>y:</b> %{y:.2e} m<br>"
+        "<b>Presión:</b> %{z:.2e} Pa"
+    )
+))
+fig_pressure.update_layout(
+    title="Presión inicial de la nube",
+    xaxis_title="x (m)",
+    yaxis_title="y (m)"
+)
 
 # Interfaz de Streamlit
-st.title("Distribución inicial de la nube de gas")
+st.title("Simulación interactiva de la nube de gas molecular")
 
-# Mostrar la densidad inicial con la región destacada
-fig, ax = plt.subplots()
-cax = ax.imshow(rho, extent=(0, lx, 0, ly), origin="lower", cmap="viridis")
-ax.set_title("Densidad inicial de la nube (kg/m³)")
-ax.set_xlabel("x (m)")
-ax.set_ylabel("y (m)")
-fig.colorbar(cax, label="Densidad (kg/m³)")
+# Mostrar gráfica de densidad
+st.plotly_chart(fig_density, use_container_width=True)
 
-# Agregar un círculo para la región destacada
-x_center = y_idx * dx
-y_center = x_idx * dy
-circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
-ax.add_patch(circle)
+# Mostrar gráfica de temperatura
+st.plotly_chart(fig_temperature, use_container_width=True)
 
-st.pyplot(fig)
+# Mostrar gráfica de presión
+st.plotly_chart(fig_pressure, use_container_width=True)
 
-# Mostrar el campo de temperatura
-fig, ax = plt.subplots()
-cax = ax.imshow(temperature, extent=(0, lx, 0, ly), origin="lower", cmap="plasma")
-ax.set_title("Temperatura inicial de la nube (K)")
-ax.set_xlabel("x (m)")
-ax.set_ylabel("y (m)")
-fig.colorbar(cax, label="Temperatura (K)")
-
-# Agregar un círculo para la región destacada
-circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
-ax.add_patch(circle)
-
-st.pyplot(fig)
-
-# Mostrar el campo de presión
-fig, ax = plt.subplots()
-cax = ax.imshow(pressure, extent=(0, lx, 0, ly), origin="lower", cmap="inferno")
-ax.set_title("Presión inicial de la nube (Pa)")
-ax.set_xlabel("x (m)")
-ax.set_ylabel("y (m)")
-fig.colorbar(cax, label="Presión (Pa)")
-
-# Agregar un círculo para la región destacada
-circle = Circle((x_center, y_center), radius=lx * 0.05, color='red', fill=False, linewidth=2)
-ax.add_patch(circle)
-
-st.pyplot(fig)
-
-# Mostrar resultados del criterio de Jeans
-st.subheader("Criterio de Jeans para la región destacada")
-st.write(f"Densidad de la región: {rho_region:.3f} kg/m³")
-st.write(f"Temperatura de la región: {temp_region:.2f} K")
-st.write(f"Masa de la región: {M_region:.2e} kg")
-st.write(f"Masa de Jeans: {M_J:.2e} kg")
-if collapses:
-    st.write("La región cumple con el criterio de colapso gravitacional.")
-else:
-    st.write("La región **no** cumple con el criterio de colapso gravitacional.")
+# Agregar instrucciones interactivas
+st.markdown(
+    "**Instrucción:** Pasa el cursor sobre las gráficas para visualizar las propiedades locales de la nube."
+)
 
 
 ##############
