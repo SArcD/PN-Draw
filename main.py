@@ -34,9 +34,9 @@ def create_initial_conditions(nx, ny, lx, ly):
     rho_min, rho_max = 0.5, 1.5  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
-    # Generar un campo de temperatura aleatorio
+    # Generar un campo de temperatura inversamente proporcional a la densidad
     temp_min, temp_max = 200, 300  # Temperatura mínima y máxima en K
-    temperature = np.random.uniform(temp_min, temp_max, size=(nx, ny))
+    temperature = temp_max - (temp_max - temp_min) * (rho0 - rho_min) / (rho_max - rho_min)
 
     # Campos de velocidad (en este caso, flujo constante hacia la derecha)
     v_x = np.ones((nx, ny)) * c
@@ -102,6 +102,7 @@ ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 fig.colorbar(cax, label="Presión (Pa)")
 st.pyplot(fig)
+
 
 ##############
 
