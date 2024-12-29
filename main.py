@@ -17,6 +17,7 @@ k_B = 1.38e-23  # Constante de Boltzmann (J/K)
 m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
 G_default = 6.674e-11 * 100  # Constante gravitacional inicial
 mu = 2.33  # Peso molecular medio para gas molecular
+gamma = 5 / 3  # Índice adiabático para un gas monoatómico
 
 # Crear la malla y el campo inicial
 def create_initial_conditions(nx, ny, lx, ly):
@@ -76,8 +77,9 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
                 (v_x[i + 1, j] * rho[i + 1, j] - v_x[i - 1, j] * rho[i - 1, j]) / (2 * dx)
                 + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
             )
-            # Incrementar temperatura proporcionalmente a la densidad (calentamiento por compresión)
-            temperature_new[i, j] += 0.1 * (rho_new[i, j] - rho[i, j])  # Factor de ajuste
+            # Calentamiento adiabático: T ~ rho^(gamma - 1)
+            if rho_new[i, j] > 0:
+                temperature_new[i, j] = temperature[i, j] * (rho_new[i, j] / rho[i, j])**(gamma - 1)
 
     return np.maximum(rho_new, 0), np.maximum(temperature_new, 10)  # Evitar valores negativos
 
@@ -260,7 +262,6 @@ fig_evolution_dt.update_layout(
     yaxis_title="Paso de tiempo (dt)"
 )
 st.plotly_chart(fig_evolution_dt)
-
 
 
 
