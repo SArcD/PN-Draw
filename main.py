@@ -7,7 +7,7 @@ from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
 nx, ny = 200, 200  # Aumentar la resolución de la malla
-lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
+lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 2.0  # Paso de tiempo por defecto
 c = 0.1  # Velocidad de advección constante
@@ -37,7 +37,7 @@ def create_initial_conditions(nx, ny, lx, ly):
             rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
 
     # Normalizar la densidad para que sea positiva y esté entre un rango físico más realista
-    rho_min, rho_max = 1e-21, 1e-16  # Densidad mínima y máxima en kg/m³
+    rho_min, rho_max = 1e-19, 1e-15  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
     # Generar un campo de temperatura inicial más representativo
