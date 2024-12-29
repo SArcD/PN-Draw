@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
-nx, ny = 200, 200  # Aumentar la resolución de la malla
+nx, ny = 400, 400  # Aumentar la resolución de la malla
 lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 2.0  # Paso de tiempo por defecto
@@ -84,7 +84,7 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
     return np.maximum(rho_new, 0), np.maximum(temperature_new, 10)  # Evitar valores negativos
 
 # Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif", adaptive_region=True):
+def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
     x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
@@ -101,10 +101,8 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
     pressure_history = []
     dt_history = []
 
-    region_size = 10  # Tamaño inicial de la región de interés
-
     def update(frame):
-        nonlocal rho, temperature, dt_adaptive, region_size
+        nonlocal rho, temperature, dt_adaptive
 
         phi = calculate_gravitational_potential(rho, dx, dy, G)
         rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive)
@@ -115,10 +113,6 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
             dt_adaptive *= 10  # Incrementar paso de tiempo
         else:
             dt_adaptive = max(dt, dt_adaptive / 2)  # Reducir paso de tiempo si hay cambios significativos
-
-        # Incrementar la región de interés si la densidad se estanca
-        if adaptive_region and max_change < 0.01:
-            region_size = min(region_size + 1, nx // 2)  # Expandir la región hasta un límite razonable
 
         rho[:] = rho_new
         temperature[:] = temperature_new
@@ -131,7 +125,7 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
 
         # Actualizar gráfico
         im.set_array(rho.ravel())
-        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}\nTamaño de región: {region_size}")
+        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
 
     ani = plt.matplotlib.animation.FuncAnimation(
         fig, update, frames=steps, interval=100
@@ -164,9 +158,9 @@ temp_region = temperature[
 # Configurar los inputs en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo inicial (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=10000, step=10)
+G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=10000, step=10)
 G = G_default * G_multiplier
-steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=500, step=10)
 
 # Generar el GIF y obtener las historias de evolución
 density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
