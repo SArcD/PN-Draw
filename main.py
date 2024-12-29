@@ -92,10 +92,23 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
     im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
     cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
+    # Variable adaptativa para el paso de tiempo
+    dt_adaptive = dt
+
     def update(frame):
-        nonlocal rho, temperature
+        nonlocal rho, temperature, dt_adaptive
         phi = calculate_gravitational_potential(rho, dx, dy, G)
-        rho, temperature = update_density_and_temperature(rho, temperature, phi, dx, dy, dt)
+        rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive)
+
+        # Verificar cambio en la densidad
+        max_change = np.abs((rho_new - rho) / rho).max()
+        if max_change < 0.01:  # Si el cambio es menor al 1%
+            dt_adaptive *= 10  # Incrementar paso de tiempo
+        else:
+            dt_adaptive = max(dt, dt_adaptive / 2)  # Reducir paso de tiempo si hay cambios significativos
+
+        rho[:] = rho_new
+        temperature[:] = temperature_new
         im.set_array(rho.ravel())
         ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
 
@@ -123,7 +136,7 @@ temp_region = temperature[
 
 # Configurar los inputs en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
-dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
+dt = st.sidebar.slider("Escalar paso de tiempo inicial (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
 G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=10000, step=10)
 G = G_default * G_multiplier
 steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
