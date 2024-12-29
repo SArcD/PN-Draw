@@ -36,11 +36,11 @@ def create_initial_conditions(nx, ny, lx, ly):
             rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
 
     # Normalizar la densidad para que sea positiva y esté entre un rango físico amplio
-    rho_min, rho_max = 0.5, 3.0  # Densidad mínima y máxima en kg/m³
+    rho_min, rho_max = 0.001, 1000.0  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
     # Generar un campo de temperatura inversamente proporcional a la densidad
-    temp_min, temp_max = 200, 300  # Temperatura mínima y máxima en K
+    temp_min, temp_max = 1, 100000  # Temperatura mínima y máxima en K
     temperature = temp_max - (temp_max - temp_min) * (rho0 - rho_min) / (rho_max - rho_min)
 
     return rho0, temperature
