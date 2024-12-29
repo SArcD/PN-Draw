@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
-nx, ny = 100, 100  # Tamaño de la malla
+nx, ny = 200, 200  # Aumentar la resolución de la malla
 lx, ly = 1000 * 1.496e+11, 1000 * 1.496e+11  # Dimensiones físicas de la malla en metros (1000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 2.0  # Paso de tiempo por defecto
@@ -94,6 +94,10 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
 
     # Variable adaptativa para el paso de tiempo
     dt_adaptive = dt
+    density_history = []
+    temperature_history = []
+    pressure_history = []
+    dt_history = []
 
     def update(frame):
         nonlocal rho, temperature, dt_adaptive
@@ -109,6 +113,13 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
 
         rho[:] = rho_new
         temperature[:] = temperature_new
+
+        # Actualizar las historias
+        density_history.append(rho.max())
+        temperature_history.append(temperature.max())
+        pressure_history.append((rho * R_gas * temperature / M_mol).max())
+        dt_history.append(dt_adaptive)
+
         im.set_array(rho.ravel())
         ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
 
@@ -117,6 +128,8 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
     )
     ani.save(output_path, writer=PillowWriter(fps=10))
     plt.close(fig)
+
+    return density_history, temperature_history, pressure_history, dt_history
 
 # Inicializar los campos
 rho, temperature = create_initial_conditions(nx, ny, lx, ly)
@@ -141,8 +154,10 @@ G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacio
 G = G_default * G_multiplier
 steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
 
-# Generar el GIF
-create_density_evolution_gif(rho_region, temp_region, dx, dy, steps, dt, G, output_path="density_collapse.gif")
+# Generar el GIF y obtener las historias de evolución
+density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
+    rho_region, temp_region, dx, dy, steps, dt, G, output_path="density_collapse.gif"
+)
 st.image("density_collapse.gif")
 
 # Crear gráficas iniciales
@@ -208,6 +223,45 @@ fig_pressure.update_layout(
     yaxis_title="y (m)"
 )
 st.plotly_chart(fig_pressure)
+
+# Gráficas de evolución temporal
+fig_evolution_density = go.Figure()
+fig_evolution_density.add_trace(go.Scatter(y=density_history, mode="lines", name="Densidad máxima"))
+fig_evolution_density.update_layout(
+    title="Evolución temporal de la densidad máxima",
+    xaxis_title="Iteración",
+    yaxis_title="Densidad máxima (kg/m³)"
+)
+st.plotly_chart(fig_evolution_density)
+
+fig_evolution_temperature = go.Figure()
+fig_evolution_temperature.add_trace(go.Scatter(y=temperature_history, mode="lines", name="Temperatura máxima"))
+fig_evolution_temperature.update_layout(
+    title="Evolución temporal de la temperatura máxima",
+    xaxis_title="Iteración",
+    yaxis_title="Temperatura máxima (K)"
+)
+st.plotly_chart(fig_evolution_temperature)
+
+fig_evolution_pressure = go.Figure()
+fig_evolution_pressure.add_trace(go.Scatter(y=pressure_history, mode="lines", name="Presión máxima"))
+fig_evolution_pressure.update_layout(
+    title="Evolución temporal de la presión máxima",
+    xaxis_title="Iteración",
+    yaxis_title="Presión máxima (Pa)"
+)
+st.plotly_chart(fig_evolution_pressure)
+
+fig_evolution_dt = go.Figure()
+fig_evolution_dt.add_trace(go.Scatter(y=dt_history, mode="lines", name="Paso de tiempo adaptativo"))
+fig_evolution_dt.update_layout(
+    title="Evolución temporal del paso de tiempo adaptativo",
+    xaxis_title="Iteración",
+    yaxis_title="Paso de tiempo (dt)"
+)
+st.plotly_chart(fig_evolution_dt)
+
+
 
 
 ##############
