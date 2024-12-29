@@ -84,7 +84,7 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
     return np.maximum(rho_new, 0), np.maximum(temperature_new, 10)  # Evitar valores negativos
 
 # Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
+def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif", adaptive_region=True):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
     x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
@@ -101,8 +101,11 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
     pressure_history = []
     dt_history = []
 
+    region_size = 10  # Tamaño inicial de la región de interés
+
     def update(frame):
-        nonlocal rho, temperature, dt_adaptive
+        nonlocal rho, temperature, dt_adaptive, region_size
+
         phi = calculate_gravitational_potential(rho, dx, dy, G)
         rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive)
 
@@ -113,6 +116,10 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
         else:
             dt_adaptive = max(dt, dt_adaptive / 2)  # Reducir paso de tiempo si hay cambios significativos
 
+        # Incrementar la región de interés si la densidad se estanca
+        if adaptive_region and max_change < 0.01:
+            region_size = min(region_size + 1, nx // 2)  # Expandir la región hasta un límite razonable
+
         rho[:] = rho_new
         temperature[:] = temperature_new
 
@@ -122,8 +129,9 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
         pressure_history.append((rho * R_gas * temperature / M_mol).max())
         dt_history.append(dt_adaptive)
 
+        # Actualizar gráfico
         im.set_array(rho.ravel())
-        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
+        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}\nTamaño de región: {region_size}")
 
     ani = plt.matplotlib.animation.FuncAnimation(
         fig, update, frames=steps, interval=100
@@ -158,7 +166,7 @@ steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_v
 
 # Generar el GIF y obtener las historias de evolución
 density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
-    rho_region, temp_region, dx, dy, steps, dt, G, output_path="density_collapse.gif"
+    rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"
 )
 st.image("density_collapse.gif")
 
