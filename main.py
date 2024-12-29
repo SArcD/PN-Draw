@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
-nx, ny = 400, 400  # Aumentar la resolución de la malla
+nx, ny = 200, 200  # Aumentar la resolución de la malla
 lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 2.0  # Paso de tiempo por defecto
@@ -18,6 +18,7 @@ m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
 G_default = 6.674e-11 * 100  # Constante gravitacional inicial
 mu = 2.33  # Peso molecular medio para gas molecular
 gamma = 5 / 3  # Índice adiabático para un gas monoatómico
+M_solar = 1.989e30  # Masa solar en kg
 
 # Crear la malla y el campo inicial
 def create_initial_conditions(nx, ny, lx, ly):
@@ -37,7 +38,11 @@ def create_initial_conditions(nx, ny, lx, ly):
             rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
 
     # Normalizar la densidad para que sea positiva y esté entre un rango físico más realista
-    rho_min, rho_max = 1e-19, 1e-15  # Densidad mínima y máxima en kg/m³
+    total_volume = lx * ly * dx  # Volumen total de la nube
+    target_mass = 10 * M_solar  # Masa objetivo: 10 masas solares
+    mean_density = target_mass / total_volume
+
+    rho_min, rho_max = 0.1 * mean_density, 10 * mean_density
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
     # Generar un campo de temperatura inicial más representativo
@@ -158,9 +163,9 @@ temp_region = temperature[
 # Configurar los inputs en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo inicial (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=10000, step=10)
+G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=10000, step=10)
 G = G_default * G_multiplier
-steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=500, step=10)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
 
 # Generar el GIF y obtener las historias de evolución
 density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
