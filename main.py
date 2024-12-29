@@ -35,12 +35,12 @@ def create_initial_conditions(nx, ny, lx, ly):
         for j in range(ny):
             rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
 
-    # Normalizar la densidad para que sea positiva y esté entre un rango físico amplio
-    rho_min, rho_max = 0.001, 1000.0  # Densidad mínima y máxima en kg/m³
+    # Normalizar la densidad para que sea positiva y esté entre un rango físico más realista
+    rho_min, rho_max = 1e-21, 1e-16  # Densidad mínima y máxima en kg/m³
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
-    # Generar un campo de temperatura inversamente proporcional a la densidad
-    temp_min, temp_max = 1, 100000  # Temperatura mínima y máxima en K
+    # Generar un campo de temperatura inicial más representativo
+    temp_min, temp_max = 10, 20  # Temperatura mínima y máxima en K
     temperature = temp_max - (temp_max - temp_min) * (rho0 - rho_min) / (rho_max - rho_min)
 
     return rho0, temperature
@@ -62,24 +62,27 @@ def calculate_gravitational_potential(rho, dx, dy, G):
     phi = np.real(ifft2(phi_ft))
     return phi
 
-# Actualizar el campo de densidad
-def update_density(rho, phi, dx, dy, dt):
+# Actualizar el campo de densidad y temperatura
+def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
     grad_phi_x, grad_phi_y = np.gradient(phi, dx, dy)
     v_x = -grad_phi_x
     v_y = -grad_phi_y
 
     rho_new = rho.copy()
+    temperature_new = temperature.copy()
     for i in range(1, rho.shape[0] - 1):
         for j in range(1, rho.shape[1] - 1):
             rho_new[i, j] -= dt * (
                 (v_x[i + 1, j] * rho[i + 1, j] - v_x[i - 1, j] * rho[i - 1, j]) / (2 * dx)
                 + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
             )
+            # Incrementar temperatura proporcionalmente a la densidad (calentamiento por compresión)
+            temperature_new[i, j] += 0.1 * (rho_new[i, j] - rho[i, j])  # Factor de ajuste
 
-    return np.maximum(rho_new, 0)  # Evitar valores negativos
+    return np.maximum(rho_new, 0), np.maximum(temperature_new, 10)  # Evitar valores negativos
 
 # Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
+def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
     x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
@@ -90,9 +93,9 @@ def create_density_evolution_gif(rho, dx, dy, steps, dt, G, output_path="density
     cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
     def update(frame):
-        nonlocal rho
+        nonlocal rho, temperature
         phi = calculate_gravitational_potential(rho, dx, dy, G)
-        rho = update_density(rho, phi, dx, dy, dt)
+        rho, temperature = update_density_and_temperature(rho, temperature, phi, dx, dy, dt)
         im.set_array(rho.ravel())
         ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
 
@@ -113,18 +116,20 @@ rho_region = rho[
     max(0, x_idx - region_size):min(nx, x_idx + region_size),
     max(0, y_idx - region_size):min(ny, y_idx + region_size)
 ]
+temp_region = temperature[  
+    max(0, x_idx - region_size):min(nx, x_idx + region_size),
+    max(0, y_idx - region_size):min(ny, y_idx + region_size)
+]
 
-# Configurar el deslizador en Streamlit
+# Configurar los inputs en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-#G_multiplier = st.sidebar.slider("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=100, step=10)
-#G = G_default * G_multiplier
 G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=10000, step=10)
 G = G_default * G_multiplier
 steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
 
 # Generar el GIF
-create_density_evolution_gif(rho_region, dx, dy, steps, dt, G, output_path="density_collapse.gif")
+create_density_evolution_gif(rho_region, temp_region, dx, dy, steps, dt, G, output_path="density_collapse.gif")
 st.image("density_collapse.gif")
 
 # Crear gráficas iniciales
