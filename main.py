@@ -145,6 +145,10 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
 rho, temperature = create_initial_conditions(nx, ny, lx, ly)
 pressure = (rho * R_gas * temperature) / M_mol  # Calcular presión inicial
 
+# Calcular la masa total inicial de la nube
+total_mass = np.sum(rho) * dx * dy  # Masa total en kilogramos
+st.sidebar.write(f"Masa total inicial de la nube: {total_mass:.2e} kg")
+
 # Calcular la región de interés
 x_idx, y_idx = np.unravel_index(np.argmax(rho), rho.shape)
 region_size = 10
