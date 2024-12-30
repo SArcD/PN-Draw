@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
-nx, ny = 400, 400  # Aumentar la resolución de la malla
+nx, ny = 200, 200  # Aumentar la resolución de la malla
 lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 10.0  # Paso de tiempo por defecto
