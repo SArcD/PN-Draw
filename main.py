@@ -169,10 +169,10 @@ temp_region = temperature[
 # Configurar los inputs en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo inicial (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=10000000, step=10)
+G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=10000, step=10)
 G = G_default * G_multiplier
-steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=1000, step=10)
-radiation_enabled = st.sidebar.checkbox("Habilitar efecto de radiación", value=True)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
+radiation_enabled = st.sidebar.checkbox("Habilitar efecto de radiación", value=False)
 
 # Generar el GIF y obtener las historias de evolución
 density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
@@ -280,6 +280,7 @@ fig_evolution_dt.update_layout(
     yaxis_title="Paso de tiempo (dt)"
 )
 st.plotly_chart(fig_evolution_dt)
+
 
 
 
