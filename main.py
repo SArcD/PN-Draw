@@ -283,84 +283,118 @@ st.plotly_chart(fig_evolution_dt)
 
 ####################
 
+##########################
+#########################
+
 import numpy as np
 import streamlit as st
-import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
+from opensimplex import OpenSimplex
 
 # Parámetros iniciales
-au_to_m = 1.496e+11  # Conversión de AU a metros
-nx, ny = 200, 200  # Resolución de la malla
-lx, ly = 100 * au_to_m, 100 * au_to_m  # Dimensiones físicas de la malla en metros (100 AU por lado)
+nx, ny = 300, 300  # Mayor resolución de la malla
+lx, ly = 100 * 1.496e+11, 100 * 1.496e+11  # Dimensiones físicas (100 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-G = 6.674e-11  # Constante gravitacional
-proto_density = 1e-7  # Densidad central en kg/m³ (aproximada para protoestrellas)
-background_density = 1e-10  # Densidad del entorno en kg/m³
-R_gas = 8.314  # Constante de gas ideal
-M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
-temp_central = 2000  # Temperatura en el centro en K
-temp_background = 20  # Temperatura del entorno en K
+dt_default = 2.0  # Paso de tiempo inicial
+R_gas = 8.314  # Constante de gas ideal (J/(mol·K))
+M_mol = 0.02896  # Masa molar del gas (kg/mol)
+k_B = 1.38e-23  # Constante de Boltzmann (J/K)
+m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
+G_default = 6.674e-11 * 1000  # Constante gravitacional incrementada
+gamma = 5 / 3  # Índice adiabático
+M_solar = 1.989e30  # Masa solar (kg)
 
-# Crear la malla y los campos iniciales
-x = np.linspace(-lx / 2, lx / 2, nx)
-y = np.linspace(-ly / 2, ly / 2, ny)
-X, Y = np.meshgrid(x, y)
+# Crear condiciones iniciales
+def create_star_region(nx, ny, lx, ly):
+    x = np.linspace(0, lx, nx)
+    y = np.linspace(0, ly, ny)
+    X, Y = np.meshgrid(x, y)
 
-# Crear el campo de densidad inicial
-rho = np.full((nx, ny), background_density)
-center_x, center_y = nx // 2, ny // 2
-proto_radius = 4 * au_to_m  # Radio de la región central (4 AU)
+    # Inicializar densidad: región central más densa
+    rho = np.ones((nx, ny)) * 1e-18
+    center_x, center_y = nx // 2, ny // 2
+    region_radius = 20  # Radio de la región central en celdas
 
-for i in range(nx):
-    for j in range(ny):
-        distance = np.sqrt((i - center_x)**2 * dx**2 + (j - center_y)**2 * dy**2)
-        if distance <= proto_radius:
-            rho[i, j] = proto_density
+    for i in range(nx):
+        for j in range(ny):
+            distance = np.sqrt((i - center_x)**2 + (j - center_y)**2)
+            if distance <= region_radius:
+                rho[i, j] = 1e-6  # Alta densidad en el núcleo
 
-# Crear el campo de temperatura inicial
-temperature = np.full((nx, ny), temp_background)
-temperature[center_x - 10:center_x + 10, center_y - 10:center_y + 10] = temp_central
+    # Temperatura inicial
+    temperature = np.ones((nx, ny)) * 20  # 20 K en todo el entorno
+    temperature[center_x - region_radius:center_x + region_radius,
+                center_y - region_radius:center_y + region_radius] = 2000  # 2000 K en el núcleo
 
-# Función para simular el colapso gravitacional con una protoestrella
-def simulate_collapse_with_protostar(rho, temperature, steps, dt):
+    return rho, temperature
+
+# Calcular el potencial gravitacional
+def calculate_gravitational_potential(rho, dx, dy, G):
+    from scipy.fft import fft2, ifft2, fftfreq
+
+    kx = 2 * np.pi * fftfreq(rho.shape[0], dx)
+    ky = 2 * np.pi * fftfreq(rho.shape[1], dy)
+    kx, ky = np.meshgrid(kx, ky, indexing="ij")
+    k_squared = kx**2 + ky**2
+    k_squared[0, 0] = 1  # Evitar división por cero
+
+    rho_ft = fft2(rho)
+    phi_ft = -4 * np.pi * G * rho_ft / k_squared
+    phi_ft[0, 0] = 0  # Normalizar el modo cero
+
+    phi = np.real(ifft2(phi_ft))
+    return phi
+
+# Actualizar densidad y temperatura
+def update_star_density_temperature(rho, temperature, phi, dx, dy, dt):
+    grad_phi_x, grad_phi_y = np.gradient(phi, dx, dy)
+    v_x = -grad_phi_x
+    v_y = -grad_phi_y
+
+    rho_new = rho.copy()
+    temperature_new = temperature.copy()
+
+    for i in range(1, rho.shape[0] - 1):
+        for j in range(1, rho.shape[1] - 1):
+            rho_new[i, j] -= dt * (
+                (v_x[i + 1, j] * rho[i + 1, j] - v_x[i - 1, j] * rho[i - 1, j]) / (2 * dx)
+                + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
+            )
+            # Calentamiento adiabático
+            if rho_new[i, j] > 1e-18:
+                temperature_new[i, j] *= (rho_new[i, j] / rho[i, j])**(gamma - 1)
+
+            # Enfriamiento por radiación
+            if temperature_new[i, j] > 2000:
+                temperature_new[i, j] -= 1e-4 * (temperature_new[i, j]**4) * dt
+
+    return np.maximum(rho_new, 1e-18), np.maximum(temperature_new, 10)
+
+# Crear animación
+def create_star_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="proto_star.gif"):
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+    x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
+    y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
+    X, Y = np.meshgrid(x, y)
+
+    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
+    cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
+
     density_history = []
     temperature_history = []
 
-    for step in range(steps):
-        # Simplificación: actualizar densidad central por efecto gravitacional
-        central_density = rho[center_x, center_y]
-        if step % 10 == 0:  # Actualización periódica
-            central_density *= 1.1  # Incremento arbitrario para simular colapso
-        rho[center_x, center_y] = min(central_density, 10 * proto_density)
-
-        # Actualizar temperatura en función de densidad
-        temperature[center_x, center_y] = max(
-            temp_central * (rho[center_x, center_y] / proto_density)**(1 / 3), temp_background
-        )
-
-        # Almacenar historia
-        density_history.append(rho[center_x, center_y])
-        temperature_history.append(temperature[center_x, center_y])
-
-    return density_history, temperature_history
-
-# Crear el GIF con Matplotlib
-def create_density_gif(rho, steps, dt, output_path="proto_collapse.gif"):
-    fig, ax = plt.subplots(figsize=(6, 6))
-    im = ax.imshow(rho, extent=(-lx / 2 / au_to_m, lx / 2 / au_to_m, -ly / 2 / au_to_m, ly / 2 / au_to_m),
-                   origin="lower", cmap="viridis")
-    ax.set_title("Evolución de la densidad")
-    ax.set_xlabel("x (AU)")
-    ax.set_ylabel("y (AU)")
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label("Densidad (kg/m³)")
-
     def update(frame):
-        # Simulación de densidad para la protoestrella
-        central_density = rho[center_x, center_y] * 1.1
-        rho[center_x, center_y] = min(central_density, 10 * proto_density)
-        im.set_array(rho)
+        nonlocal rho, temperature
+
+        phi = calculate_gravitational_potential(rho, dx, dy, G)
+        rho, temperature = update_star_density_temperature(rho, temperature, phi, dx, dy, dt)
+
+        density_history.append(rho.max())
+        temperature_history.append(temperature.max())
+
+        im.set_array(rho.ravel())
+        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
 
     ani = plt.matplotlib.animation.FuncAnimation(
         fig, update, frames=steps, interval=100
@@ -368,69 +402,41 @@ def create_density_gif(rho, steps, dt, output_path="proto_collapse.gif"):
     ani.save(output_path, writer=PillowWriter(fps=10))
     plt.close(fig)
 
-# Configuración en Streamlit
-st.title("Simulación de una nube con una protoestrella central")
+    return density_history, temperature_history
 
-# Ajustes desde la barra lateral
-steps = st.sidebar.slider("Número de pasos", min_value=10, max_value=500, value=100, step=10)
-dt = st.sidebar.slider("Paso de tiempo (dt)", min_value=1e2, max_value=1e5, value=1e3, step=1e2)
+# Inicializar los campos
+rho, temperature = create_star_region(nx, ny, lx, ly)
 
-# Ejecutar la simulación
-density_history, temperature_history = simulate_collapse_with_protostar(rho, temperature, steps, dt)
+# Parámetros de simulación
+steps = 500
+dt = 1.0
+G = G_default
 
-# Generar el GIF
-create_density_gif(rho, steps, dt)
-st.image("proto_collapse.gif", caption="Evolución de la densidad de la protoestrella")
-
-# Visualización inicial
-st.subheader("Distribución inicial")
-fig_density = go.Figure(data=go.Heatmap(
-    z=rho,
-    x=x / au_to_m,
-    y=y / au_to_m,
-    colorscale="Viridis",
-    colorbar=dict(title="Densidad (kg/m³)")
-))
-fig_density.update_layout(
-    title="Densidad inicial",
-    xaxis_title="x (AU)",
-    yaxis_title="y (AU)"
+# Generar animación y capturar historia
+density_history, temperature_history = create_star_evolution_gif(
+    rho, temperature, dx, dy, steps, dt, G, output_path="proto_star.gif"
 )
-st.plotly_chart(fig_density)
 
-fig_temperature = go.Figure(data=go.Heatmap(
-    z=temperature,
-    x=x / au_to_m,
-    y=y / au_to_m,
-    colorscale="Plasma",
-    colorbar=dict(title="Temperatura (K)")
-))
-fig_temperature.update_layout(
-    title="Temperatura inicial",
-    xaxis_title="x (AU)",
-    yaxis_title="y (AU)"
-)
-st.plotly_chart(fig_temperature)
+# Streamlit
+st.title("Evolución de una protoestrella")
+st.image("proto_star.gif", caption="Evolución de la densidad en una protoestrella", use_column_width=True)
 
-# Graficar evolución temporal
-st.subheader("Evolución temporal")
-fig_evolution_density = go.Figure()
-fig_evolution_density.add_trace(go.Scatter(y=density_history, mode="lines", name="Densidad central"))
-fig_evolution_density.update_layout(
-    title="Evolución de la densidad central",
-    xaxis_title="Paso",
-    yaxis_title="Densidad (kg/m³)"
-)
-st.plotly_chart(fig_evolution_density)
+# Gráficas de evolución temporal
+fig_density = plt.figure()
+plt.plot(density_history, label="Densidad central")
+plt.xlabel("Paso")
+plt.ylabel("Densidad (kg/m³)")
+plt.title("Evolución de la densidad central")
+plt.legend()
+st.pyplot(fig_density)
 
-fig_evolution_temperature = go.Figure()
-fig_evolution_temperature.add_trace(go.Scatter(y=temperature_history, mode="lines", name="Temperatura central"))
-fig_evolution_temperature.update_layout(
-    title="Evolución de la temperatura central",
-    xaxis_title="Paso",
-    yaxis_title="Temperatura (K)"
-)
-st.plotly_chart(fig_evolution_temperature)
+fig_temperature = plt.figure()
+plt.plot(temperature_history, label="Temperatura central")
+plt.xlabel("Paso")
+plt.ylabel("Temperatura (K)")
+plt.title("Evolución de la temperatura central")
+plt.legend()
+st.pyplot(fig_temperature)
 
 
 ##############
