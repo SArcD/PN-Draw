@@ -1,7 +1,7 @@
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
-from noise import pnoise2
+from opensimplex import OpenSimplex
 import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
 
@@ -9,7 +9,7 @@ from matplotlib.animation import PillowWriter
 nx, ny = 200, 200  # Aumentar la resolución de la malla
 lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt_default = 10.0  # Paso de tiempo por defecto
+dt_default = 2.0  # Paso de tiempo por defecto
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
@@ -26,18 +26,16 @@ def create_initial_conditions(nx, ny, lx, ly):
     y = np.linspace(0, ly, ny)
     X, Y = np.meshgrid(x, y)
 
-    # Generar densidad inicial basada en ruido Perlin
+    # Generar densidad inicial basada en ruido Simplex
+    noise = OpenSimplex(seed=42)
     rho0 = np.zeros((nx, ny))
     scale = 10.0  # Escala del ruido
-    octaves = 4  # Detalle del ruido
-    persistence = 0.5  # Persistencia del ruido
-    lacunarity = 2.0  # Lacunaridad del ruido
 
     for i in range(nx):
         for j in range(ny):
-            rho0[i, j] = pnoise2(i / scale, j / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeatx=nx, repeaty=ny, base=42)
+            rho0[i, j] = noise.noise2d(i / scale, j / scale)
 
-    # Normalizar la densidad para que sea positiva y esté entre un rango físico más realista
+    # Normalizar la densidad para alcanzar una masa total de ~10 masas solares
     total_volume = lx * ly * dx  # Volumen total de la nube
     target_mass = 10 * M_solar  # Masa objetivo: 10 masas solares
     mean_density = target_mass / total_volume
@@ -94,67 +92,6 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt, radiation_
 
     return np.maximum(rho_new, 1e-15), np.maximum(temperature_new, 10)  # Evitar valores negativos o muy bajos
 
-# Función para ajustar el paso de tiempo adaptativo
-def adapt_time_step(rho_history, dt_current, dt_min, dt_max, smoothing_factor=0.1):
-    if len(rho_history) < 2:
-        return dt_current
-
-    delta_rho = abs(rho_history[-1] - rho_history[-2]) / max(rho_history[-2], 1e-15)
-
-    if delta_rho < 0.01:
-        dt_new = dt_current * (1 + smoothing_factor)
-    else:
-        dt_new = dt_current * (1 - smoothing_factor)
-
-    return max(min(dt_new, dt_max), dt_min)
-
-# Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"):
-    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
-    x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
-    y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
-    X, Y = np.meshgrid(x, y)
-
-    # Crear un único mapa de colores
-    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
-    cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
-
-    dt_adaptive = dt
-    density_history = []
-    temperature_history = []
-    pressure_history = []
-    dt_history = []
-
-    def update(frame):
-        nonlocal rho, temperature, dt_adaptive
-
-        phi = calculate_gravitational_potential(rho, dx, dy, G)
-        rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive, radiation_enabled)
-
-        rho_history.append(rho_new.max())
-        dt_adaptive = adapt_time_step(rho_history, dt_adaptive, dt_min=0.1, dt_max=1e5, smoothing_factor=0.1)
-
-        rho[:] = rho_new
-        temperature[:] = temperature_new
-
-        density_history.append(rho.max())
-        temperature_history.append(temperature.max())
-        pressure_history.append((rho * R_gas * temperature / M_mol).max())
-        dt_history.append(dt_adaptive)
-
-        im.set_array(rho.ravel())
-        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
-
-    rho_history = [rho.max()]
-
-    ani = plt.matplotlib.animation.FuncAnimation(
-        fig, update, frames=steps, interval=100
-    )
-    ani.save(output_path, writer=PillowWriter(fps=10))
-    plt.close(fig)
-
-    return density_history, temperature_history, pressure_history, dt_history
-
 # Inicializar los campos
 rho, temperature = create_initial_conditions(nx, ny, lx, ly)
 pressure = (rho * R_gas * temperature) / M_mol  # Calcular presión inicial
@@ -162,7 +99,6 @@ pressure = (rho * R_gas * temperature) / M_mol  # Calcular presión inicial
 # Calcular la masa total inicial de la nube
 total_mass = np.sum(rho) * dx * dy  # Masa total en kilogramos
 st.sidebar.write(f"Masa total inicial de la nube: {total_mass:.2e} kg")
-
 # Calcular la región de interés
 x_idx, y_idx = np.unravel_index(np.argmax(rho), rho.shape)
 region_size = 20  # Reducir el tamaño de la región de interés
