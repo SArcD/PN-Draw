@@ -83,10 +83,12 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
                 + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
             )
             # Calentamiento adiabático: T ~ rho^(gamma - 1)
-            if rho_new[i, j] > 0:
-                temperature_new[i, j] = temperature[i, j] * (rho_new[i, j] / rho[i, j])**(gamma - 1)
+            if rho_new[i, j] > 1e-15:  # Establecer límite inferior para densidad
+                temperature_new[i, j] = max(
+                    temperature[i, j] * (rho_new[i, j] / rho[i, j])**(gamma - 1), 10  # Temperatura mínima de 10 K
+                )
 
-    return np.maximum(rho_new, 0), np.maximum(temperature_new, 10)  # Evitar valores negativos
+    return np.maximum(rho_new, 1e-15), np.maximum(temperature_new, 10)  # Evitar valores negativos o muy bajos
 
 # Crear el GIF con Matplotlib
 def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
@@ -150,7 +152,7 @@ st.sidebar.write(f"Masa total inicial de la nube: {total_mass:.2e} kg")
 
 # Calcular la región de interés
 x_idx, y_idx = np.unravel_index(np.argmax(rho), rho.shape)
-region_size = 10
+region_size = 20  # Reducir el tamaño de la región de interés
 rho_region = rho[  
     max(0, x_idx - region_size):min(nx, x_idx + region_size),
     max(0, y_idx - region_size):min(ny, y_idx + region_size)
@@ -273,7 +275,6 @@ fig_evolution_dt.update_layout(
     yaxis_title="Paso de tiempo (dt)"
 )
 st.plotly_chart(fig_evolution_dt)
-
 
 
 ##############
