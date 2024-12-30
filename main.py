@@ -20,6 +20,58 @@ mu = 2.33  # Peso molecular medio para gas molecular
 gamma = 5 / 3  # Índice adiabático para un gas monoatómico
 M_solar = 1.989e30  # Masa solar en kg
 
+import matplotlib.pyplot as plt
+from matplotlib.animation import PillowWriter
+
+def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"):
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+    x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
+    y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
+    X, Y = np.meshgrid(x, y)
+
+    # Crear un único mapa de colores
+    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
+    cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
+
+    dt_adaptive = dt
+    density_history = []
+    temperature_history = []
+    pressure_history = []
+    dt_history = []
+
+    def update(frame):
+        nonlocal rho, temperature, dt_adaptive
+
+        phi = calculate_gravitational_potential(rho, dx, dy, G)
+        rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive, radiation_enabled)
+
+        # Calcular cambios en densidad y ajustar el tamaño del paso adaptativo
+        max_change = np.abs((rho_new - rho) / rho).max()
+        if max_change < 0.01:  # Si el cambio es menor al 1%
+            dt_adaptive *= 1.1  # Incrementar el paso de tiempo
+        else:
+            dt_adaptive = max(dt, dt_adaptive / 1.1)  # Reducir paso si hay cambios significativos
+
+        rho[:] = rho_new
+        temperature[:] = temperature_new
+
+        # Guardar historias para gráficas posteriores
+        density_history.append(rho.max())
+        temperature_history.append(temperature.max())
+        pressure_history.append((rho * R_gas * temperature / M_mol).max())
+        dt_history.append(dt_adaptive)
+
+        # Actualizar gráfico
+        im.set_array(rho.ravel())
+        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
+
+    ani = plt.matplotlib.animation.FuncAnimation(
+        fig, update, frames=steps, interval=100
+    )
+    ani.save(output_path, writer=PillowWriter(fps=10))
+    plt.close(fig)
+
+    return density_history, temperature_history, pressure_history, dt_history
 
 
 # Reemplazar el uso de noise2d por noise2 en la generación de condiciones iniciales
