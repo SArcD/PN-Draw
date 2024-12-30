@@ -69,7 +69,7 @@ def calculate_gravitational_potential(rho, dx, dy, G):
     return phi
 
 # Actualizar el campo de densidad y temperatura
-def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
+def update_density_and_temperature(rho, temperature, phi, dx, dy, dt, radiation_enabled):
     grad_phi_x, grad_phi_y = np.gradient(phi, dx, dy)
     v_x = -grad_phi_x
     v_y = -grad_phi_y
@@ -88,10 +88,14 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt):
                     temperature[i, j] * (rho_new[i, j] / rho[i, j])**(gamma - 1), 10  # Temperatura mínima de 10 K
                 )
 
+            # Efecto de radiación opcional
+            if radiation_enabled and temperature_new[i, j] > 50:  # Umbral de radiación
+                temperature_new[i, j] -= 1e-5 * (temperature_new[i, j]**4) * dt
+
     return np.maximum(rho_new, 1e-15), np.maximum(temperature_new, 10)  # Evitar valores negativos o muy bajos
 
 # Crear el GIF con Matplotlib
-def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"):
+def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
     x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
@@ -112,7 +116,7 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_
         nonlocal rho, temperature, dt_adaptive
 
         phi = calculate_gravitational_potential(rho, dx, dy, G)
-        rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive)
+        rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive, radiation_enabled)
 
         # Verificar cambio en la densidad
         max_change = np.abs((rho_new - rho) / rho).max()
@@ -165,13 +169,14 @@ temp_region = temperature[
 # Configurar los inputs en Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
 dt = st.sidebar.slider("Escalar paso de tiempo inicial (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=10000, step=10)
+G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=1000000000, value=1000000, step=10)
 G = G_default * G_multiplier
-steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=500, step=10)
+radiation_enabled = st.sidebar.checkbox("Habilitar efecto de radiación", value=False)
 
 # Generar el GIF y obtener las historias de evolución
 density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
-    rho, temperature, dx, dy, steps, dt, G, output_path="density_collapse.gif"
+    rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"
 )
 st.image("density_collapse.gif")
 
@@ -275,6 +280,7 @@ fig_evolution_dt.update_layout(
     yaxis_title="Paso de tiempo (dt)"
 )
 st.plotly_chart(fig_evolution_dt)
+
 
 
 ##############
