@@ -293,7 +293,7 @@ from matplotlib.animation import PillowWriter
 from opensimplex import OpenSimplex
 
 # Parámetros iniciales
-nx, ny = 300, 300  # Mayor resolución de la malla
+nx, ny = 500, 500  # Mayor resolución de la malla
 lx, ly = 100 * 1.496e+11, 100 * 1.496e+11  # Dimensiones físicas (100 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 2.0  # Paso de tiempo inicial
@@ -301,7 +301,7 @@ R_gas = 8.314  # Constante de gas ideal (J/(mol·K))
 M_mol = 0.02896  # Masa molar del gas (kg/mol)
 k_B = 1.38e-23  # Constante de Boltzmann (J/K)
 m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
-G_default = 6.674e-11 * 1000  # Constante gravitacional incrementada
+G_default = 6.674e-11 * 1000000  # Constante gravitacional incrementada
 gamma = 5 / 3  # Índice adiabático
 M_solar = 1.989e30  # Masa solar (kg)
 
@@ -366,8 +366,8 @@ def update_star_density_temperature(rho, temperature, phi, dx, dy, dt):
                 temperature_new[i, j] *= (rho_new[i, j] / rho[i, j])**(gamma - 1)
 
             # Enfriamiento por radiación
-            if temperature_new[i, j] > 2000:
-                temperature_new[i, j] -= 1e-4 * (temperature_new[i, j]**4) * dt
+            #if temperature_new[i, j] > 2000:
+            #    temperature_new[i, j] -= 1e-4 * (temperature_new[i, j]**4) * dt
 
     return np.maximum(rho_new, 1e-18), np.maximum(temperature_new, 10)
 
