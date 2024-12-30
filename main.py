@@ -20,7 +20,9 @@ mu = 2.33  # Peso molecular medio para gas molecular
 gamma = 5 / 3  # Índice adiabático para un gas monoatómico
 M_solar = 1.989e30  # Masa solar en kg
 
-# Crear la malla y el campo inicial
+
+
+# Reemplazar el uso de noise2d por noise2 en la generación de condiciones iniciales
 def create_initial_conditions(nx, ny, lx, ly):
     x = np.linspace(0, lx, nx)
     y = np.linspace(0, ly, ny)
@@ -33,7 +35,7 @@ def create_initial_conditions(nx, ny, lx, ly):
 
     for i in range(nx):
         for j in range(ny):
-            rho0[i, j] = noise.noise2d(i / scale, j / scale)
+            rho0[i, j] = noise.noise2(i / scale, j / scale)  # Usar noise2
 
     # Normalizar la densidad para alcanzar una masa total de ~10 masas solares
     total_volume = lx * ly * dx  # Volumen total de la nube
@@ -48,6 +50,7 @@ def create_initial_conditions(nx, ny, lx, ly):
     temperature = temp_max - (temp_max - temp_min) * (rho0 - rho_min) / (rho_max - rho_min)
 
     return rho0, temperature
+
 
 # Calcular el potencial gravitacional
 def calculate_gravitational_potential(rho, dx, dy, G):
