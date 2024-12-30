@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
-nx, ny = 200, 200  # Aumentar la resolución de la malla
+nx, ny = 400, 400  # Aumentar la resolución de la malla
 lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt_default = 2.0  # Paso de tiempo por defecto
+dt_default = 10.0  # Paso de tiempo por defecto
 c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
@@ -94,6 +94,20 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt, radiation_
 
     return np.maximum(rho_new, 1e-15), np.maximum(temperature_new, 10)  # Evitar valores negativos o muy bajos
 
+# Función para ajustar el paso de tiempo adaptativo
+def adapt_time_step(rho_history, dt_current, dt_min, dt_max, smoothing_factor=0.1):
+    if len(rho_history) < 2:
+        return dt_current
+
+    delta_rho = abs(rho_history[-1] - rho_history[-2]) / max(rho_history[-2], 1e-15)
+
+    if delta_rho < 0.01:
+        dt_new = dt_current * (1 + smoothing_factor)
+    else:
+        dt_new = dt_current * (1 - smoothing_factor)
+
+    return max(min(dt_new, dt_max), dt_min)
+
 # Crear el GIF con Matplotlib
 def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
@@ -105,7 +119,6 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiati
     im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
     cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
-    # Variable adaptativa para el paso de tiempo
     dt_adaptive = dt
     density_history = []
     temperature_history = []
@@ -118,25 +131,21 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiati
         phi = calculate_gravitational_potential(rho, dx, dy, G)
         rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive, radiation_enabled)
 
-        # Verificar cambio en la densidad
-        max_change = np.abs((rho_new - rho) / rho).max()
-        if max_change < 0.01:  # Si el cambio es menor al 1%
-            dt_adaptive *= 10  # Incrementar paso de tiempo
-        else:
-            dt_adaptive = max(dt, dt_adaptive / 2)  # Reducir paso de tiempo si hay cambios significativos
+        rho_history.append(rho_new.max())
+        dt_adaptive = adapt_time_step(rho_history, dt_adaptive, dt_min=0.1, dt_max=1e5, smoothing_factor=0.1)
 
         rho[:] = rho_new
         temperature[:] = temperature_new
 
-        # Actualizar las historias
         density_history.append(rho.max())
         temperature_history.append(temperature.max())
         pressure_history.append((rho * R_gas * temperature / M_mol).max())
         dt_history.append(dt_adaptive)
 
-        # Actualizar gráfico
         im.set_array(rho.ravel())
         ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
+
+    rho_history = [rho.max()]
 
     ani = plt.matplotlib.animation.FuncAnimation(
         fig, update, frames=steps, interval=100
@@ -280,7 +289,6 @@ fig_evolution_dt.update_layout(
     yaxis_title="Paso de tiempo (dt)"
 )
 st.plotly_chart(fig_evolution_dt)
-
 
 
 
