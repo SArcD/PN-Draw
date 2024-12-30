@@ -286,11 +286,13 @@ st.plotly_chart(fig_evolution_dt)
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from matplotlib.animation import PillowWriter
 
 # Parámetros iniciales
 au_to_m = 1.496e+11  # Conversión de AU a metros
 nx, ny = 200, 200  # Resolución de la malla
-lx, ly = 50 * au_to_m, 50 * au_to_m  # Dimensiones físicas de la malla en metros (50 AU por lado)
+lx, ly = 100 * au_to_m, 100 * au_to_m  # Dimensiones físicas de la malla en metros (100 AU por lado)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 G = 6.674e-11  # Constante gravitacional
 proto_density = 1e-7  # Densidad central en kg/m³ (aproximada para protoestrellas)
@@ -321,7 +323,7 @@ temperature = np.full((nx, ny), temp_background)
 temperature[center_x - 10:center_x + 10, center_y - 10:center_y + 10] = temp_central
 
 # Función para simular el colapso gravitacional con una protoestrella
-def simulate_collapse_with_protostar(rho, temperature, steps, dt, G):
+def simulate_collapse_with_protostar(rho, temperature, steps, dt):
     density_history = []
     temperature_history = []
 
@@ -343,6 +345,29 @@ def simulate_collapse_with_protostar(rho, temperature, steps, dt, G):
 
     return density_history, temperature_history
 
+# Crear el GIF con Matplotlib
+def create_density_gif(rho, steps, dt, output_path="proto_collapse.gif"):
+    fig, ax = plt.subplots(figsize=(6, 6))
+    im = ax.imshow(rho, extent=(-lx / 2 / au_to_m, lx / 2 / au_to_m, -ly / 2 / au_to_m, ly / 2 / au_to_m),
+                   origin="lower", cmap="viridis")
+    ax.set_title("Evolución de la densidad")
+    ax.set_xlabel("x (AU)")
+    ax.set_ylabel("y (AU)")
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("Densidad (kg/m³)")
+
+    def update(frame):
+        # Simulación de densidad para la protoestrella
+        central_density = rho[center_x, center_y] * 1.1
+        rho[center_x, center_y] = min(central_density, 10 * proto_density)
+        im.set_array(rho)
+
+    ani = plt.matplotlib.animation.FuncAnimation(
+        fig, update, frames=steps, interval=100
+    )
+    ani.save(output_path, writer=PillowWriter(fps=10))
+    plt.close(fig)
+
 # Configuración en Streamlit
 st.title("Simulación de una nube con una protoestrella central")
 
@@ -351,7 +376,11 @@ steps = st.sidebar.slider("Número de pasos", min_value=10, max_value=500, value
 dt = st.sidebar.slider("Paso de tiempo (dt)", min_value=1e2, max_value=1e5, value=1e3, step=1e2)
 
 # Ejecutar la simulación
-density_history, temperature_history = simulate_collapse_with_protostar(rho, temperature, steps, dt, G)
+density_history, temperature_history = simulate_collapse_with_protostar(rho, temperature, steps, dt)
+
+# Generar el GIF
+create_density_gif(rho, steps, dt)
+st.image("proto_collapse.gif", caption="Evolución de la densidad de la protoestrella")
 
 # Visualización inicial
 st.subheader("Distribución inicial")
