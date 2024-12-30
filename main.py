@@ -281,6 +281,127 @@ fig_evolution_dt.update_layout(
 )
 st.plotly_chart(fig_evolution_dt)
 
+####################
+
+import numpy as np
+import streamlit as st
+import plotly.graph_objects as go
+
+# Parámetros iniciales
+au_to_m = 1.496e+11  # Conversión de AU a metros
+nx, ny = 200, 200  # Resolución de la malla
+lx, ly = 50 * au_to_m, 50 * au_to_m  # Dimensiones físicas de la malla en metros (50 AU por lado)
+dx, dy = lx / nx, ly / ny  # Tamaño de celda
+G = 6.674e-11  # Constante gravitacional
+proto_density = 1e-7  # Densidad central en kg/m³ (aproximada para protoestrellas)
+background_density = 1e-10  # Densidad del entorno en kg/m³
+R_gas = 8.314  # Constante de gas ideal
+M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
+temp_central = 2000  # Temperatura en el centro en K
+temp_background = 20  # Temperatura del entorno en K
+
+# Crear la malla y los campos iniciales
+x = np.linspace(-lx / 2, lx / 2, nx)
+y = np.linspace(-ly / 2, ly / 2, ny)
+X, Y = np.meshgrid(x, y)
+
+# Crear el campo de densidad inicial
+rho = np.full((nx, ny), background_density)
+center_x, center_y = nx // 2, ny // 2
+proto_radius = 4 * au_to_m  # Radio de la región central (4 AU)
+
+for i in range(nx):
+    for j in range(ny):
+        distance = np.sqrt((i - center_x)**2 * dx**2 + (j - center_y)**2 * dy**2)
+        if distance <= proto_radius:
+            rho[i, j] = proto_density
+
+# Crear el campo de temperatura inicial
+temperature = np.full((nx, ny), temp_background)
+temperature[center_x - 10:center_x + 10, center_y - 10:center_y + 10] = temp_central
+
+# Función para simular el colapso gravitacional con una protoestrella
+def simulate_collapse_with_protostar(rho, temperature, steps, dt, G):
+    density_history = []
+    temperature_history = []
+
+    for step in range(steps):
+        # Simplificación: actualizar densidad central por efecto gravitacional
+        central_density = rho[center_x, center_y]
+        if step % 10 == 0:  # Actualización periódica
+            central_density *= 1.1  # Incremento arbitrario para simular colapso
+        rho[center_x, center_y] = min(central_density, 10 * proto_density)
+
+        # Actualizar temperatura en función de densidad
+        temperature[center_x, center_y] = max(
+            temp_central * (rho[center_x, center_y] / proto_density)**(1 / 3), temp_background
+        )
+
+        # Almacenar historia
+        density_history.append(rho[center_x, center_y])
+        temperature_history.append(temperature[center_x, center_y])
+
+    return density_history, temperature_history
+
+# Configuración en Streamlit
+st.title("Simulación de una nube con una protoestrella central")
+
+# Ajustes desde la barra lateral
+steps = st.sidebar.slider("Número de pasos", min_value=10, max_value=500, value=100, step=10)
+dt = st.sidebar.slider("Paso de tiempo (dt)", min_value=1e2, max_value=1e5, value=1e3, step=1e2)
+
+# Ejecutar la simulación
+density_history, temperature_history = simulate_collapse_with_protostar(rho, temperature, steps, dt, G)
+
+# Visualización inicial
+st.subheader("Distribución inicial")
+fig_density = go.Figure(data=go.Heatmap(
+    z=rho,
+    x=x / au_to_m,
+    y=y / au_to_m,
+    colorscale="Viridis",
+    colorbar=dict(title="Densidad (kg/m³)")
+))
+fig_density.update_layout(
+    title="Densidad inicial",
+    xaxis_title="x (AU)",
+    yaxis_title="y (AU)"
+)
+st.plotly_chart(fig_density)
+
+fig_temperature = go.Figure(data=go.Heatmap(
+    z=temperature,
+    x=x / au_to_m,
+    y=y / au_to_m,
+    colorscale="Plasma",
+    colorbar=dict(title="Temperatura (K)")
+))
+fig_temperature.update_layout(
+    title="Temperatura inicial",
+    xaxis_title="x (AU)",
+    yaxis_title="y (AU)"
+)
+st.plotly_chart(fig_temperature)
+
+# Graficar evolución temporal
+st.subheader("Evolución temporal")
+fig_evolution_density = go.Figure()
+fig_evolution_density.add_trace(go.Scatter(y=density_history, mode="lines", name="Densidad central"))
+fig_evolution_density.update_layout(
+    title="Evolución de la densidad central",
+    xaxis_title="Paso",
+    yaxis_title="Densidad (kg/m³)"
+)
+st.plotly_chart(fig_evolution_density)
+
+fig_evolution_temperature = go.Figure()
+fig_evolution_temperature.add_trace(go.Scatter(y=temperature_history, mode="lines", name="Temperatura central"))
+fig_evolution_temperature.update_layout(
+    title="Evolución de la temperatura central",
+    xaxis_title="Paso",
+    yaxis_title="Temperatura (K)"
+)
+st.plotly_chart(fig_evolution_temperature)
 
 
 ##############
