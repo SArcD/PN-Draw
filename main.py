@@ -1,27 +1,27 @@
 import numpy as np
 import streamlit as st
-import plotly.graph_objects as go
-from opensimplex import OpenSimplex
 import matplotlib.pyplot as plt
 from matplotlib.animation import PillowWriter
+from scipy.ndimage import gaussian_filter
+from opensimplex import OpenSimplex
+import os
 
 # Parámetros iniciales
-nx, ny = 200, 200  # Aumentar la resolución de la malla
+nx, ny = 200, 200  # Resolución de la malla
 lx, ly = 1e4 * 1.496e+11, 1e4 * 1.496e+11  # Dimensiones físicas de la malla en metros (10,000 AU)
 dx, dy = lx / nx, ly / ny  # Tamaño de celda
 dt_default = 2.0  # Paso de tiempo por defecto
-c = 0.1  # Velocidad de advección constante
 R_gas = 8.314  # Constante de gas ideal en J/(mol·K)
 M_mol = 0.02896  # Masa molar del gas (kg/mol, aire)
-k_B = 1.38e-23  # Constante de Boltzmann (J/K)
-m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
 G_default = 6.674e-11 * 100  # Constante gravitacional inicial
 mu = 2.33  # Peso molecular medio para gas molecular
 gamma = 5 / 3  # Índice adiabático para un gas monoatómico
 M_solar = 1.989e30  # Masa solar en kg
 
-import matplotlib.pyplot as plt
-from matplotlib.animation import PillowWriter
+# Parámetro para detener la simulación y crear una región más pequeña
+density_threshold = st.sidebar.number_input("Densidad umbral para detener y enfocar (kg/m³)", min_value=0.1, max_value=100.0, value=1.0, step=0.1)
+zoom_density_threshold = 1000.0  # Segundo umbral de densidad
+
 
 def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
@@ -29,82 +29,124 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiati
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
     X, Y = np.meshgrid(x, y)
 
-    # Crear un único mapa de colores
     im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
-    cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
+    fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
     dt_adaptive = dt
     density_history = []
     temperature_history = []
-    pressure_history = []
     dt_history = []
 
     def update(frame):
         nonlocal rho, temperature, dt_adaptive
-
+        rho = gaussian_filter(rho, sigma=1)
         phi = calculate_gravitational_potential(rho, dx, dy, G)
         rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive, radiation_enabled)
 
-        # Calcular cambios en densidad y ajustar el tamaño del paso adaptativo
-        max_change = np.abs((rho_new - rho) / rho).max()
-        if max_change < 0.01:  # Si el cambio es menor al 1%
-            dt_adaptive *= 1.1  # Incrementar el paso de tiempo
+        max_change = np.abs((rho_new - rho) / np.maximum(rho, 1e-15)).max()
+        if max_change < 0.05:
+            dt_adaptive *= 1.1
         else:
-            dt_adaptive = max(dt, dt_adaptive / 1.1)  # Reducir paso si hay cambios significativos
+            dt_adaptive = max(1e-3, dt_adaptive / 1.05)
 
         rho[:] = rho_new
         temperature[:] = temperature_new
 
-        # Guardar historias para gráficas posteriores
         density_history.append(rho.max())
         temperature_history.append(temperature.max())
-        pressure_history.append((rho * R_gas * temperature / M_mol).max())
         dt_history.append(dt_adaptive)
 
-        # Actualizar gráfico
+        if rho.max() > density_threshold:
+            raise StopIteration("Densidad máxima superó el umbral, deteniendo la simulación y enfocando en la región.")
+
         im.set_array(rho.ravel())
         ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
 
-    ani = plt.matplotlib.animation.FuncAnimation(
-        fig, update, frames=steps, interval=100
-    )
-    ani.save(output_path, writer=PillowWriter(fps=10))
+    try:
+        ani = plt.matplotlib.animation.FuncAnimation(
+            fig, update, frames=steps, interval=100
+        )
+        ani.save(output_path, writer=PillowWriter(fps=10))
+    except StopIteration as e:
+        print(str(e))
     plt.close(fig)
 
-    return density_history, temperature_history, pressure_history, dt_history
+    return density_history, temperature_history, dt_history, rho, temperature
 
+def create_zoomed_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="zoomed_density_collapse.gif"):
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+    x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
+    y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
+    X, Y = np.meshgrid(x, y)
 
-# Reemplazar el uso de noise2d por noise2 en la generación de condiciones iniciales
+    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
+    fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
+
+    dt_adaptive = dt
+    density_history = []
+    temperature_history = []
+    dt_history = []
+
+    def update(frame):
+        nonlocal rho, temperature, dt_adaptive
+        rho = gaussian_filter(rho, sigma=1)
+        phi = calculate_gravitational_potential(rho, dx, dy, G)
+        rho_new, temperature_new = update_density_and_temperature(rho, temperature, phi, dx, dy, dt_adaptive, radiation_enabled)
+
+        max_change = np.abs((rho_new - rho) / np.maximum(rho, 1e-15)).max()
+        if max_change < 0.05:
+            dt_adaptive *= 1.1
+        else:
+            dt_adaptive = max(1e-3, dt_adaptive / 1.05)
+
+        rho[:] = rho_new
+        temperature[:] = temperature_new
+
+        density_history.append(rho.max())
+        temperature_history.append(temperature.max())
+        dt_history.append(dt_adaptive)
+
+        if rho.max() > zoom_density_threshold:
+            raise StopIteration("Densidad máxima superó el segundo umbral, deteniendo la simulación.")
+
+        im.set_array(rho.ravel())
+        ax.set_title(f"Evolución de la densidad (zoom) - Paso {frame + 1}")
+
+    try:
+        ani = plt.matplotlib.animation.FuncAnimation(
+            fig, update, frames=steps, interval=100
+        )
+        ani.save(output_path, writer=PillowWriter(fps=10))
+    except StopIteration as e:
+        print(str(e))
+    plt.close(fig)
+
+    return density_history, temperature_history, dt_history
+
 def create_initial_conditions(nx, ny, lx, ly):
     x = np.linspace(0, lx, nx)
     y = np.linspace(0, ly, ny)
     X, Y = np.meshgrid(x, y)
 
-    # Generar densidad inicial basada en ruido Simplex
     noise = OpenSimplex(seed=42)
     rho0 = np.zeros((nx, ny))
-    scale = 10.0  # Escala del ruido
-
+    scale = 10.0
     for i in range(nx):
         for j in range(ny):
-            rho0[i, j] = noise.noise2(i / scale, j / scale)  # Usar noise2
+            rho0[i, j] = noise.noise2(i / scale, j / scale)
 
-    # Normalizar la densidad para alcanzar una masa total de ~10 masas solares
-    total_volume = lx * ly * dx  # Volumen total de la nube
-    target_mass = 10 * M_solar  # Masa objetivo: 10 masas solares
+    total_volume = lx * ly * dx
+    target_mass = 10000 * M_solar
     mean_density = target_mass / total_volume
 
     rho_min, rho_max = 0.1 * mean_density, 10 * mean_density
     rho0 = rho_min + (rho0 - rho0.min()) / (rho0.max() - rho0.min()) * (rho_max - rho_min)
 
-    # Generar un campo de temperatura inicial más representativo
-    temp_min, temp_max = 10, 20  # Temperatura mínima y máxima en K
+    temp_min, temp_max = 10, 20
     temperature = temp_max - (temp_max - temp_min) * (rho0 - rho_min) / (rho_max - rho_min)
 
     return rho0, temperature
 
-
-# Calcular el potencial gravitacional
 def calculate_gravitational_potential(rho, dx, dy, G):
     from scipy.fft import fft2, ifft2, fftfreq
 
@@ -112,16 +154,15 @@ def calculate_gravitational_potential(rho, dx, dy, G):
     ky = 2 * np.pi * fftfreq(rho.shape[1], dy)
     kx, ky = np.meshgrid(kx, ky, indexing="ij")
     k_squared = kx**2 + ky**2
-    k_squared[0, 0] = 1  # Evitar división por cero
+    k_squared[0, 0] = 1
 
     rho_ft = fft2(rho)
     phi_ft = -4 * np.pi * G * rho_ft / k_squared
-    phi_ft[0, 0] = 0  # Normalizar el modo cero
+    phi_ft[0, 0] = 0
 
     phi = np.real(ifft2(phi_ft))
     return phi
 
-# Actualizar el campo de densidad y temperatura
 def update_density_and_temperature(rho, temperature, phi, dx, dy, dt, radiation_enabled):
     grad_phi_x, grad_phi_y = np.gradient(phi, dx, dy)
     v_x = -grad_phi_x
@@ -135,309 +176,109 @@ def update_density_and_temperature(rho, temperature, phi, dx, dy, dt, radiation_
                 (v_x[i + 1, j] * rho[i + 1, j] - v_x[i - 1, j] * rho[i - 1, j]) / (2 * dx)
                 + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
             )
-            # Calentamiento adiabático: T ~ rho^(gamma - 1)
-            if rho_new[i, j] > 1e-15:  # Establecer límite inferior para densidad
+            if rho_new[i, j] > 1e-15:
                 temperature_new[i, j] = max(
-                    temperature[i, j] * (rho_new[i, j] / rho[i, j])**(gamma - 1), 10  # Temperatura mínima de 10 K
+                    temperature[i, j] * (rho_new[i, j] / rho[i, j])**(gamma - 1), 10
                 )
-
-            # Efecto de radiación opcional
-            if radiation_enabled and temperature_new[i, j] > 50:  # Umbral de radiación
+            if radiation_enabled and temperature_new[i, j] > 50:
                 temperature_new[i, j] -= 1e-5 * (temperature_new[i, j]**4) * dt
 
-    return np.maximum(rho_new, 1e-15), np.maximum(temperature_new, 10)  # Evitar valores negativos o muy bajos
+    return np.maximum(rho_new, 1e-15), np.maximum(temperature_new, 10)
 
-# Inicializar los campos
-rho, temperature = create_initial_conditions(nx, ny, lx, ly)
-pressure = (rho * R_gas * temperature) / M_mol  # Calcular presión inicial
+def zoom_in_region(rho, temperature, x_center, y_center, zoom_size):
+    x_start = max(0, x_center - zoom_size)
+    x_end = min(rho.shape[0], x_center + zoom_size)
+    y_start = max(0, y_center - zoom_size)
+    y_end = min(rho.shape[1], y_center + zoom_size)
 
-# Calcular la masa total inicial de la nube
-total_mass = np.sum(rho) * dx * dy  # Masa total en kilogramos
-st.sidebar.write(f"Masa total inicial de la nube: {total_mass:.2e} kg")
-# Calcular la región de interés
-x_idx, y_idx = np.unravel_index(np.argmax(rho), rho.shape)
-region_size = 20  # Reducir el tamaño de la región de interés
-rho_region = rho[  
-    max(0, x_idx - region_size):min(nx, x_idx + region_size),
-    max(0, y_idx - region_size):min(ny, y_idx + region_size)
-]
-temp_region = temperature[  
-    max(0, x_idx - region_size):min(nx, x_idx + region_size),
-    max(0, y_idx - region_size):min(ny, y_idx + region_size)
-]
+    rho_zoomed = rho[x_start:x_end, y_start:y_end]
+    temperature_zoomed = temperature[x_start:x_end, y_start:y_end]
 
-# Configurar los inputs en Streamlit
+    return rho_zoomed, temperature_zoomed
+
+# Interfaz de Streamlit
 st.sidebar.title("Simulación de colapso gravitacional")
+
+rho, temperature = create_initial_conditions(nx, ny, lx, ly)
+total_mass = np.sum(rho) * dx * dy
+st.sidebar.write(f"Masa total inicial de la nube: {total_mass:.2e} kg")
+
 dt = st.sidebar.slider("Escalar paso de tiempo inicial (dt)", min_value=0.1, max_value=1000.0, value=dt_default, step=0.1)
-G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=1000000, step=10)
+G_multiplier = st.sidebar.number_input("Multiplicador de la constante gravitacional (G)", min_value=1, max_value=10000000, value=1000, step=10)
 G = G_default * G_multiplier
-steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=500, step=10)
+steps = st.sidebar.slider("Número de pasos de simulación", min_value=10, max_value=2000, value=400, step=10)
 radiation_enabled = st.sidebar.checkbox("Habilitar efecto de radiación", value=True)
 
-# Generar el GIF y obtener las historias de evolución
-density_history, temperature_history, pressure_history, dt_history = create_density_evolution_gif(
-    rho, temperature, dx, dy, steps, dt, G, radiation_enabled, output_path="density_collapse.gif"
-)
-st.image("density_collapse.gif")
-
-# Crear gráficas iniciales
-fig_density = go.Figure(data=go.Heatmap(
-    z=rho,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Viridis",
-    colorbar=dict(title="Densidad (kg/m³)")
-))
-fig_density.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red"),
-    name="Región de interés"
-))
-fig_density.update_layout(
-    title="Densidad inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-st.plotly_chart(fig_density)
-
-fig_temperature = go.Figure(data=go.Heatmap(
-    z=temperature,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Plasma",
-    colorbar=dict(title="Temperatura (K)")
-))
-fig_temperature.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red"),
-    name="Región de interés"
-))
-fig_temperature.update_layout(
-    title="Temperatura inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-st.plotly_chart(fig_temperature)
-
-fig_pressure = go.Figure(data=go.Heatmap(
-    z=pressure,
-    x=np.linspace(0, lx, nx),
-    y=np.linspace(0, ly, ny),
-    colorscale="Inferno",
-    colorbar=dict(title="Presión (Pa)")
-))
-fig_pressure.add_trace(go.Scatter(
-    x=[y_idx * dx],
-    y=[x_idx * dy],
-    mode="markers",
-    marker=dict(size=15, color="red"),
-    name="Región de interés"
-))
-fig_pressure.update_layout(
-    title="Presión inicial de la nube",
-    xaxis_title="x (m)",
-    yaxis_title="y (m)"
-)
-st.plotly_chart(fig_pressure)
-
-# Gráficas de evolución temporal
-fig_evolution_density = go.Figure()
-fig_evolution_density.add_trace(go.Scatter(y=density_history, mode="lines", name="Densidad máxima"))
-fig_evolution_density.update_layout(
-    title="Evolución temporal de la densidad máxima",
-    xaxis_title="Iteración",
-    yaxis_title="Densidad máxima (kg/m³)"
-)
-st.plotly_chart(fig_evolution_density)
-
-fig_evolution_temperature = go.Figure()
-fig_evolution_temperature.add_trace(go.Scatter(y=temperature_history, mode="lines", name="Temperatura máxima"))
-fig_evolution_temperature.update_layout(
-    title="Evolución temporal de la temperatura máxima",
-    xaxis_title="Iteración",
-    yaxis_title="Temperatura máxima (K)"
-)
-st.plotly_chart(fig_evolution_temperature)
-
-fig_evolution_pressure = go.Figure()
-fig_evolution_pressure.add_trace(go.Scatter(y=pressure_history, mode="lines", name="Presión máxima"))
-fig_evolution_pressure.update_layout(
-    title="Evolución temporal de la presión máxima",
-    xaxis_title="Iteración",
-    yaxis_title="Presión máxima (Pa)"
-)
-st.plotly_chart(fig_evolution_pressure)
-
-fig_evolution_dt = go.Figure()
-fig_evolution_dt.add_trace(go.Scatter(y=dt_history, mode="lines", name="Paso de tiempo adaptativo"))
-fig_evolution_dt.update_layout(
-    title="Evolución temporal del paso de tiempo adaptativo",
-    xaxis_title="Iteración",
-    yaxis_title="Paso de tiempo (dt)"
-)
-st.plotly_chart(fig_evolution_dt)
-
-####################
-
-##########################
-#########################
-
-import numpy as np
-import streamlit as st
-import matplotlib.pyplot as plt
-from matplotlib.animation import PillowWriter
-from opensimplex import OpenSimplex
-
-# Parámetros iniciales
-nx, ny = 500, 500  # Mayor resolución de la malla
-lx, ly = 100 * 1.496e+11, 100 * 1.496e+11  # Dimensiones físicas (100 AU)
-dx, dy = lx / nx, ly / ny  # Tamaño de celda
-dt_default = 2.0  # Paso de tiempo inicial
-R_gas = 8.314  # Constante de gas ideal (J/(mol·K))
-M_mol = 0.02896  # Masa molar del gas (kg/mol)
-k_B = 1.38e-23  # Constante de Boltzmann (J/K)
-m_H = 1.67e-27  # Masa del átomo de hidrógeno (kg)
-G_default = 6.674e-11 * 1000000  # Constante gravitacional incrementada
-gamma = 5 / 3  # Índice adiabático
-M_solar = 1.989e30  # Masa solar (kg)
-
-# Crear condiciones iniciales
-def create_star_region(nx, ny, lx, ly):
-    x = np.linspace(0, lx, nx)
-    y = np.linspace(0, ly, ny)
-    X, Y = np.meshgrid(x, y)
-
-    # Inicializar densidad: región central más densa
-    rho = np.ones((nx, ny)) * 1e-18
-    center_x, center_y = nx // 2, ny // 2
-    region_radius = 20  # Radio de la región central en celdas
-
-    for i in range(nx):
-        for j in range(ny):
-            distance = np.sqrt((i - center_x)**2 + (j - center_y)**2)
-            if distance <= region_radius:
-                rho[i, j] = 1e-6  # Alta densidad en el núcleo
-
-    # Temperatura inicial
-    temperature = np.ones((nx, ny)) * 20  # 20 K en todo el entorno
-    temperature[center_x - region_radius:center_x + region_radius,
-                center_y - region_radius:center_y + region_radius] = 2000  # 2000 K en el núcleo
-
-    return rho, temperature
-
-# Calcular el potencial gravitacional
-def calculate_gravitational_potential(rho, dx, dy, G):
-    from scipy.fft import fft2, ifft2, fftfreq
-
-    kx = 2 * np.pi * fftfreq(rho.shape[0], dx)
-    ky = 2 * np.pi * fftfreq(rho.shape[1], dy)
-    kx, ky = np.meshgrid(kx, ky, indexing="ij")
-    k_squared = kx**2 + ky**2
-    k_squared[0, 0] = 1  # Evitar división por cero
-
-    rho_ft = fft2(rho)
-    phi_ft = -4 * np.pi * G * rho_ft / k_squared
-    phi_ft[0, 0] = 0  # Normalizar el modo cero
-
-    phi = np.real(ifft2(phi_ft))
-    return phi
-
-# Actualizar densidad y temperatura
-def update_star_density_temperature(rho, temperature, phi, dx, dy, dt):
-    grad_phi_x, grad_phi_y = np.gradient(phi, dx, dy)
-    v_x = -grad_phi_x
-    v_y = -grad_phi_y
-
-    rho_new = rho.copy()
-    temperature_new = temperature.copy()
-
-    for i in range(1, rho.shape[0] - 1):
-        for j in range(1, rho.shape[1] - 1):
-            rho_new[i, j] -= dt * (
-                (v_x[i + 1, j] * rho[i + 1, j] - v_x[i - 1, j] * rho[i - 1, j]) / (2 * dx)
-                + (v_y[i, j + 1] * rho[i, j + 1] - v_y[i, j - 1] * rho[i, j - 1]) / (2 * dy)
-            )
-            # Calentamiento adiabático
-            if rho_new[i, j] > 1e-18:
-                temperature_new[i, j] *= (rho_new[i, j] / rho[i, j])**(gamma - 1)
-
-            # Enfriamiento por radiación
-            #if temperature_new[i, j] > 2000:
-            #    temperature_new[i, j] -= 1e-4 * (temperature_new[i, j]**4) * dt
-
-    return np.maximum(rho_new, 1e-18), np.maximum(temperature_new, 10)
-
-# Crear animación
-def create_star_evolution_gif(rho, temperature, dx, dy, steps, dt, G, output_path="proto_star.gif"):
-    fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
-    x = np.linspace(0, rho.shape[1] * dx, rho.shape[1])
-    y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
-    X, Y = np.meshgrid(x, y)
-
-    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
-    cbar = fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
-
-    density_history = []
-    temperature_history = []
-
-    def update(frame):
-        nonlocal rho, temperature
-
-        phi = calculate_gravitational_potential(rho, dx, dy, G)
-        rho, temperature = update_star_density_temperature(rho, temperature, phi, dx, dy, dt)
-
-        density_history.append(rho.max())
-        temperature_history.append(temperature.max())
-
-        im.set_array(rho.ravel())
-        ax.set_title(f"Evolución de la densidad - Paso {frame + 1}")
-
-    ani = plt.matplotlib.animation.FuncAnimation(
-        fig, update, frames=steps, interval=100
-    )
-    ani.save(output_path, writer=PillowWriter(fps=10))
-    plt.close(fig)
-
-    return density_history, temperature_history
-
-# Inicializar los campos
-rho, temperature = create_star_region(nx, ny, lx, ly)
-
-# Parámetros de simulación
-steps = 500
-dt = 1.0
-G = G_default
-
-# Generar animación y capturar historia
-density_history, temperature_history = create_star_evolution_gif(
-    rho, temperature, dx, dy, steps, dt, G, output_path="proto_star.gif"
+density_history, temperature_history, dt_history, final_rho, final_temperature = create_density_evolution_gif(
+    rho, temperature, dx, dy, steps, dt, G, radiation_enabled, "density_collapse.gif"
 )
 
-# Streamlit
-st.title("Evolución de una protoestrella")
-st.image("proto_star.gif", caption="Evolución de la densidad en una protoestrella", use_column_width=True)
+# Encontrar región para enfoque
+x_center, y_center = np.unravel_index(np.argmax(final_rho), final_rho.shape)
+zoom_size = 20
+rho_zoomed, temperature_zoomed = zoom_in_region(final_rho, final_temperature, x_center, y_center, zoom_size)
 
-# Gráficas de evolución temporal
-fig_density = plt.figure()
-plt.plot(density_history, label="Densidad central")
-plt.xlabel("Paso")
-plt.ylabel("Densidad (kg/m³)")
-plt.title("Evolución de la densidad central")
-plt.legend()
-st.pyplot(fig_density)
+# Crear nueva simulación para la región enfocada
+zoomed_dx = dx / (nx / zoom_size)
+zoomed_dy = dy / (ny / zoom_size)
+zoomed_dt = dt_default / 10
+zoom_density_history, zoom_temperature_history, zoom_dt_history = create_zoomed_density_evolution_gif(
+    rho_zoomed, temperature_zoomed, zoomed_dx, zoomed_dy, steps, zoomed_dt, G, radiation_enabled, "zoomed_density_collapse.gif"
+)
 
-fig_temperature = plt.figure()
-plt.plot(temperature_history, label="Temperatura central")
-plt.xlabel("Paso")
-plt.ylabel("Temperatura (K)")
-plt.title("Evolución de la temperatura central")
-plt.legend()
-st.pyplot(fig_temperature)
+# Mostrar animaciones y gráficas
+st.image("density_collapse.gif", caption="Evolución de densidad principal")
+st.image("zoomed_density_collapse.gif", caption="Evolución de densidad en la región enfocada")
 
+# Graficar evolución temporal de la simulación principal
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(density_history, label="Densidad máxima")
+ax.set_title("Evolución de la Densidad Máxima (Principal)")
+ax.set_xlabel("Iteración")
+ax.set_ylabel("Densidad (kg/m³)")
+ax.legend()
+st.pyplot(fig)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(temperature_history, label="Temperatura máxima", color="orange")
+ax.set_title("Evolución de la Temperatura Máxima (Principal)")
+ax.set_xlabel("Iteración")
+ax.set_ylabel("Temperatura (K)")
+ax.legend()
+st.pyplot(fig)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(dt_history, label="Paso de tiempo adaptativo", color="green")
+ax.set_title("Evolución del Paso de Tiempo (Principal)")
+ax.set_xlabel("Iteración")
+ax.set_ylabel("Paso de Tiempo (s)")
+ax.legend()
+st.pyplot(fig)
+
+# Graficar evolución temporal de la simulación enfocada
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(zoom_density_history, label="Densidad máxima (Zoom)")
+ax.set_title("Evolución de la Densidad Máxima (Región Enfocada)")
+ax.set_xlabel("Iteración")
+ax.set_ylabel("Densidad (kg/m³)")
+ax.legend()
+st.pyplot(fig)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(zoom_temperature_history, label="Temperatura máxima (Zoom)", color="orange")
+ax.set_title("Evolución de la Temperatura Máxima (Región Enfocada)")
+ax.set_xlabel("Iteración")
+ax.set_ylabel("Temperatura (K)")
+ax.legend()
+st.pyplot(fig)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(zoom_dt_history, label="Paso de tiempo adaptativo (Zoom)", color="green")
+ax.set_title("Evolución del Paso de Tiempo (Región Enfocada)")
+ax.set_xlabel("Iteración")
+ax.set_ylabel("Paso de Tiempo (s)")
+ax.legend()
+st.pyplot(fig)
 
 ##############
 
