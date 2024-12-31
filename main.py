@@ -29,7 +29,7 @@ def create_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, radiati
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
     X, Y = np.meshgrid(x, y)
 
-    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
+    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="coolwarm", vmin=rho.min(), vmax=rho.max())
     fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
     dt_adaptive = dt
@@ -79,7 +79,7 @@ def create_zoomed_density_evolution_gif(rho, temperature, dx, dy, steps, dt, G, 
     y = np.linspace(0, rho.shape[0] * dy, rho.shape[0])
     X, Y = np.meshgrid(x, y)
 
-    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="viridis", vmin=rho.min(), vmax=rho.max())
+    im = ax.pcolormesh(X, Y, rho, shading="auto", cmap="coolwarm", vmin=rho.min(), vmax=rho.max())
     fig.colorbar(im, ax=ax, label="Densidad (kg/m³)")
 
     dt_adaptive = dt
