@@ -873,15 +873,15 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
 
     
     # Add sunspots (dark areas)
-    sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
-    for _ in range(sunspot_count):
-        spot_x = np.random.randint(0, star_size * 2)
-        spot_y = np.random.randint(0, star_size * 2)
-        spot_size = np.random.randint(max(1, star_size // 50), max(2, star_size // 20))  # Adjust sunspot size for smaller stars
-        star_draw.ellipse(
-            (spot_x - spot_size, spot_y - spot_size, spot_x + spot_size, spot_y + spot_size),
-            fill=(0, 0, 0, 255)  # Fully opaque
-        )
+    #sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
+    #for _ in range(sunspot_count):
+    #    spot_x = np.random.randint(0, star_size * 2)
+    #    spot_y = np.random.randint(0, star_size * 2)
+    #    spot_size = np.random.randint(max(1, star_size // 50), max(2, star_size // 20))  # Adjust sunspot size for smaller stars
+    #    star_draw.ellipse(
+    #        (spot_x - spot_size, spot_y - spot_size, spot_x + spot_size, spot_y + spot_size),
+    #        fill=(0, 0, 0, 255)  # Fully opaque
+    #    )
 
     # Mask to ensure circular profile
     mask = Image.new("L", (star_size * 2, star_size * 2), 0)
