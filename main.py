@@ -1822,8 +1822,8 @@ st.image(processed_image, caption=f"{lensing_type} Applied (Static Image)", use_
 # Definir controles para animación en la barra lateral
 num_frames = st.sidebar.slider("Number of Frames", 10, 100, 30)
 fps = st.sidebar.slider("Frames Per Second", 1, 30, 10)
-x_start = st.sidebar.slider("Animation Start X Position", 0, 800, 200)
-y_start = st.sidebar.slider("Animation Start Y Position", 0, 800, 200)
+x_start = st.sidebar.slider("Animation Start X Position", 0, image_width, 200)
+y_start = st.sidebar.slider("Animation Start Y Position", 0, image_height, 200)
 x_end = st.sidebar.slider("Animation End X Position", 0, 800, 600)
 y_end = st.sidebar.slider("Animation End Y Position", 0, 800, 600)
 
