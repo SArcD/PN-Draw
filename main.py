@@ -892,7 +892,7 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
     # Mask to ensure circular profile
     mask = Image.new("L", (star_size * 2, star_size * 2), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.ellipse((0, 0, star_size * 2, star_size * 2), fill=(min(color[0] + 50, 255), min(color[1] + 50, 255), min(color[2] + 50, 255), 255))
+    mask_draw.ellipse((0, 0, star_size * 2, star_size * 2), fill=255)
 
     star_circle = Image.new("RGBA", img.size, (0, 0, 0, 0))
     star_circle.paste(star_layer, (position[0] - star_size, position[1] - star_size), mask=mask)
