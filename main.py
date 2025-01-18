@@ -835,11 +835,17 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
             int(color[2] * (0.8 + 0.2 * (r / star_size))),
             255  # Fully opaque
         )
+        #star_draw.ellipse(
+        #    (star_size - r, star_size - r, star_size + r, star_size + r),
+        #    fill=star_color
+        #)
+
         star_draw.ellipse(
             (star_size - r, star_size - r, star_size + r, star_size + r),
-            fill=star_color
+            fill=(min(color[0] + 50, 255), min(color[1] + 50, 255), min(color[2] + 50, 255), 255)
         )
 
+    
     # Add solar granulation texture
     #granulation_density = max(50, star_size * 10)  # Adjust density for smaller stars
     #for _ in range(granulation_density):
