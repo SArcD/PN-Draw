@@ -841,17 +841,37 @@ def draw_star_with_filaments(img, position, star_size, halo_size, color, num_fil
         )
 
     # Add solar granulation texture
+    #granulation_density = max(50, star_size * 10)  # Adjust density for smaller stars
+    #for _ in range(granulation_density):
+    #    x = np.random.randint(0, star_size * 2)
+    #    y = np.random.randint(0, star_size * 2)
+    #    intensity = np.random.randint(150, 255)
+    #    size = np.random.randint(1, max(2, star_size // 20))  # Smaller granulation size for smaller stars
+    #    star_draw.ellipse(
+    #        (x - size, y - size, x + size, y + size),
+    #        fill=(intensity, intensity, 0, 255)  # Fully opaque
+    #    )
+
+
+    # Add solar granulation texture
     granulation_density = max(50, star_size * 10)  # Adjust density for smaller stars
     for _ in range(granulation_density):
         x = np.random.randint(0, star_size * 2)
         y = np.random.randint(0, star_size * 2)
         intensity = np.random.randint(150, 255)
         size = np.random.randint(1, max(2, star_size // 20))  # Smaller granulation size for smaller stars
+        granulation_color = (
+            int(color[0] * (intensity / 255)),
+            int(color[1] * (intensity / 255)),
+            int(color[2] * (intensity / 255)),
+            255  # Fully opaque
+        )
         star_draw.ellipse(
             (x - size, y - size, x + size, y + size),
-            fill=(intensity, intensity, 0, 255)  # Fully opaque
+            fill=granulation_color
         )
 
+    
     # Add sunspots (dark areas)
     sunspot_count = max(1, star_size // 10)  # Fewer sunspots for smaller stars
     for _ in range(sunspot_count):
@@ -1168,11 +1188,11 @@ for i in range(num_cstars):
     st.sidebar.subheader(f"Star {i + 1} Parameters")
     position_x = st.sidebar.slider(f"Position X (Star {i + 1})", 0, 800, 400)
     position_y = st.sidebar.slider(f"Position Y (Star {i + 1})", 0, 800, 400)
-    star_size = st.sidebar.slider(f"Star Size (Star {i + 1})", 5, 50, 20)
+    star_size = st.sidebar.slider(f"Star Size (Star {i + 1})", 1, 100, 10)
     halo_size = st.sidebar.slider(f"Halo Size (Star {i + 1})", 10, 100, 50)
     star_color_hex = st.sidebar.color_picker(f"Star Color (Star {i + 1})", "#FFFF00")
     star_color = tuple(int(star_color_hex.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-    num_star_filaments = st.sidebar.slider(f"Number of Star Filaments (Star {i + 1})", 5, 100, 30)
+    num_star_filaments = st.sidebar.slider(f"Number of Star Filaments (Star {i + 1})", 2, 100, 30)
     filament_dispersion = st.sidebar.slider(f"Filament Dispersion (Star {i + 1})", 1, 50, 10)
     star_blur_radius = st.sidebar.slider(f"Star Blur Radius (Star {i + 1})", 0, 20, 5)
 
